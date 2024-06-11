@@ -1,4 +1,4 @@
-use crate::engine::game::termion_key_to_key;
+use crate::engine::game::map_termion_key;
 
 use super::{display::BaseDisplay, game::BaseGame};
 use std::{
@@ -12,7 +12,7 @@ const GAME_STEP_MILLIS: u64 = 100;
 pub struct Control<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
     pub game: &'a mut dyn BaseGame,
-    pub display: &'a mut dyn BaseDisplay,
+    pub display: &'a mut BaseDisplay,
     last_frame_time: Instant,
 }
 
@@ -20,7 +20,7 @@ impl Control<'_> {
     pub fn new<'a>(
         stdin: termion::input::Keys<termion::AsyncReader>,
         game: &'a mut dyn BaseGame,
-        display: &'a mut dyn BaseDisplay,
+        display: &'a mut BaseDisplay,
     ) -> Control<'a> {
         Control {
             stdin,
@@ -38,8 +38,7 @@ impl Control<'_> {
                 match key {
                     termion::event::Key::Char('q') => break,
                     key if key != termion::event::Key::Char(' ') => {
-                        self.game
-                            .set_player_control_key(Some(termion_key_to_key(key)));
+                        self.game.set_player_control_key(Some(map_termion_key(key)));
                     }
                     termion::event::Key::Char(' ') => {
                         self.game.start_game();

@@ -1,3 +1,30 @@
+use crate::engine::{
+    control::Control, game_object::Coordinate, initialize_terminal, BaseDisplay, TerminalRenderer,
+};
+use game_objects::{player_character::PlayerCharacter, wall::Wall};
+
+const WIDTH: usize = 30;
+const HEIGHT: usize = 25;
+const SCREEN_WIDTH: u16 = 30;
+const SCREEN_HEIGHT: u16 = 25;
+
+pub fn play_snake() {
+    let (stdout, stdin) = initialize_terminal();
+    let mut game = game::Game::new(WIDTH, HEIGHT);
+    let walls = Wall::generate_walls(WIDTH, HEIGHT);
+    game.set_player(PlayerCharacter::new());
+    game.set_walls(walls);
+    game.generate_food();
+    let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
+    let mut display = BaseDisplay {
+        renderer: Box::new(renderer),
+        view_cursor: Coordinate { x: 0, y: 0 },
+    };
+    let mut control = Control::new(stdin, &mut game, &mut display);
+
+    control.listen();
+}
+
 mod game_objects {
 
     pub mod player_character {
@@ -5,7 +32,7 @@ mod game_objects {
         use crate::engine::{
             build_string,
             game_object::{CollisionBox, Coordinate},
-            try_get_concrete_type, try_get_mut_concrete_type, GameObject,
+            try_get_concrete_type, GameObject,
         };
         use std::any::Any;
 
@@ -184,6 +211,13 @@ mod game_objects {
             fn get_collision_box(&self) -> CollisionBox {
                 let coords = self.get_coords();
 
+                if self.eaten {
+                    return CollisionBox {
+                        x: coords.x..(coords.x),
+                        y: coords.y..(coords.y),
+                    };
+                }
+
                 CollisionBox {
                     x: coords.x..(coords.x + 1),
                     y: coords.y..(coords.y + 1),
@@ -239,9 +273,7 @@ mod game_objects {
 
         impl SnakeBody {
             pub fn new(coord: Coordinate) -> SnakeBody {
-                SnakeBody {
-                    coordinate: Coordinate { x: 1, y: 1 },
-                }
+                SnakeBody { coordinate: coord }
             }
         }
 
@@ -252,8 +284,8 @@ mod game_objects {
                 let coords = self.get_coords();
 
                 CollisionBox {
-                    x: coords.x..(coords.x),
-                    y: coords.y..(coords.y),
+                    x: coords.x..(coords.x + 1),
+                    y: coords.y..(coords.y + 1),
                 }
             }
 
@@ -364,53 +396,6 @@ mod game_objects {
     }
 }
 
-mod display {
-    use crate::engine::{game_object::Coordinate, BaseDisplay, GameObject};
-    use std::io::Stdout;
-    use termion::raw::RawTerminal;
-
-    pub struct Display {
-        stdout: RawTerminal<Stdout>,
-        view_cursor: Coordinate,
-        screen_height: u16,
-        screen_width: u16,
-    }
-
-    impl Display {
-        pub fn new(stdout: RawTerminal<Stdout>, screen_height: u16, screen_width: u16) -> Display {
-            Display {
-                stdout,
-                view_cursor: Coordinate { x: 0, y: 0 },
-                screen_height,
-                screen_width,
-            }
-        }
-    }
-
-    impl BaseDisplay for Display {
-        fn update_cursor(&mut self, _game_objects: &[Box<dyn GameObject>]) {
-            // camera shouldn't move here
-            // TODO maybe cursor should be renamed to camera_cursor?
-        }
-
-        fn stdout(&mut self) -> &mut RawTerminal<Stdout> {
-            &mut self.stdout
-        }
-
-        fn view_cursor(&self) -> &Coordinate {
-            &self.view_cursor
-        }
-
-        fn screen_height(&self) -> u16 {
-            self.screen_height
-        }
-
-        fn screen_width(&self) -> u16 {
-            self.screen_width
-        }
-    }
-}
-
 mod game {
 
     use super::game_objects::food::Food;
@@ -418,6 +403,7 @@ mod game {
     use super::game_objects::wall::Wall;
     use crate::engine::game::Key;
     use crate::engine::game_object::utils::{take_game_objects, take_mut_game_objects};
+
     use crate::engine::game_object::Coordinate;
     use crate::engine::{
         collision_pass, game_object::utils::take_game_object, try_get_concrete_type,
@@ -543,12 +529,12 @@ mod game {
 
         pub fn generate_food(&mut self) {
             let mut rng = rand::thread_rng();
-            let x = rng.gen_range(0..(self.width));
-            let y = rng.gen_range(0..(self.height));
+            let x = rng.gen_range(0..self.width);
+            let y = rng.gen_range(0..self.height);
 
             // TODO we need to avoid generating on the snakes body/head
             self.set_food(Food {
-                coordinate: Coordinate { x: x, y: y },
+                coordinate: Coordinate { x, y },
                 eaten: false,
             });
         }
@@ -582,34 +568,7 @@ mod game {
                 self.end_game();
             }
 
-            // get index of anty food eaten and then remove:
-
-            // let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(food)];
-            if let Some(index) = self.entities.game_objects.iter().position(|o| {
-                if let Some(food) = try_get_concrete_type::<Food>(&**o) {
-                    return food.eaten;
-                }
-                false
-            }) {
-                self.entities.game_objects.remove(index);
-            }
-            // self.entities.add_game_objects(&mut game_objects);
-
-            // let foods = self.get_food_objects();
-            // self.entities.game_objects = self.entities.game_objects.iter_mut().filter(|o| {
-            //     if let Some(food) = take_game_object::<Food>(o) {
-            //         if food.eaten {
-            //             return false;
-            //         }
-            //     }
-            //     true
-            // });
-
-            // }).for_each(|f| {
-            //     self.game_objects().iter().filter(|o| {
-            //         if Some(food) = take_game_object<Food>(o);
-            //     })
-            // });
+            // Keep eaten food in place for one tick so tests can observe state change
 
             self.score = self
                 .score
@@ -636,27 +595,6 @@ mod game {
             }
         }
     }
-}
-
-use crate::engine::{control::Control, initialize_terminal};
-use game_objects::{player_character::PlayerCharacter, wall::Wall};
-
-const WIDTH: usize = 30;
-const HEIGHT: usize = 25;
-const SCREEN_WIDTH: u16 = 30;
-const SCREEN_HEIGHT: u16 = 25;
-
-pub fn play_snake() {
-    let (stdout, stdin) = initialize_terminal();
-    let mut game = game::Game::new(WIDTH, HEIGHT);
-    let walls = Wall::generate_walls(WIDTH, HEIGHT);
-    game.set_player(PlayerCharacter::new());
-    game.set_walls(walls);
-    game.generate_food();
-    let mut display = display::Display::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
-    let mut control = Control::new(stdin, &mut game, &mut display);
-
-    control.listen();
 }
 
 #[cfg(test)]

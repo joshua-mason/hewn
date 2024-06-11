@@ -50,7 +50,7 @@ pub enum Key {
     Escape,
 }
 
-pub fn termion_key_to_key(key: termion::event::Key) -> Key {
+pub fn map_termion_key(key: termion::event::Key) -> Key {
     match key {
         termion::event::Key::Left => Key::Left,
         termion::event::Key::Right => Key::Right,

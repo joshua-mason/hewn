@@ -9,15 +9,11 @@ use crate::engine::{
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
     InGame,
-    Menu,
     Lost(usize),
 }
 
 #[derive(Debug)]
 pub struct Game {
-    pub width: usize,
-    pub height: usize,
-
     pub state: GameState,
     pub score: usize,
 
@@ -26,11 +22,9 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(width: usize, height: usize) -> Game {
+    pub fn new() -> Game {
         let mut game = Game {
-            width,
-            height,
-            state: GameState::Menu,
+            state: GameState::InGame,
             score: 0,
             entities: Entities::new(),
             // game_objects: vec![],
