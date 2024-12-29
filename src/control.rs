@@ -4,7 +4,7 @@ use std::{
     time::{self, Duration, Instant},
 };
 
-pub enum PlayerMovement {
+pub enum PlayerControl {
     MovingLeft,
     MovingRight,
     Still,
@@ -14,7 +14,7 @@ pub struct Control<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
     pub game: &'a mut Game,
     pub display: &'a mut Display,
-    player_movement: PlayerMovement,
+    player_movement: PlayerControl,
     last_frame_time: Instant,
 }
 
@@ -27,7 +27,7 @@ impl Control<'_> {
         Control {
             stdin,
             game,
-            player_movement: PlayerMovement::Still,
+            player_movement: PlayerControl::Still,
             last_frame_time: Instant::now(),
             display,
         }
@@ -41,17 +41,16 @@ impl Control<'_> {
                 match key {
                     termion::event::Key::Char('q') => break,
                     termion::event::Key::Left => {
-                        self.player_movement = PlayerMovement::MovingLeft;
+                        self.player_movement = PlayerControl::MovingLeft;
                     }
                     termion::event::Key::Right => {
-                        self.player_movement = PlayerMovement::MovingRight;
+                        self.player_movement = PlayerControl::MovingRight;
                     }
 
                     _ => {
-                        self.player_movement = PlayerMovement::Still;
+                        self.player_movement = PlayerControl::Still;
                     }
                 }
-            } else {
             }
             thread::sleep(time::Duration::from_millis(FRAME_RATE_MILLIS));
 
@@ -61,7 +60,7 @@ impl Control<'_> {
                 self.last_frame_time = now;
 
                 if input.is_none() {
-                    self.player_movement = PlayerMovement::Still;
+                    self.player_movement = PlayerControl::Still;
                 }
             }
             self.display.next(self.game);

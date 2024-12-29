@@ -5,6 +5,7 @@ use std::io::Write;
 use termion::raw::RawTerminal;
 
 use crate::game::Game;
+use crate::game::Platform;
 use crate::WIDTH;
 
 pub struct Display {
@@ -41,7 +42,19 @@ impl Display {
     fn player_level(game: &Game) -> String {
         let mut display_string = "".to_owned();
         for height in 0..(SCREEN_HEIGHT) {
-            let mut level = Display::build_level_string();
+            let mut level = build_string('.', WIDTH);
+
+            // FIXME: can we make this more efficient?
+            let platforms_this_level = game
+                .platforms
+                .iter()
+                .filter(|platform| platform.coordinate.y == height as usize)
+                .collect::<Vec<_>>();
+
+            for platform in platforms_this_level {
+                platform.render(&mut level);
+            }
+
             if ((SCREEN_HEIGHT - height) == game.player_pos_y as u16) {
                 level.replace_range(game.player_pos_x..(game.player_pos_x + 1), "#");
             }
@@ -50,11 +63,25 @@ impl Display {
         }
         display_string
     }
+}
 
-    fn build_level_string() -> String {
-        let whitespaces = std::iter::repeat('.').take(WIDTH);
-        let whitespaces = Vec::from_iter(whitespaces);
-        let level = String::from_iter(whitespaces);
-        level
+trait DisplayGameObject {
+    fn render<'a>(&self, row: &'a mut String);
+}
+
+impl DisplayGameObject for Platform {
+    fn render<'a>(&self, row: &'a mut String) {
+        let platform_str = build_string('=', self.length);
+        row.replace_range(
+            self.coordinate.x..(self.coordinate.x + self.length),
+            &platform_str,
+        );
     }
+}
+
+fn build_string(char: char, length: usize) -> String {
+    let whitespaces = std::iter::repeat(char).take(length);
+    let whitespaces = Vec::from_iter(whitespaces);
+    let level = String::from_iter(whitespaces);
+    level
 }
