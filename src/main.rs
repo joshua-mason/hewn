@@ -1,3 +1,9 @@
+// TODO
+// * Render platforms
+// * Jump on hitting a platform
+// * Move screen with the player
+// * Points tally
+
 use game::Game;
 
 const WIDTH: usize = 10;
@@ -9,14 +15,10 @@ const SCREEN_HEIGHT: u16 = 20;
 fn main() {
     let (stdout, stdin) = io::initialize_terminal();
     let mut game = game::Game::new(WIDTH, HEIGHT);
-    let mut control = control::Control::new(stdin, &mut game);
     let mut display = display::Display::new(stdout);
+    let mut control = control::Control::new(stdin, &mut game, &mut display);
 
-    let mut on_game_render = |game: &Game| {
-        display.next(&game);
-    };
-
-    control.listen(&mut on_game_render);
+    control.listen();
 }
 
 mod game {
@@ -138,7 +140,7 @@ mod display {
 }
 
 mod control {
-    use crate::{game::Game, FRAME_RATE_MILLIS, GAME_STEP_MILLIS};
+    use crate::{display::Display, game::Game, FRAME_RATE_MILLIS, GAME_STEP_MILLIS};
     use std::{
         thread,
         time::{self, Duration, Instant},
@@ -153,27 +155,27 @@ mod control {
     pub struct Control<'a> {
         pub stdin: termion::input::Keys<termion::AsyncReader>,
         pub game: &'a mut Game,
+        pub display: &'a mut Display,
         player_movement: PlayerMovement,
         last_frame_time: Instant,
     }
 
     impl Control<'_> {
-        pub fn new(
+        pub fn new<'a>(
             stdin: termion::input::Keys<termion::AsyncReader>,
-            game: &mut Game,
-        ) -> Control<'_> {
+            game: &'a mut Game,
+            display: &'a mut Display,
+        ) -> Control<'a> {
             Control {
                 stdin,
                 game,
                 player_movement: PlayerMovement::Still,
                 last_frame_time: Instant::now(),
+                display,
             }
         }
 
-        pub fn listen<G>(&mut self, on_render: &mut G)
-        where
-            G: FnMut(&Game),
-        {
+        pub fn listen(&mut self) {
             loop {
                 let input = self.stdin.next();
 
@@ -204,7 +206,7 @@ mod control {
                         self.player_movement = PlayerMovement::Still;
                     }
                 }
-                on_render(self.game);
+                self.display.next(self.game);
             }
         }
     }
