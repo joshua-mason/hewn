@@ -4,36 +4,25 @@ use termion;
 
 const WIDTH: usize = 10;
 const HEIGHT: usize = 20;
-const FRAME_RATE_MILLIS: u64 = 100;
+const FRAME_RATE_MILLIS: u64 = 10;
 const SCREEN_HEIGHT: u16 = 20;
 
 fn main() {
     let (stdout, stdin) = io::initialize_terminal();
     let mut game = game::Game::new(WIDTH, HEIGHT);
-    let mut control = control::Control {
-        stdin,
-        game: &mut game,
-    };
+    let mut control = control::Control::new(stdin, &mut game);
     let mut display = display::Display::new(stdout);
-
-    let mut on_user_input = |key: termion::event::Key, game: &mut Game| match key {
-        termion::event::Key::Left => {
-            game.player_move(Direction::Left);
-        }
-        termion::event::Key::Right => {
-            game.player_move(Direction::Right);
-        }
-        _ => todo!(),
-    };
 
     let mut on_game_render = |game: &Game| {
         display.next(&game);
     };
 
-    control.listen(&mut on_user_input, &mut on_game_render);
+    control.listen(&mut on_game_render);
 }
 
 mod game {
+    use crate::control::PlayerMovement;
+
     pub struct Game {
         pub player_pos_x: usize,
         pub player_pos_y: isize,
@@ -45,6 +34,16 @@ mod game {
     pub enum Direction {
         Left,
         Right,
+    }
+
+    struct Coordinate {
+        x: u16,
+        y: u16,
+    }
+
+    struct Platform {
+        coordinate: Coordinate,
+        length: u8,
     }
 
     impl Game {
@@ -70,7 +69,16 @@ mod game {
             }
         }
 
-        pub fn next(&mut self) {
+        pub fn next(&mut self, player_movement: &PlayerMovement) {
+            match player_movement {
+                PlayerMovement::MovingLeft => {
+                    self.player_pos_x -= 1;
+                }
+                PlayerMovement::MovingRight => {
+                    self.player_pos_x += 1;
+                }
+                PlayerMovement::Still => {}
+            }
             self.player_velocity -= 1;
             self.player_pos_y += self.player_velocity;
             if self.player_pos_y <= 1 {
@@ -146,15 +154,32 @@ mod control {
     use crate::{game::Game, FRAME_RATE_MILLIS};
     use std::{thread, time};
 
+    pub enum PlayerMovement {
+        MovingLeft,
+        MovingRight,
+        Still,
+    }
+
     pub struct Control<'a> {
         pub stdin: termion::input::Keys<termion::AsyncReader>,
         pub game: &'a mut Game,
+        player_movement: PlayerMovement,
     }
 
     impl Control<'_> {
-        pub fn listen<F, G>(&mut self, on_display: &mut F, on_render: &mut G)
+        pub fn new(
+            stdin: termion::input::Keys<termion::AsyncReader>,
+            game: &mut Game,
+        ) -> Control<'_> {
+            Control {
+                stdin,
+                game,
+                player_movement: PlayerMovement::Still,
+            }
+        }
+
+        pub fn listen<G>(&mut self, on_render: &mut G)
         where
-            F: FnMut(termion::event::Key, &mut Game),
             G: FnMut(&Game),
         {
             loop {
@@ -163,14 +188,23 @@ mod control {
                 if let Some(Ok(key)) = input {
                     match key {
                         termion::event::Key::Char('q') => break,
+                        termion::event::Key::Left => {
+                            self.player_movement = PlayerMovement::MovingLeft;
+                        }
+                        termion::event::Key::Right => {
+                            self.player_movement = PlayerMovement::MovingRight;
+                        }
+
                         _ => {
-                            on_display(key, self.game);
+                            self.player_movement = PlayerMovement::Still;
                         }
                     }
+                } else {
+                    self.player_movement = PlayerMovement::Still;
                 }
                 thread::sleep(time::Duration::from_millis(FRAME_RATE_MILLIS));
                 on_render(self.game);
-                self.game.next();
+                self.game.next(&self.player_movement);
             }
         }
     }
