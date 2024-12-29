@@ -56,27 +56,15 @@ mod game {
             }
         }
 
-        pub fn player_move(&mut self, direction: Direction) {
-            match direction {
-                Direction::Left if self.player_pos_x != 0 => {
-                    self.player_pos_x = self.player_pos_x - 1;
-                }
-                Direction::Right if self.player_pos_x < self.width - 1 => {
-                    self.player_pos_x = 1 + self.player_pos_x;
-                }
-                _ => {}
-            }
-        }
-
         pub fn next(&mut self, player_movement: &PlayerMovement) {
             match player_movement {
-                PlayerMovement::MovingLeft => {
+                PlayerMovement::MovingLeft if self.player_pos_x > 0 => {
                     self.player_pos_x -= 1;
                 }
-                PlayerMovement::MovingRight => {
+                PlayerMovement::MovingRight if self.player_pos_x < self.width - 1 => {
                     self.player_pos_x += 1;
                 }
-                PlayerMovement::Still => {}
+                _ => {}
             }
             self.player_velocity -= 1;
             self.player_pos_y += self.player_velocity;
