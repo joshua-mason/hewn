@@ -1,10 +1,9 @@
-use game::Direction;
 use game::Game;
-use termion;
 
 const WIDTH: usize = 10;
 const HEIGHT: usize = 20;
 const FRAME_RATE_MILLIS: u64 = 10;
+const GAME_STEP_MILLIS: u64 = 100;
 const SCREEN_HEIGHT: u16 = 20;
 
 fn main() {
@@ -151,8 +150,11 @@ mod display {
 }
 
 mod control {
-    use crate::{game::Game, FRAME_RATE_MILLIS};
-    use std::{thread, time};
+    use crate::{game::Game, FRAME_RATE_MILLIS, GAME_STEP_MILLIS};
+    use std::{
+        thread,
+        time::{self, Duration, Instant},
+    };
 
     pub enum PlayerMovement {
         MovingLeft,
@@ -164,6 +166,7 @@ mod control {
         pub stdin: termion::input::Keys<termion::AsyncReader>,
         pub game: &'a mut Game,
         player_movement: PlayerMovement,
+        last_frame_time: Instant,
     }
 
     impl Control<'_> {
@@ -175,6 +178,7 @@ mod control {
                 stdin,
                 game,
                 player_movement: PlayerMovement::Still,
+                last_frame_time: Instant::now(),
             }
         }
 
@@ -200,11 +204,19 @@ mod control {
                         }
                     }
                 } else {
-                    self.player_movement = PlayerMovement::Still;
                 }
                 thread::sleep(time::Duration::from_millis(FRAME_RATE_MILLIS));
+
+                let now = time::Instant::now();
+                if now - self.last_frame_time > Duration::from_millis(GAME_STEP_MILLIS) {
+                    self.game.next(&self.player_movement);
+                    self.last_frame_time = now;
+
+                    if input.is_none() {
+                        self.player_movement = PlayerMovement::Still;
+                    }
+                }
                 on_render(self.game);
-                self.game.next(&self.player_movement);
             }
         }
     }
