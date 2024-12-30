@@ -5,7 +5,7 @@ use std::io::Write;
 use termion::raw::RawTerminal;
 
 use crate::game::Game;
-use crate::game_object::Platform;
+use crate::game_object::platform::Platform;
 use crate::WIDTH;
 
 pub struct Display {
@@ -48,7 +48,7 @@ impl Display {
             let platforms_this_level = game
                 .platforms
                 .iter()
-                .filter(|platform| platform.coordinate.y == height as usize)
+                .filter(|platform| platform.coordinate.y == (SCREEN_HEIGHT - height) as usize)
                 .collect::<Vec<_>>();
 
             for platform in platforms_this_level {
