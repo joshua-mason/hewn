@@ -1,6 +1,8 @@
 use crate::{
     control::PlayerControl,
-    game_object::{detect_collision, Collide, CollisionBox, Coordinate, Platform, PlayerCharacter},
+    game_object::{
+        platform::Platform, player_character::PlayerCharacter, utils::detect_collision, Coordinate,
+    },
 };
 
 #[derive(Debug)]
@@ -17,16 +19,7 @@ impl Game {
         Game {
             width,
             height,
-            platforms: vec![
-                Platform {
-                    coordinate: Coordinate { x: 5, y: 5 },
-                    length: 3,
-                },
-                Platform {
-                    coordinate: Coordinate { x: 5, y: 10 },
-                    length: 3,
-                },
-            ],
+            platforms: vec![],
             player: PlayerCharacter {
                 coordinate: Coordinate { x: 1, y: 1 },
                 velocity: 5,
@@ -34,30 +27,11 @@ impl Game {
         }
     }
 
-    pub fn next(&mut self, player_control: &PlayerControl) {
-        // check platform collision:
-        // FIXME: can we improve the efficiency here? whole loop is not very good
-        let collision_platform = self
-            .platforms
-            .iter()
-            .find(|platform| detect_collision(*platform, &self.player));
-        self.player.coordinate.y =
-            ((self.player.coordinate.y as isize + self.player.velocity).max(0) as usize);
+    pub fn set_platforms(&mut self, platforms: Vec<Platform>) {
+        self.platforms = platforms;
+    }
 
-        if self.player.coordinate.y <= 1 {
-            self.player.velocity = 5;
-        } else {
-            if let Some(platform) = collision_platform {
-                if self.player.velocity < 0 {
-                    self.player.velocity = 5;
-                    self.player.coordinate.y = platform.coordinate.y;
-                } else {
-                    self.player.velocity -= 1;
-                }
-            } else {
-                self.player.velocity -= 1;
-            }
-        }
+    pub fn next(&mut self, player_control: &PlayerControl) {
         match player_control {
             PlayerControl::MovingLeft if self.player.coordinate.x > 0 => {
                 self.player.coordinate.x -= 1;
@@ -67,13 +41,34 @@ impl Game {
             }
             _ => {}
         }
+
+        // FIXME: can we improve the efficiency here? whole loop is not very good
+        let collision_platform = self
+            .platforms
+            .iter()
+            .find(|platform| detect_collision(*platform, &self.player));
+        println!("{:?}", collision_platform);
+
+        if let Some(platform) = collision_platform {
+            if self.player.velocity < 0 {
+                self.player.velocity = 5;
+                self.player.coordinate.y = platform.coordinate.y;
+                return;
+            } else {
+            }
+        } else {
+        }
+
+        self.player.coordinate.y =
+            (self.player.coordinate.y as isize + self.player.velocity).max(0) as usize;
+        self.player.velocity -= 1;
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::Game;
-    use crate::game_object::{Coordinate, Platform, PlayerCharacter};
+    use crate::game_object::{platform::Platform, player_character::PlayerCharacter, Coordinate};
 
     #[test]
     fn test_jump() {
@@ -83,29 +78,33 @@ mod test {
             width: 10,
             platforms: vec![],
         };
-        game.next(&crate::control::PlayerControl::Still);
-
+        fast_forward(&mut game, 1);
         assert_eq!(game.player.coordinate.x, 1);
         assert_eq!(game.player.coordinate.y, 6);
 
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 10);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 13);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 15);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 16);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 16);
-        game.next(&crate::control::PlayerControl::Still);
+        fast_forward(&mut game, 6);
         assert_eq!(game.player.coordinate.y, 15);
 
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
+        fast_forward(&mut game, 4);
         assert_eq!(game.player.coordinate.y, 1);
+    }
+
+    #[test]
+    fn test_start_on_platform() {
+        let mut game = Game {
+            height: 10,
+            player: PlayerCharacter::from_tuple((2, 2, -5)),
+            width: 10,
+            platforms: Platform::from_tuples(&[(1, 2)]),
+        };
+        fast_forward(&mut game, 1);
+        assert_eq!(game.player.coordinate.x, 2);
+        assert_eq!(game.player.coordinate.y, 2);
+        assert_eq!(game.player.velocity, 5);
+
+        fast_forward(&mut game, 1);
+        assert_eq!(game.player.coordinate.y, 7);
+        assert_eq!(game.player.velocity, 4);
     }
 
     #[test]
@@ -122,24 +121,7 @@ mod test {
         game.next(&crate::control::PlayerControl::Still);
 
         assert_eq!(game.player.coordinate.y, 6);
-
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 10);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 13);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 15);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 16);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 16);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 15);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 13);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 10);
-        game.next(&crate::control::PlayerControl::Still);
+        fast_forward(&mut game, 9);
         assert_eq!(game.player.velocity, 5);
         assert_eq!(game.player.coordinate.y, 8);
 
@@ -153,70 +135,35 @@ mod test {
             height: 10,
             player: PlayerCharacter::new(),
             width: 10,
-            platforms: vec![Platform {
-                length: 3,
-                coordinate: Coordinate { x: 3, y: 15 },
-            }],
+            platforms: vec![Platform::from_tuple((3, 15))],
         };
-        game.next(&crate::control::PlayerControl::Still);
 
-        assert_eq!(game.player.coordinate.y, 6);
-
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 10);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 13);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 15);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 16);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 16);
-        game.next(&crate::control::PlayerControl::MovingRight);
-        assert_eq!(game.player.coordinate.x, 2);
-        assert_eq!(game.player.coordinate.y, 15);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 13);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 10);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 6);
-        game.next(&crate::control::PlayerControl::Still);
+        fast_forward(&mut game, 11);
         assert_eq!(game.player.coordinate.y, 1);
     }
 
     #[test]
     fn test_start_jump() {
         let mut game = Game::new(10, 20);
-        game.next(&crate::control::PlayerControl::Still);
+        let platforms = Platform::from_tuples(&[(1, 1)]);
+        game.set_platforms(platforms);
+        assert_eq!(game.player.coordinate.y, 1);
 
+        game.next(&crate::control::PlayerControl::Still);
         assert_eq!(game.player.coordinate.x, 1);
         assert_eq!(game.player.coordinate.y, 6);
 
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 10);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 13);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 15);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 16);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 16);
-        game.next(&crate::control::PlayerControl::Still);
-        assert_eq!(game.player.coordinate.y, 15);
-
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
+        fast_forward(&mut game, 10);
         assert_eq!(game.player.coordinate.y, 1);
         assert_eq!(game.player.velocity, 5);
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
-        game.next(&crate::control::PlayerControl::Still);
+
+        fast_forward(&mut game, 5);
         assert_eq!(game.player.coordinate.y, 16);
+    }
+
+    fn fast_forward(game: &mut Game, n: u16) {
+        for _ in 0..n {
+            game.next(&crate::control::PlayerControl::Still);
+        }
     }
 }

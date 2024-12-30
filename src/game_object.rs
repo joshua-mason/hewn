@@ -4,7 +4,7 @@ pub trait Locate {
     fn get_coords(&self) -> &Coordinate;
 }
 
-pub trait Collide {
+pub trait Collide: Locate {
     fn get_collision_box(&self) -> CollisionBox;
 }
 
@@ -20,60 +20,123 @@ pub struct CollisionBox {
     pub y: Range<usize>,
 }
 
-#[derive(Debug)]
-pub struct Platform {
-    pub coordinate: Coordinate,
-    pub length: usize,
-}
+pub mod player_character {
+    use super::CollisionBox;
 
-#[derive(Debug)]
-pub struct PlayerCharacter {
-    pub coordinate: Coordinate,
-    pub velocity: isize,
-}
+    use super::Collide;
 
-impl PlayerCharacter {
-    pub fn new() -> PlayerCharacter {
-        PlayerCharacter {
-            coordinate: Coordinate { x: 1, y: 1 },
-            velocity: 5,
+    use super::Coordinate;
+    use super::Locate;
+
+    #[derive(Debug)]
+    pub struct PlayerCharacter {
+        pub coordinate: Coordinate,
+        pub velocity: isize,
+    }
+
+    impl PlayerCharacter {
+        pub fn new() -> PlayerCharacter {
+            PlayerCharacter {
+                coordinate: Coordinate { x: 1, y: 1 },
+                velocity: 5,
+            }
+        }
+
+        pub fn from_tuple(tuple: (usize, usize, isize)) -> PlayerCharacter {
+            PlayerCharacter {
+                coordinate: Coordinate {
+                    x: tuple.0,
+                    y: tuple.1,
+                },
+                velocity: tuple.2,
+            }
+        }
+    }
+
+    impl Default for PlayerCharacter {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl Locate for PlayerCharacter {
+        fn get_coords(&self) -> &Coordinate {
+            &self.coordinate
+        }
+    }
+
+    impl Collide for PlayerCharacter {
+        fn get_collision_box(&self) -> CollisionBox {
+            let coords = self.get_coords();
+            let next_y_coordinate = (coords.y as isize + self.velocity) as usize;
+            CollisionBox {
+                x: coords.x..(coords.x),
+                y: coords.y.min(next_y_coordinate)..next_y_coordinate.max(coords.y),
+            }
         }
     }
 }
 
-impl Locate for Platform {
-    fn get_coords(&self) -> &Coordinate {
-        &self.coordinate
+pub mod utils {
+    use std::ops::Range;
+
+    use super::Collide;
+
+    pub fn detect_collision(a: &impl Collide, b: &impl Collide) -> bool {
+        let a_collision_box = a.get_collision_box();
+        let b_collision_box = b.get_collision_box();
+        fn overlapping_1d(a: Range<usize>, b: Range<usize>) -> bool {
+            a.end >= b.start && b.end >= a.start
+        }
+        overlapping_1d(a_collision_box.x, b_collision_box.x)
+            && overlapping_1d(a_collision_box.y, b_collision_box.y)
     }
 }
 
-impl Collide for Platform {
-    fn get_collision_box(&self) -> CollisionBox {
-        CollisionBox {
-            x: self.coordinate.x..(self.coordinate.x + self.length),
-            y: self.coordinate.y..self.coordinate.y,
+pub mod platform {
+    use super::*;
+
+    #[derive(Debug)]
+    pub struct Platform {
+        pub coordinate: Coordinate,
+        pub length: usize,
+    }
+
+    impl Platform {
+        pub fn from_tuple(coords: (usize, usize)) -> Platform {
+            Platform {
+                coordinate: Coordinate {
+                    x: coords.0,
+                    y: coords.1,
+                },
+                length: 3,
+            }
+        }
+
+        pub(crate) fn from_tuples(tuples: &[(usize, usize)]) -> Vec<Platform> {
+            tuples
+                .iter()
+                .map(|tuple| Platform::from_tuple(*tuple))
+                .collect::<Vec<_>>()
         }
     }
-}
 
-impl Collide for PlayerCharacter {
-    fn get_collision_box(&self) -> CollisionBox {
-        let next_y_coordinate = (self.coordinate.y as isize + self.velocity) as usize;
-        CollisionBox {
-            x: self.coordinate.x..(self.coordinate.x),
-            y: self.coordinate.y.min(next_y_coordinate)..next_y_coordinate.max(self.coordinate.y),
+    impl Locate for Platform {
+        fn get_coords(&self) -> &Coordinate {
+            &self.coordinate
         }
     }
-}
 
-pub fn detect_collision(a: &impl Collide, b: &impl Collide) -> bool {
-    let a_collision_box = a.get_collision_box();
-    let b_collision_box = b.get_collision_box();
-    fn overlapping_1d(a: Range<usize>, b: Range<usize>) -> bool {
-        a.end >= b.start && b.end >= a.start
+    impl Collide for Platform {
+        fn get_collision_box(&self) -> CollisionBox {
+            let coords = self.get_coords();
+
+            CollisionBox {
+                x: coords.x..(coords.x + self.length),
+                y: coords.y..coords.y,
+            }
+        }
     }
-    overlapping_1d(a_collision_box.x, b_collision_box.x)
-        && overlapping_1d(a_collision_box.y, b_collision_box.y)
 }
 
 #[cfg(test)]
@@ -83,43 +146,43 @@ mod test {
 
     #[test]
     fn test_collision() {
-        let platform = Platform {
+        let platform = platform::Platform {
             coordinate: Coordinate { x: 5, y: 5 },
             length: 10,
         };
-        let player = PlayerCharacter {
+        let player = player_character::PlayerCharacter {
             coordinate: Coordinate { x: 7, y: 5 },
             velocity: 0,
         };
 
-        assert!(detect_collision(&platform, &player));
+        assert!(utils::detect_collision(&platform, &player));
     }
 
     #[test]
     fn test_no_collision() {
-        let platform = Platform {
+        let platform = platform::Platform {
             coordinate: Coordinate { x: 5, y: 5 },
             length: 10,
         };
-        let player = PlayerCharacter {
+        let player = player_character::PlayerCharacter {
             coordinate: Coordinate { x: 7, y: 6 },
             velocity: 0,
         };
 
-        assert!(!detect_collision(&platform, &player));
+        assert!(!utils::detect_collision(&platform, &player));
     }
 
     #[test]
     fn test_velocity_collision() {
-        let platform = Platform {
+        let platform = platform::Platform {
             coordinate: Coordinate { x: 5, y: 5 },
             length: 10,
         };
-        let player = PlayerCharacter {
+        let player = player_character::PlayerCharacter {
             coordinate: Coordinate { x: 7, y: 6 },
             velocity: -1,
         };
 
-        assert!(detect_collision(&platform, &player));
+        assert!(utils::detect_collision(&platform, &player));
     }
 }
