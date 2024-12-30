@@ -5,7 +5,7 @@ use std::io::Write;
 use termion::raw::RawTerminal;
 
 use crate::game::Game;
-use crate::game::Platform;
+use crate::game_object::Platform;
 use crate::WIDTH;
 
 pub struct Display {
@@ -35,7 +35,7 @@ impl Display {
     fn debug(game: &Game) -> String {
         format!(
             "v = {:4}, x = {:3}, y = {:3}",
-            game.player_velocity, game.player_pos_x, game.player_pos_y
+            game.player.velocity, game.player.coordinate.x, game.player.coordinate.y
         )
     }
 
@@ -55,8 +55,11 @@ impl Display {
                 platform.render(&mut level);
             }
 
-            if ((SCREEN_HEIGHT - height) == game.player_pos_y as u16) {
-                level.replace_range(game.player_pos_x..(game.player_pos_x + 1), "#");
+            if ((SCREEN_HEIGHT - height) == game.player.coordinate.y as u16) {
+                level.replace_range(
+                    game.player.coordinate.x..(game.player.coordinate.x + 1),
+                    "#",
+                );
             }
             level.push_str(&termion::cursor::Goto(1, height).to_string());
             display_string.push_str(&level);

@@ -12,6 +12,7 @@ const GAME_STEP_MILLIS: u64 = 100;
 mod control;
 mod display;
 mod game;
+mod game_object;
 mod io;
 
 fn main() {
