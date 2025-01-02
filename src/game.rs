@@ -47,16 +47,13 @@ impl Game {
             .platforms
             .iter()
             .find(|platform| detect_collision(*platform, &self.player));
-        println!("{:?}", collision_platform);
 
         if let Some(platform) = collision_platform {
             if self.player.velocity < 0 {
                 self.player.velocity = 5;
                 self.player.coordinate.y = platform.coordinate.y;
                 return;
-            } else {
             }
-        } else {
         }
 
         self.player.coordinate.y =
@@ -159,6 +156,29 @@ mod test {
 
         fast_forward(&mut game, 5);
         assert_eq!(game.player.coordinate.y, 16);
+    }
+
+    #[test]
+    fn test_fell_to_bottom_under_platform() {
+        let mut game = Game::new(10, 20);
+        let platforms = Platform::from_tuples(&[(1, 3)]);
+        game.set_platforms(platforms);
+        game.player.velocity = 0;
+        assert_eq!(game.player.coordinate.y, 1);
+
+        game.next(&crate::control::PlayerControl::Still);
+        assert_eq!(game.player.coordinate.x, 1);
+        assert_eq!(game.player.coordinate.y, 1);
+
+        game.next(&crate::control::PlayerControl::Still);
+        assert_eq!(game.player.coordinate.x, 1);
+        assert_eq!(game.player.coordinate.y, 0);
+
+        game.next(&crate::control::PlayerControl::Still);
+        assert_eq!(game.player.coordinate.x, 1);
+        assert_eq!(game.player.coordinate.y, 0);
+        fast_forward(&mut game, 10);
+        assert_eq!(game.player.coordinate.y, 0);
     }
 
     fn fast_forward(game: &mut Game, n: u16) {

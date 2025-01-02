@@ -68,7 +68,7 @@ pub mod player_character {
     impl Collide for PlayerCharacter {
         fn get_collision_box(&self) -> CollisionBox {
             let coords = self.get_coords();
-            let next_y_coordinate = (coords.y as isize + self.velocity) as usize;
+            let next_y_coordinate = (coords.y as isize + self.velocity).max(0) as usize;
             CollisionBox {
                 x: coords.x..(coords.x),
                 y: coords.y.min(next_y_coordinate)..next_y_coordinate.max(coords.y),
