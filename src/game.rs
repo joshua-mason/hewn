@@ -56,6 +56,7 @@ impl Game {
         }
 
         // FIXME: can we improve the efficiency here? whole loop is not very good
+        // FIXME: when two platforms, we don't definitely hit the closest one
         let collision_platform = self
             .platforms
             .iter()
@@ -114,9 +115,9 @@ mod test {
     #[test]
     fn test_start_on_platform() {
         let mut game = Game::new(10, 10);
-        game.player = PlayerCharacter::from_tuple((2, 2, -5));
         game.set_platforms(Platform::from_tuples(&[(1, 2)]));
         game.start_game();
+        game.player = PlayerCharacter::from_tuple((2, 2, -5));
 
         fast_forward(&mut game, 1);
         assert_eq!(game.player.coordinate.x, 2);
@@ -180,8 +181,8 @@ mod test {
         let mut game = Game::new(10, 20);
         let platforms = Platform::from_tuples(&[(1, 3)]);
         game.set_platforms(platforms);
-        game.player.velocity = 0;
         game.start_game();
+        game.player.velocity = 0;
 
         assert_eq!(game.player.coordinate.y, 1);
 
