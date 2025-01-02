@@ -5,6 +5,13 @@ use crate::{
     },
 };
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum GameState {
+    InGame,
+    Menu,
+    Lost(usize),
+}
+
 #[derive(Debug)]
 pub struct Game {
     pub width: usize,
@@ -12,6 +19,9 @@ pub struct Game {
 
     pub platforms: Vec<Platform>,
     pub player: PlayerCharacter,
+
+    pub state: GameState,
+    pub score: usize,
 }
 
 impl Game {
@@ -20,10 +30,9 @@ impl Game {
             width,
             height,
             platforms: vec![],
-            player: PlayerCharacter {
-                coordinate: Coordinate { x: 1, y: 1 },
-                velocity: 5,
-            },
+            player: PlayerCharacter::new(),
+            state: GameState::Menu,
+            score: 0,
         }
     }
 
@@ -32,6 +41,10 @@ impl Game {
     }
 
     pub fn next(&mut self, player_control: &PlayerControl) {
+        if self.state != GameState::InGame {
+            return;
+        }
+
         match player_control {
             PlayerControl::MovingLeft if self.player.coordinate.x > 0 => {
                 self.player.coordinate.x -= 1;
@@ -59,6 +72,22 @@ impl Game {
         self.player.coordinate.y =
             (self.player.coordinate.y as isize + self.player.velocity).max(0) as usize;
         self.player.velocity -= 1;
+
+        if self.player.velocity < -6 {
+            self.end_game();
+        }
+
+        self.score = self.score.max(self.player.coordinate.y);
+    }
+
+    pub fn start_game(&mut self) {
+        self.score = 0;
+        self.player = PlayerCharacter::new();
+        self.state = GameState::InGame;
+    }
+
+    pub fn end_game(&mut self) {
+        self.state = GameState::Lost(self.score);
     }
 }
 
@@ -69,12 +98,8 @@ mod test {
 
     #[test]
     fn test_jump() {
-        let mut game = Game {
-            height: 10,
-            player: PlayerCharacter::new(),
-            width: 10,
-            platforms: vec![],
-        };
+        let mut game = Game::new(10, 10);
+        game.start_game();
         fast_forward(&mut game, 1);
         assert_eq!(game.player.coordinate.x, 1);
         assert_eq!(game.player.coordinate.y, 6);
@@ -88,12 +113,11 @@ mod test {
 
     #[test]
     fn test_start_on_platform() {
-        let mut game = Game {
-            height: 10,
-            player: PlayerCharacter::from_tuple((2, 2, -5)),
-            width: 10,
-            platforms: Platform::from_tuples(&[(1, 2)]),
-        };
+        let mut game = Game::new(10, 10);
+        game.player = PlayerCharacter::from_tuple((2, 2, -5));
+        game.set_platforms(Platform::from_tuples(&[(1, 2)]));
+        game.start_game();
+
         fast_forward(&mut game, 1);
         assert_eq!(game.player.coordinate.x, 2);
         assert_eq!(game.player.coordinate.y, 2);
@@ -106,15 +130,9 @@ mod test {
 
     #[test]
     fn test_hit_platform() {
-        let mut game = Game {
-            height: 10,
-            player: PlayerCharacter::new(),
-            width: 10,
-            platforms: vec![Platform {
-                length: 3,
-                coordinate: Coordinate { x: 1, y: 8 },
-            }],
-        };
+        let mut game = Game::new(10, 10);
+        game.set_platforms(Platform::from_tuples(&[(1, 8)]));
+        game.start_game();
         game.next(&crate::control::PlayerControl::Still);
 
         assert_eq!(game.player.coordinate.y, 6);
@@ -128,12 +146,9 @@ mod test {
 
     #[test]
     fn test_miss_platform() {
-        let mut game = Game {
-            height: 10,
-            player: PlayerCharacter::new(),
-            width: 10,
-            platforms: vec![Platform::from_tuple((3, 15))],
-        };
+        let mut game = Game::new(10, 10);
+        game.set_platforms(Platform::from_tuples(&[(3, 15)]));
+        game.start_game();
 
         fast_forward(&mut game, 11);
         assert_eq!(game.player.coordinate.y, 1);
@@ -144,6 +159,8 @@ mod test {
         let mut game = Game::new(10, 20);
         let platforms = Platform::from_tuples(&[(1, 1)]);
         game.set_platforms(platforms);
+        game.start_game();
+
         assert_eq!(game.player.coordinate.y, 1);
 
         game.next(&crate::control::PlayerControl::Still);
@@ -164,6 +181,8 @@ mod test {
         let platforms = Platform::from_tuples(&[(1, 3)]);
         game.set_platforms(platforms);
         game.player.velocity = 0;
+        game.start_game();
+
         assert_eq!(game.player.coordinate.y, 1);
 
         game.next(&crate::control::PlayerControl::Still);

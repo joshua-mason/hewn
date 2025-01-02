@@ -46,7 +46,9 @@ impl Control<'_> {
                     termion::event::Key::Right => {
                         self.player_movement = PlayerControl::MovingRight;
                     }
-
+                    termion::event::Key::Char(' ') => {
+                        self.game.start_game();
+                    }
                     _ => {
                         self.player_movement = PlayerControl::Still;
                     }

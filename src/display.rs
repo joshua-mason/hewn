@@ -23,7 +23,15 @@ impl Display {
     }
 
     pub fn next(&mut self, game: &Game) {
-        let view = self.player_view(game);
+        let view = match game.state {
+            crate::game::GameState::InGame => self.player_view(game),
+            crate::game::GameState::Menu => String::from("Press space to start"),
+            crate::game::GameState::Lost(points) => String::from(format!(
+                "You scored {} points! Press space to start",
+                points
+            )),
+        };
+
         write!(
             self.stdout,
             "{}{}{}{}{}",

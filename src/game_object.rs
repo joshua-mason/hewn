@@ -132,7 +132,7 @@ pub mod platform {
             let coords = self.get_coords();
 
             CollisionBox {
-                x: coords.x..(coords.x + self.length),
+                x: coords.x..(coords.x + self.length - 1),
                 y: coords.y..coords.y,
             }
         }
