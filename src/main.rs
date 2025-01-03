@@ -4,7 +4,7 @@
 // * Move screen with the player
 // * Points tally
 
-use game_object::platform::Platform;
+use game_object::{platform::Platform, player_character::PlayerCharacter, GameObject};
 
 const WIDTH: usize = 10;
 const HEIGHT: usize = 500;
@@ -23,7 +23,13 @@ fn main() {
     let (stdout, stdin) = io::initialize_terminal();
     let mut game = game::Game::new(WIDTH, HEIGHT);
     let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
-    game.set_platforms(platforms);
+    let mut game_objects = vec![GameObject::PlayerCharacter(PlayerCharacter::new())];
+    let mut other = platforms
+        .into_iter()
+        .map(|platform| GameObject::Platform(platform))
+        .collect::<Vec<_>>();
+    game_objects.append(&mut other);
+    game.add_game_objects(game_objects);
     let mut display = display::Display::new(stdout, SCREEN_HEIGHT);
     let mut control = control::Control::new(stdin, &mut game, &mut display);
 

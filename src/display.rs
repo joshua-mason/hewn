@@ -5,6 +5,7 @@ use termion::raw::RawTerminal;
 
 use crate::game::Game;
 use crate::game_object::platform::Platform;
+use crate::game_object::Locate;
 use crate::utils::build_string;
 
 pub struct Display {
@@ -47,14 +48,20 @@ impl Display {
     }
 
     fn debug(game: &Game) -> String {
-        format!(
-            "v = {:4}, x = {:3}, y = {:3}",
-            game.player.velocity, game.player.coordinate.x, game.player.coordinate.y
-        )
+        if let Some(player) = game.get_player_object() {
+            format!(
+                "v = {:4}, x = {:3}, y = {:3}",
+                player.velocity, player.coordinate.x, player.coordinate.y
+            )
+        } else {
+            "".to_string()
+        }
     }
 
     fn player_view(&mut self, game: &Game) -> String {
-        self.update_cursor(game.player.coordinate.y);
+        if let Some(player) = game.get_player_object() {
+            self.update_cursor(player.coordinate.y);
+        }
         let levels = self.levels(game);
 
         let gotos =
@@ -71,20 +78,24 @@ impl Display {
             let y_position = self.screen_height + self.view_cursor - height;
 
             // FIXME: can we make this more efficient?
-            let platforms_this_level = game
-                .platforms
+            let platforms = game.get_platforms();
+            let platforms_this_level = platforms
                 .iter()
-                .filter(|platform| platform.coordinate.y == (y_position) as usize)
+                .filter(|platform| platform.get_coords().y == (y_position) as usize)
                 .collect::<Vec<_>>();
 
             for platform in platforms_this_level {
-                platform.render(&mut level);
-            }
-            if ((y_position) == game.player.coordinate.y as u16) {
+                let platform_str = build_string('=', 3);
                 level.replace_range(
-                    game.player.coordinate.x..(game.player.coordinate.x + 1),
-                    "#",
+                    platform.get_coords().x..(platform.get_coords().x + 3),
+                    &platform_str,
                 );
+            }
+
+            if let Some(player) = game.get_player_object() {
+                if ((y_position) == player.coordinate.y as u16) {
+                    level.replace_range(player.coordinate.x..(player.coordinate.x + 1), "#");
+                }
             }
             level_strings.push(level);
         }
@@ -144,7 +155,7 @@ mod test {
         let stdout = io::stdout().into_raw_mode().unwrap();
         let mut display = Display::new(stdout, 10);
 
-        game.player.coordinate.y = 20;
+        game.get_mut_player_object().unwrap().coordinate.y = 20;
         display.update_cursor(20);
         let view: String = display.levels(&game).join("\n");
 
@@ -167,10 +178,9 @@ mod test {
         let mut game = Game::new(3, 100);
         let stdout = io::stdout().into_raw_mode().unwrap();
         let mut display = Display::new(stdout, 10);
-
-        game.player.coordinate.y = 20;
+        game.get_mut_player_object().unwrap().coordinate.y = 20;
         display.update_cursor(20);
-        game.player.coordinate.y = 19;
+        game.get_mut_player_object().unwrap().coordinate.y = 19;
         display.update_cursor(19);
         let view: String = display.levels(&game).join("\n");
 
