@@ -1,3 +1,5 @@
+use termion::event::Key;
+
 use crate::game_object::{
     platform::Platform, player_character::PlayerCharacter, utils::collision_pass, GameObject,
 };
@@ -18,6 +20,8 @@ pub struct Game {
 
     pub state: GameState,
     pub score: usize,
+
+    player_control_key: Option<Key>,
 }
 
 impl Game {
@@ -28,6 +32,7 @@ impl Game {
             state: GameState::Menu,
             score: 0,
             game_objects: vec![],
+            player_control_key: None,
         }
     }
 
@@ -35,11 +40,11 @@ impl Game {
         self.game_objects.append(&mut game_objects);
     }
 
-    pub fn next(&mut self, player_control: &crate::engine::control::PlayerControl) {
+    pub fn next(&mut self) {
         if self.state != GameState::InGame {
             return;
         }
-        self.move_player(player_control);
+        self.move_player();
         self.game_objects.iter_mut().for_each(|o| o.next_step());
 
         collision_pass(&mut self.game_objects);
@@ -56,21 +61,24 @@ impl Game {
             .max(self.get_player_object().unwrap().coordinate.y);
     }
 
-    fn move_player(&mut self, player_control: &crate::engine::control::PlayerControl) {
+    fn move_player(&mut self) {
         let width = self.width;
-        let player = self.get_mut_player_object();
-        if let Some(player) = player {
-            match player_control {
-                &crate::engine::control::PlayerControl::MovingLeft if player.coordinate.x > 0 => {
-                    player.move_left()
+        match self.player_control_key {
+            Some(Key::Left) => {
+                if let Some(player) = self.get_mut_player_object() {
+                    if player.coordinate.x > 0 {
+                        player.move_left()
+                    }
                 }
-                &crate::engine::control::PlayerControl::MovingRight
-                    if player.coordinate.x < width - 1 =>
-                {
-                    player.move_right()
-                }
-                _ => {}
             }
+            Some(Key::Right) => {
+                if let Some(player) = self.get_mut_player_object() {
+                    if player.coordinate.x < width - 1 {
+                        player.move_right()
+                    }
+                }
+            }
+            _ => {}
         }
     }
 
@@ -133,6 +141,10 @@ impl Game {
             .collect::<Vec<_>>();
         self.add_game_objects(game_objects);
     }
+
+    pub(crate) fn set_player_control_key(&mut self, key: Option<termion::event::Key>) {
+        self.player_control_key = key
+    }
 }
 
 #[cfg(test)]
@@ -185,14 +197,15 @@ mod test {
             GameObject::Platform(Platform::from_tuple((1, 8))),
         ]);
         game.start_game();
-        game.next(&crate::engine::control::PlayerControl::Still);
+
+        game.next();
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
         fast_forward(&mut game, 9);
         assert_eq!(game.get_player_object().unwrap().velocity, 5);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 8);
 
-        game.next(&crate::engine::control::PlayerControl::Still);
+        game.next();
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
     }
 
@@ -205,7 +218,7 @@ mod test {
             GameObject::Platform(Platform::from_tuple((1, 8))),
         ]);
         game.start_game();
-        game.next(&crate::engine::control::PlayerControl::Still);
+        game.next();
 
         {
             let player_object = game
@@ -286,7 +299,7 @@ mod test {
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next(&crate::engine::control::PlayerControl::Still);
+        game.next();
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
 
@@ -308,15 +321,15 @@ mod test {
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next(&crate::engine::control::PlayerControl::Still);
+        game.next();
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next(&crate::engine::control::PlayerControl::Still);
+        game.next();
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
 
-        game.next(&crate::engine::control::PlayerControl::Still);
+        game.next();
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
         fast_forward(&mut game, 10);
@@ -325,7 +338,7 @@ mod test {
 
     fn fast_forward(game: &mut Game, n: u16) {
         for _ in 0..n {
-            game.next(&crate::engine::control::PlayerControl::Still);
+            game.next();
         }
     }
 }

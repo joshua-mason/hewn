@@ -110,20 +110,6 @@ impl Display {
     }
 }
 
-trait DisplayGameObject {
-    fn render(&self, row: &mut String);
-}
-
-impl DisplayGameObject for Platform {
-    fn render(&self, row: &mut String) {
-        let platform_str = build_string('=', self.length);
-        row.replace_range(
-            self.coordinate.x..(self.coordinate.x + self.length),
-            &platform_str,
-        );
-    }
-}
-
 #[cfg(test)]
 mod test {
 
