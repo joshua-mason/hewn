@@ -3,8 +3,7 @@ use crate::{
     game_object::{
         platform::Platform,
         player_character::PlayerCharacter,
-        utils::{collision_pass, detect_collision},
-        Collide, GameObject,
+        utils::collision_pass, GameObject,
     },
 };
 
@@ -129,9 +128,9 @@ impl Game {
     }
 
     fn set_platforms(&mut self, platforms: Vec<Platform>) {
-        let mut game_objects = platforms
+        let game_objects = platforms
             .into_iter()
-            .map(|platform| GameObject::Platform(platform))
+            .map(GameObject::Platform)
             .collect::<Vec<_>>();
         self.add_game_objects(game_objects);
     }
@@ -141,7 +140,7 @@ impl Game {
 mod test {
     use super::Game;
     use crate::game_object::{
-        platform::Platform, player_character::PlayerCharacter, Coordinate, GameObject, Locate,
+        platform::Platform, player_character::PlayerCharacter, GameObject, Locate,
     };
 
     #[test]

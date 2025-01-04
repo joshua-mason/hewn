@@ -27,10 +27,9 @@ impl Display {
         let view = match game.state {
             crate::game::GameState::InGame => self.player_view(game),
             crate::game::GameState::Menu => String::from("Press space to start"),
-            crate::game::GameState::Lost(points) => String::from(format!(
-                "You scored {} points! Press space to start",
-                points
-            )),
+            crate::game::GameState::Lost(points) => {
+                format!("You scored {} points! Press space to start", points)
+            }
         };
 
         write!(
@@ -93,7 +92,7 @@ impl Display {
             }
 
             if let Some(player) = game.get_player_object() {
-                if ((y_position) == player.coordinate.y as u16) {
+                if (y_position) == player.coordinate.y as u16 {
                     level.replace_range(player.coordinate.x..(player.coordinate.x + 1), "#");
                 }
             }
@@ -104,7 +103,7 @@ impl Display {
 
     fn update_cursor(&mut self, y: usize) {
         let abs_diff = y.abs_diff(self.view_cursor as usize);
-        if abs_diff > 1 && abs_diff < (self.screen_height as usize - 2 as usize) {
+        if abs_diff > 1 && abs_diff < (self.screen_height as usize - 2_usize) {
             return;
         }
         self.view_cursor = (y as i16 + 3 - self.screen_height as i16).max(0) as u16;
@@ -112,11 +111,11 @@ impl Display {
 }
 
 trait DisplayGameObject {
-    fn render<'a>(&self, row: &'a mut String);
+    fn render(&self, row: &mut String);
 }
 
 impl DisplayGameObject for Platform {
-    fn render<'a>(&self, row: &'a mut String) {
+    fn render(&self, row: &mut String) {
         let platform_str = build_string('=', self.length);
         row.replace_range(
             self.coordinate.x..(self.coordinate.x + self.length),
@@ -127,7 +126,6 @@ impl DisplayGameObject for Platform {
 
 #[cfg(test)]
 mod test {
-    use core::{assert, assert_eq, convert::From};
 
     use super::Display;
     use crate::game::Game;

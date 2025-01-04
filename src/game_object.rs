@@ -128,7 +128,7 @@ pub mod player_character {
 
         fn collide(&mut self, other: &GameObject) {
             // TODO maybe we should check the velocity elsewhere.. ?
-            if (self.velocity < 1) {
+            if self.velocity < 1 {
                 self.velocity = 5;
                 self.coordinate.y = other.get_coords().y;
             }
@@ -166,13 +166,13 @@ pub mod utils {
             for mut b in rest {
                 if detect_collision(a, b) {
                     match &mut a {
-                        GameObject::PlayerCharacter(pc) => pc.collide(&b),
-                        GameObject::Platform(platform) => platform.collide(&b),
+                        GameObject::PlayerCharacter(pc) => pc.collide(b),
+                        GameObject::Platform(platform) => platform.collide(b),
                     }
                     // match on the second
                     match &mut b {
-                        GameObject::PlayerCharacter(pc) => pc.collide(&a),
-                        GameObject::Platform(platform) => platform.collide(&a),
+                        GameObject::PlayerCharacter(pc) => pc.collide(a),
+                        GameObject::Platform(platform) => platform.collide(a),
                     }
                 }
             }

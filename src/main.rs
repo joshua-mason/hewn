@@ -26,7 +26,7 @@ fn main() {
     let mut game_objects = vec![GameObject::PlayerCharacter(PlayerCharacter::new())];
     let mut other = platforms
         .into_iter()
-        .map(|platform| GameObject::Platform(platform))
+        .map(GameObject::Platform)
         .collect::<Vec<_>>();
     game_objects.append(&mut other);
     game.add_game_objects(game_objects);
