@@ -12,8 +12,8 @@ const FRAME_RATE_MILLIS: u64 = 10;
 const GAME_STEP_MILLIS: u64 = 100;
 const SCREEN_HEIGHT: u16 = 20;
 
-mod control;
 mod display;
+mod engine;
 mod game;
 mod game_object;
 mod io;
@@ -31,7 +31,7 @@ fn main() {
     game_objects.append(&mut other);
     game.add_game_objects(game_objects);
     let mut display = display::Display::new(stdout, SCREEN_HEIGHT);
-    let mut control = control::Control::new(stdin, &mut game, &mut display);
+    let mut control = engine::control::Control::new(stdin, &mut game, &mut display);
 
     control.listen();
 }
