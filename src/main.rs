@@ -1,4 +1,5 @@
 use asciijump::game_objects::{platform::Platform, player_character::PlayerCharacter, GameObject};
+use engine::io;
 
 const WIDTH: usize = 10;
 const HEIGHT: usize = 500;
@@ -10,8 +11,6 @@ mod asciijump;
 mod display;
 mod engine;
 mod game;
-mod io;
-mod utils;
 
 fn main() {
     let (stdout, stdin) = io::initialize_terminal();

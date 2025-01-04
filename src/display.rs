@@ -5,7 +5,6 @@ use termion::raw::RawTerminal;
 
 use crate::engine::game_object::Locate;
 use crate::game::Game;
-use crate::utils::build_string;
 
 pub struct Display {
     stdout: RawTerminal<Stdout>,
@@ -109,10 +108,13 @@ impl Display {
     }
 }
 
+fn build_string(ch: char, length: usize) -> String {
+    ch.to_string().repeat(length)
+}
+
 #[cfg(test)]
 mod test {
-
-    use super::Display;
+    use super::*;
     use crate::game::Game;
     use std::io::{self};
     use termion::raw::IntoRawMode;
@@ -179,5 +181,11 @@ mod test {
 ...
 ..."
         )
+    }
+
+    #[test]
+    fn test_build_string() {
+        let input = build_string('@', 3);
+        assert_eq!(input, "@@@");
     }
 }

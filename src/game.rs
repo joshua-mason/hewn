@@ -154,7 +154,7 @@ mod test {
         asciijump::game_objects::{
             platform::Platform, player_character::PlayerCharacter, GameObject,
         },
-        game_object::Locate,
+        engine::game_object::Locate,
     };
 
     use super::Game;
