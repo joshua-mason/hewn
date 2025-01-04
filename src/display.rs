@@ -3,9 +3,8 @@ use std::io::Write;
 use std::iter::zip;
 use termion::raw::RawTerminal;
 
+use crate::engine::game_object::Locate;
 use crate::game::Game;
-use crate::game_object::platform::Platform;
-use crate::game_object::Locate;
 use crate::utils::build_string;
 
 pub struct Display {

@@ -1,8 +1,9 @@
 use termion::event::Key;
 
-use crate::game_object::{
-    platform::Platform, player_character::PlayerCharacter, utils::collision_pass, GameObject,
-};
+use crate::asciijump::game_objects::platform::Platform;
+use crate::asciijump::game_objects::player_character::PlayerCharacter;
+use crate::asciijump::game_objects::utils::collision_pass;
+use crate::asciijump::game_objects::GameObject;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
@@ -149,11 +150,14 @@ impl Game {
 
 #[cfg(test)]
 mod test {
-    use super::Game;
-    use crate::game_object::{
-        platform::Platform, player_character::PlayerCharacter, GameObject, Locate,
+    use crate::{
+        asciijump::game_objects::{
+            platform::Platform, player_character::PlayerCharacter, GameObject,
+        },
+        game_object::Locate,
     };
 
+    use super::Game;
     #[test]
     fn test_jump() {
         let mut game = Game::new(10, 10);

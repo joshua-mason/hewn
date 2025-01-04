@@ -1,0 +1,80 @@
+use crate::engine::game_object::{Collide, CollisionBox, Coordinate, Locate, NextStep};
+
+use super::GameObject;
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerCharacter {
+    pub coordinate: Coordinate,
+    pub velocity: isize,
+}
+
+impl PlayerCharacter {
+    pub fn new() -> PlayerCharacter {
+        PlayerCharacter {
+            coordinate: Coordinate { x: 1, y: 1 },
+            velocity: 5,
+        }
+    }
+
+    pub fn from_tuple(tuple: (usize, usize, isize)) -> PlayerCharacter {
+        PlayerCharacter {
+            coordinate: Coordinate {
+                x: tuple.0,
+                y: tuple.1,
+            },
+            velocity: tuple.2,
+        }
+    }
+
+    pub fn move_left(&mut self) {
+        self.coordinate.x -= 1;
+    }
+
+    pub fn move_right(&mut self) {
+        self.coordinate.x += 1;
+    }
+
+    pub fn reset(&mut self) {
+        self.coordinate.x = 1;
+        self.coordinate.y = 1;
+        self.velocity = 5;
+    }
+}
+
+impl Default for PlayerCharacter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Locate for PlayerCharacter {
+    fn get_coords(&self) -> &Coordinate {
+        &self.coordinate
+    }
+}
+
+impl Collide<GameObject> for PlayerCharacter {
+    fn get_collision_box(&self) -> CollisionBox {
+        let coords = self.get_coords();
+        let next_y_coordinate = (coords.y as isize + self.velocity).max(0) as usize;
+        CollisionBox {
+            x: coords.x..(coords.x + 1),
+            y: coords.y.min(next_y_coordinate)..next_y_coordinate.max(coords.y),
+        }
+    }
+
+    fn collide(&mut self, other: &GameObject) {
+        // TODO maybe we should check the velocity elsewhere.. ?
+        if self.velocity < 1 {
+            self.velocity = 5;
+            self.coordinate.y = other.get_coords().y;
+        }
+    }
+}
+
+impl NextStep for PlayerCharacter {
+    fn next_step(&mut self) {
+        self.coordinate.y = (self.coordinate.y as isize + self.velocity).max(0) as usize;
+        self.velocity -= 1;
+    }
+}

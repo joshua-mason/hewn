@@ -1,10 +1,4 @@
-// TODO
-// * Render platforms
-// * Jump on hitting a platform
-// * Move screen with the player
-// * Points tally
-
-use game_object::{platform::Platform, player_character::PlayerCharacter, GameObject};
+use asciijump::game_objects::{platform::Platform, player_character::PlayerCharacter, GameObject};
 
 const WIDTH: usize = 10;
 const HEIGHT: usize = 500;
@@ -12,10 +6,10 @@ const FRAME_RATE_MILLIS: u64 = 10;
 const GAME_STEP_MILLIS: u64 = 100;
 const SCREEN_HEIGHT: u16 = 20;
 
+mod asciijump;
 mod display;
 mod engine;
 mod game;
-mod game_object;
 mod io;
 mod utils;
 
