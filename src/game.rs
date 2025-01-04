@@ -1,8 +1,10 @@
 use crate::{
     control::PlayerControl,
     game_object::{
-        platform::Platform, player_character::PlayerCharacter, utils::detect_collision, Collide,
-        GameObject,
+        platform::Platform,
+        player_character::PlayerCharacter,
+        utils::{collision_pass, detect_collision},
+        Collide, GameObject,
     },
 };
 
@@ -46,18 +48,7 @@ impl Game {
         self.move_player(player_control);
         self.game_objects.iter_mut().for_each(|o| o.next_step());
 
-        for i in 0..self.game_objects.len() {
-            let (left, rest) = self.game_objects.split_at_mut(i + 1);
-            let a = &mut left[i];
-
-            for b in rest {
-                if detect_collision(a, b) {
-                    println!("collision detected");
-                    a.collide(b);
-                    b.collide(a);
-                }
-            }
-        }
+        collision_pass(&mut self.game_objects);
 
         // FIXME: can we improve the efficiency here? whole loop is not very good
         // FIXME: when two platforms, we don't definitely hit the closest one

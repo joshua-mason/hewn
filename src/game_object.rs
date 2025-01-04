@@ -24,6 +24,12 @@ impl GameObject {
             GameObject::Platform(platform) => platform.next_step(),
         }
     }
+    pub fn get_collision_box(&self) -> CollisionBox {
+        match self {
+            GameObject::PlayerCharacter(pc) => pc.get_collision_box(),
+            GameObject::Platform(platform) => platform.get_collision_box(),
+        }
+    }
 }
 
 impl Locate for GameObject {
@@ -37,48 +43,6 @@ impl Locate for GameObject {
 
 trait NextStep {
     fn next_step(&mut self);
-}
-
-impl NextStep for GameObject {
-    fn next_step(&mut self) {
-        self.next_step();
-    }
-}
-
-impl Collide<GameObject> for GameObject {
-    fn collide(&mut self, other: &GameObject) {
-        match (self, other) {
-            (GameObject::PlayerCharacter(player), GameObject::Platform(platform)) => {
-                player.collide(other);
-            }
-            (GameObject::Platform(platform), GameObject::PlayerCharacter(player)) => {
-                platform.collide(other);
-            }
-            _ => {}
-        }
-    }
-
-    fn get_collision_box(&self) -> CollisionBox {
-        match self {
-            GameObject::PlayerCharacter(player_character) => {
-                let coords = player_character.get_coords();
-                let next_y_coordinate =
-                    (coords.y as isize + player_character.velocity).max(0) as usize;
-                CollisionBox {
-                    x: coords.x..(coords.x),
-                    y: coords.y.min(next_y_coordinate)..next_y_coordinate.max(coords.y),
-                }
-            }
-            GameObject::Platform(platform) => {
-                let coords = platform.get_coords();
-
-                CollisionBox {
-                    x: coords.x..(coords.x + platform.length - 1),
-                    y: coords.y..coords.y,
-                }
-            }
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -157,7 +121,7 @@ pub mod player_character {
             let coords = self.get_coords();
             let next_y_coordinate = (coords.y as isize + self.velocity).max(0) as usize;
             CollisionBox {
-                x: coords.x..(coords.x),
+                x: coords.x..(coords.x + 1),
                 y: coords.y.min(next_y_coordinate)..next_y_coordinate.max(coords.y),
             }
         }
@@ -188,10 +152,31 @@ pub mod utils {
         let a_collision_box = a.get_collision_box();
         let b_collision_box = b.get_collision_box();
         fn overlapping_1d(a: Range<usize>, b: Range<usize>) -> bool {
-            a.end >= b.start && b.end >= a.start
+            a.end > b.start && b.end > a.start
         }
         overlapping_1d(a_collision_box.x, b_collision_box.x)
             && overlapping_1d(a_collision_box.y, b_collision_box.y)
+    }
+
+    pub fn collision_pass(objects: &mut [GameObject]) {
+        for i in 0..objects.len() {
+            let (left, rest) = objects.split_at_mut(i + 1);
+            let mut a = &mut left[i];
+
+            for mut b in rest {
+                if detect_collision(a, b) {
+                    match &mut a {
+                        GameObject::PlayerCharacter(pc) => pc.collide(&b),
+                        GameObject::Platform(platform) => platform.collide(&b),
+                    }
+                    // match on the second
+                    match &mut b {
+                        GameObject::PlayerCharacter(pc) => pc.collide(&a),
+                        GameObject::Platform(platform) => platform.collide(&a),
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -258,8 +243,8 @@ pub mod platform {
             let coords = self.get_coords();
 
             CollisionBox {
-                x: coords.x..(coords.x + self.length - 1),
-                y: coords.y..coords.y,
+                x: coords.x..(coords.x + self.length),
+                y: coords.y..(coords.y + 1),
             }
         }
 
