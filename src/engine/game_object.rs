@@ -1,16 +1,20 @@
-use std::{fmt::Debug, ops::Range};
+use std::{any::Any, fmt::Debug, ops::Range};
 
 pub trait Locate {
     fn get_coords(&self) -> &Coordinate;
 }
 
-pub trait Collide<T>: Locate + Debug {
-    fn collide(&mut self, other: &T);
-    fn get_collision_box(&self) -> CollisionBox;
-}
+pub trait Collide: Locate + Debug {}
 
 pub trait NextStep {
     fn next_step(&mut self);
+}
+
+pub trait GameObject: Collide + NextStep + Any {
+    fn as_any(&self) -> &dyn Any;
+    fn as_mut_any(&mut self) -> &mut dyn Any;
+    fn collide(&mut self, other: &dyn GameObject);
+    fn get_collision_box(&self) -> CollisionBox;
 }
 
 #[derive(Debug, PartialEq, Clone)]

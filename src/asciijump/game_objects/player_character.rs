@@ -1,6 +1,6 @@
-use crate::engine::game_object::{Collide, CollisionBox, Coordinate, Locate, NextStep};
+use std::any::Any;
 
-use super::GameObject;
+use crate::engine::game_object::{Collide, CollisionBox, Coordinate, GameObject, Locate, NextStep};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PlayerCharacter {
@@ -53,7 +53,15 @@ impl Locate for PlayerCharacter {
     }
 }
 
-impl Collide<GameObject> for PlayerCharacter {
+impl Collide for PlayerCharacter {}
+
+impl NextStep for PlayerCharacter {
+    fn next_step(&mut self) {
+        self.coordinate.y = (self.coordinate.y as isize + self.velocity).max(0) as usize;
+        self.velocity -= 1;
+    }
+}
+impl GameObject for PlayerCharacter {
     fn get_collision_box(&self) -> CollisionBox {
         let coords = self.get_coords();
         let next_y_coordinate = (coords.y as isize + self.velocity).max(0) as usize;
@@ -63,18 +71,17 @@ impl Collide<GameObject> for PlayerCharacter {
         }
     }
 
-    fn collide(&mut self, other: &GameObject) {
+    fn collide(&mut self, other: &dyn GameObject) {
         // TODO maybe we should check the velocity elsewhere.. ?
         if self.velocity < 1 {
             self.velocity = 5;
             self.coordinate.y = other.get_coords().y;
         }
     }
-}
-
-impl NextStep for PlayerCharacter {
-    fn next_step(&mut self) {
-        self.coordinate.y = (self.coordinate.y as isize + self.velocity).max(0) as usize;
-        self.velocity -= 1;
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
     }
 }

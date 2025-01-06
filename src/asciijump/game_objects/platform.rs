@@ -1,8 +1,8 @@
+use std::any::Any;
+
 use rand::Rng;
 
-use crate::engine::game_object::{Collide, CollisionBox, Coordinate, Locate, NextStep};
-
-use super::GameObject;
+use crate::engine::game_object::{Collide, CollisionBox, Coordinate, GameObject, Locate, NextStep};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Platform {
@@ -59,7 +59,13 @@ impl Locate for Platform {
     }
 }
 
-impl Collide<GameObject> for Platform {
+impl Collide for Platform {}
+
+impl NextStep for Platform {
+    fn next_step(&mut self) {}
+}
+
+impl GameObject for Platform {
     fn get_collision_box(&self) -> CollisionBox {
         let coords = self.get_coords();
 
@@ -69,9 +75,12 @@ impl Collide<GameObject> for Platform {
         }
     }
 
-    fn collide(&mut self, _: &GameObject) {}
-}
+    fn collide(&mut self, _: &dyn GameObject) {}
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 
-impl NextStep for Platform {
-    fn next_step(&mut self) {}
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
+    }
 }
