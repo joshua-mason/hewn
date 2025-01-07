@@ -29,6 +29,13 @@ pub struct CollisionBox {
     pub y: Range<usize>,
 }
 
+pub fn try_get_concrete_type<T: Any>(abc: &dyn GameObject) -> Option<&T> {
+    abc.as_any().downcast_ref::<T>()
+}
+pub fn try_get_mut_concrete_type<T: Any>(abc: &mut dyn GameObject) -> Option<&mut T> {
+    abc.as_mut_any().downcast_mut()
+}
+
 pub mod utils {
     use std::ops::Range;
 

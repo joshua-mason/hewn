@@ -1,12 +1,9 @@
-use std::any::Any;
-
-use termion::event::Key;
-
 use crate::asciijump::game_objects::platform::Platform;
-use crate::asciijump::game_objects::player_character::{self, PlayerCharacter};
+use crate::asciijump::game_objects::player_character::PlayerCharacter;
 use crate::engine::game::BaseGame;
 use crate::engine::game_object::utils::collision_pass;
-use crate::engine::game_object::GameObject;
+use crate::engine::game_object::{try_get_concrete_type, try_get_mut_concrete_type, GameObject};
+use termion::event::Key;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
@@ -149,17 +146,6 @@ impl BaseGame for Game {
             .score
             .max(self.get_player_object().unwrap().coordinate.y);
     }
-}
-
-fn try_get_concrete_type<T: Any>(abc: &dyn GameObject) -> Option<&T> {
-    // 1. Convert &dyn Abc to &dyn Any using abc.as_any()
-    // 2. Then downcast_ref::<T>()
-    abc.as_any().downcast_ref::<T>()
-}
-fn try_get_mut_concrete_type<T: Any>(abc: &mut dyn GameObject) -> Option<&mut T> {
-    // 1. Convert &dyn Abc to &dyn Any using abc.as_any()
-    // 2. Then downcast_ref::<T>()
-    abc.as_mut_any().downcast_mut()
 }
 
 // #[cfg(test)]
