@@ -4,6 +4,7 @@ use termion::event::Key;
 
 use crate::asciijump::game_objects::platform::Platform;
 use crate::asciijump::game_objects::player_character::{self, PlayerCharacter};
+use crate::engine::game::BaseGame;
 use crate::engine::game_object::utils::collision_pass;
 use crate::engine::game_object::GameObject;
 
@@ -43,27 +44,6 @@ impl Game {
         self.game_objects.append(game_objects);
     }
 
-    pub fn next(&mut self) {
-        if self.state != GameState::InGame {
-            return;
-        }
-        self.move_player();
-        self.game_objects.iter_mut().for_each(|o| o.next_step());
-
-        collision_pass(&mut self.game_objects);
-
-        // FIXME: can we improve the efficiency here? whole loop is not very good
-        // FIXME: when two platforms, we don't definitely hit the closest one
-
-        if self.get_player_object().unwrap().velocity < -6 {
-            self.end_game();
-        }
-
-        self.score = self
-            .score
-            .max(self.get_player_object().unwrap().coordinate.y);
-    }
-
     fn move_player(&mut self) {
         let width = self.width;
         match self.player_control_key {
@@ -84,13 +64,6 @@ impl Game {
             _ => {}
         }
     }
-
-    pub fn start_game(&mut self) {
-        self.score = 0;
-        self.get_mut_player_object().unwrap().reset();
-        self.state = GameState::InGame;
-    }
-
     pub fn end_game(&mut self) {
         self.state = GameState::Lost(self.score);
     }
@@ -143,9 +116,38 @@ impl Game {
         //     .collect::<Vec<_>>();
         self.add_game_objects(platforms);
     }
+}
 
-    pub(crate) fn set_player_control_key(&mut self, key: Option<termion::event::Key>) {
+impl BaseGame for Game {
+    fn set_player_control_key(&mut self, key: Option<termion::event::Key>) {
         self.player_control_key = key
+    }
+
+    fn start_game(&mut self) {
+        self.score = 0;
+        self.get_mut_player_object().unwrap().reset();
+        self.state = GameState::InGame;
+    }
+
+    fn next(&mut self) {
+        if self.state != GameState::InGame {
+            return;
+        }
+        self.move_player();
+        self.game_objects.iter_mut().for_each(|o| o.next_step());
+
+        collision_pass(&mut self.game_objects);
+
+        // FIXME: can we improve the efficiency here? whole loop is not very good
+        // FIXME: when two platforms, we don't definitely hit the closest one
+
+        if self.get_player_object().unwrap().velocity < -6 {
+            self.end_game();
+        }
+
+        self.score = self
+            .score
+            .max(self.get_player_object().unwrap().coordinate.y);
     }
 }
 

@@ -4,6 +4,8 @@ use std::{
     time::{self, Duration, Instant},
 };
 
+use super::game::BaseGame;
+
 pub struct Control<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
     pub game: &'a mut Game,
