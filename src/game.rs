@@ -4,8 +4,8 @@ use termion::event::Key;
 
 use crate::asciijump::game_objects::platform::Platform;
 use crate::asciijump::game_objects::player_character::{self, PlayerCharacter};
-use crate::asciijump::game_objects::utils::collision_pass;
-use crate::engine::game_object::{Collide, GameObject};
+use crate::engine::game_object::utils::collision_pass;
+use crate::engine::game_object::GameObject;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
