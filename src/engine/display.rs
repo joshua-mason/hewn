@@ -1,6 +1,7 @@
 use super::game_object::GameObject;
 use std::io::Stdout;
 use std::io::Write;
+use std::iter::zip;
 use termion::raw::RawTerminal;
 
 pub trait BaseDisplay {
@@ -32,5 +33,55 @@ pub trait BaseDisplay {
 
     fn screen_width(&self) -> u16;
 
-    fn player_view(&mut self, game_objects: &[Box<dyn GameObject>]) -> String;
+    fn levels(&mut self, game_objects: &[Box<dyn GameObject>]) -> Vec<String> {
+        let mut level_strings: Vec<String> = vec![];
+        for height in 0..self.screen_height() {
+            let level = self.render_level(game_objects, height);
+            level_strings.push(level);
+        }
+        level_strings
+    }
+
+    fn render_level(&mut self, game_objects: &[Box<dyn GameObject>], height: u16) -> String {
+        let mut level: String = build_string('.', self.screen_width() as usize);
+        let y_position = self.screen_height() + self.view_cursor() - height;
+
+        for game_object in game_objects {
+            let coords = game_object.get_coords();
+            let width = game_object.width();
+            let mut display_string: &str = &game_object.display();
+            if display_string.len() > width {
+                display_string = display_string.split_at(width).0;
+            }
+            if (coords.y == (y_position as usize)) {
+                level.replace_range(coords.x..(coords.x + width), &display_string)
+            }
+        }
+
+        level
+    }
+
+    fn player_view(&mut self, game_objects: &[Box<dyn GameObject>]) -> String {
+        let levels = self.levels(game_objects);
+
+        let gotos =
+            (0..self.screen_height()).map(|height| termion::cursor::Goto(1, height).to_string());
+        zip(levels, gotos)
+            .map(|(level, goto)| format!("{}{}", level, goto))
+            .collect::<String>()
+    }
+}
+
+pub fn build_string(ch: char, length: usize) -> String {
+    ch.to_string().repeat(length)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_build_string() {
+        let input = build_string('@', 3);
+        assert_eq!(input, "@@@");
+    }
 }

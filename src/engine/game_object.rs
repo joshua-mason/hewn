@@ -6,11 +6,17 @@ pub trait Locate {
 
 pub trait Collide: Locate + Debug {}
 
+pub trait DisplayObject {
+    fn width(&self) -> usize;
+    fn display(&self) -> String;
+    fn priority(&self) -> u8;
+}
+
 pub trait NextStep {
     fn next_step(&mut self);
 }
 
-pub trait GameObject: Collide + NextStep + Any {
+pub trait GameObject: Collide + DisplayObject + NextStep + Any {
     fn as_any(&self) -> &dyn Any;
     fn as_mut_any(&mut self) -> &mut dyn Any;
     fn collide(&mut self, other: &dyn GameObject);
@@ -51,6 +57,7 @@ pub mod utils {
             && overlapping_1d(a_collision_box.y, b_collision_box.y)
     }
 
+    // TODO: this seems to be affected by the order of the objects - probably related to the double dispatch problem?
     pub fn collision_pass(objects: &mut [Box<dyn GameObject>]) {
         for i in 0..objects.len() {
             let (left, rest) = objects.split_at_mut(i + 1);
@@ -88,6 +95,18 @@ mod test {
     }
 
     impl Collide for TestGameObject {}
+
+    impl DisplayObject for TestGameObject {
+        fn display(&self) -> String {
+            "---".to_owned()
+        }
+        fn width(&self) -> usize {
+            3
+        }
+        fn priority(&self) -> u8 {
+            1
+        }
+    }
 
     impl GameObject for TestGameObject {
         fn as_any(&self) -> &dyn Any {

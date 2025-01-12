@@ -1,6 +1,9 @@
 use std::any::Any;
 
-use crate::engine::game_object::{Collide, CollisionBox, Coordinate, GameObject, Locate, NextStep};
+use crate::engine::{
+    display::build_string,
+    game_object::{Collide, CollisionBox, Coordinate, DisplayObject, GameObject, Locate, NextStep},
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PlayerCharacter {
@@ -61,6 +64,19 @@ impl NextStep for PlayerCharacter {
         self.velocity -= 1;
     }
 }
+
+impl DisplayObject for PlayerCharacter {
+    fn display(&self) -> String {
+        build_string('#', 1)
+    }
+    fn width(&self) -> usize {
+        1
+    }
+    fn priority(&self) -> u8 {
+        0
+    }
+}
+
 impl GameObject for PlayerCharacter {
     fn get_collision_box(&self) -> CollisionBox {
         let coords = self.get_coords();

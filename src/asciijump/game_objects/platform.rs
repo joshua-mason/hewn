@@ -2,7 +2,10 @@ use std::any::Any;
 
 use rand::Rng;
 
-use crate::engine::game_object::{Collide, CollisionBox, Coordinate, GameObject, Locate, NextStep};
+use crate::engine::{
+    display::build_string,
+    game_object::{Collide, CollisionBox, Coordinate, DisplayObject, GameObject, Locate, NextStep},
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Platform {
@@ -63,6 +66,18 @@ impl Collide for Platform {}
 
 impl NextStep for Platform {
     fn next_step(&mut self) {}
+}
+
+impl DisplayObject for Platform {
+    fn display(&self) -> String {
+        build_string('=', 3)
+    }
+    fn width(&self) -> usize {
+        self.length
+    }
+    fn priority(&self) -> u8 {
+        1
+    }
 }
 
 impl GameObject for Platform {

@@ -39,6 +39,17 @@ impl Game {
 
     pub fn add_game_objects(&mut self, game_objects: &mut Vec<Box<dyn GameObject>>) {
         self.game_objects.append(game_objects);
+
+        self.game_objects.sort_by(|a, b| {
+            if (a.priority() == b.priority()) {
+                return std::cmp::Ordering::Equal;
+            }
+            if (a.priority() > b.priority()) {
+                std::cmp::Ordering::Greater
+            } else {
+                std::cmp::Ordering::Less
+            }
+        });
     }
 
     fn move_player(&mut self) {
