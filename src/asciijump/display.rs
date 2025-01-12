@@ -65,7 +65,7 @@ mod test {
         let stdout = io::stdout().into_raw_mode().unwrap();
         let mut display = Display::new(stdout, 3, 3);
 
-        let view: String = display.levels(&game.game_objects).join("\n");
+        let view: String = display.levels(&game.entities.game_objects).join("\n");
 
         assert!(
             view == "...
@@ -81,8 +81,8 @@ mod test {
         let mut display = Display::new(stdout, 10, 3);
 
         game.get_mut_player_object().unwrap().coordinate.y = 20;
-        display.update_cursor(&game.game_objects);
-        let view: String = display.levels(&game.game_objects).join("\n");
+        display.update_cursor(&game.entities.game_objects);
+        let view: String = display.levels(&game.entities.game_objects).join("\n");
 
         assert!(
             view == "...
@@ -104,10 +104,10 @@ mod test {
         let stdout = io::stdout().into_raw_mode().unwrap();
         let mut display = Display::new(stdout, 10, 3);
         game.get_mut_player_object().unwrap().coordinate.y = 20;
-        display.update_cursor(&game.game_objects);
+        display.update_cursor(&game.entities.game_objects);
         game.get_mut_player_object().unwrap().coordinate.y = 19;
-        display.update_cursor(&game.game_objects);
-        let view: String = display.levels(&game.game_objects).join("\n");
+        display.update_cursor(&game.entities.game_objects);
+        let view: String = display.levels(&game.entities.game_objects).join("\n");
 
         assert!(
             view == "...

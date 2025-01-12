@@ -1,6 +1,6 @@
 use crate::asciijump::game_objects::platform::Platform;
 use crate::asciijump::game_objects::player_character::PlayerCharacter;
-use crate::engine::game::BaseGame;
+use crate::engine::game::{BaseGame, Entities};
 use crate::engine::game_object::utils::collision_pass;
 use crate::engine::game_object::{try_get_concrete_type, try_get_mut_concrete_type, GameObject};
 use termion::event::Key;
@@ -17,11 +17,10 @@ pub struct Game {
     pub width: usize,
     pub height: usize,
 
-    pub game_objects: Vec<Box<dyn GameObject>>,
-
     pub state: GameState,
     pub score: usize,
 
+    pub entities: Entities,
     player_control_key: Option<Key>,
 }
 
@@ -32,24 +31,10 @@ impl Game {
             height,
             state: GameState::Menu,
             score: 0,
-            game_objects: vec![],
+            entities: Entities::new(),
+            // game_objects: vec![],
             player_control_key: None,
         }
-    }
-
-    pub fn add_game_objects(&mut self, game_objects: &mut Vec<Box<dyn GameObject>>) {
-        self.game_objects.append(game_objects);
-
-        self.game_objects.sort_by(|a, b| {
-            if (a.priority() == b.priority()) {
-                return std::cmp::Ordering::Equal;
-            }
-            if (a.priority() > b.priority()) {
-                std::cmp::Ordering::Greater
-            } else {
-                std::cmp::Ordering::Less
-            }
-        });
     }
 
     fn move_player(&mut self) {
@@ -81,7 +66,8 @@ impl Game {
     }
 
     pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
-        self.game_objects
+        self.entities
+            .game_objects
             .iter_mut()
             .filter_map(|o| {
                 if let Some(player_character) =
@@ -96,11 +82,11 @@ impl Game {
     }
 
     pub fn get_platforms(&self) -> Vec<&Platform> {
-        take_platforms(&self.game_objects)
+        take_platforms(&self.entities.game_objects)
     }
 
     fn set_platforms(&mut self, platforms: &mut Vec<Box<dyn GameObject>>) {
-        self.add_game_objects(platforms);
+        self.entities.add_game_objects(platforms);
     }
 }
 
@@ -120,9 +106,12 @@ impl BaseGame for Game {
             return;
         }
         self.move_player();
-        self.game_objects.iter_mut().for_each(|o| o.next_step());
+        self.entities
+            .game_objects
+            .iter_mut()
+            .for_each(|o| o.next_step());
 
-        collision_pass(&mut self.game_objects);
+        collision_pass(&mut self.entities.game_objects);
 
         // FIXME: can we improve the efficiency here? whole loop is not very good
         // FIXME: when two platforms, we don't definitely hit the closest one
@@ -137,7 +126,7 @@ impl BaseGame for Game {
     }
 
     fn game_objects(&self) -> &[Box<dyn GameObject>] {
-        &self.game_objects
+        &self.entities.game_objects
     }
 
     fn debug_str(&self) -> Option<String> {
