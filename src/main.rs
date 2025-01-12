@@ -1,4 +1,7 @@
-use asciijump::game_objects::{platform::Platform, player_character::PlayerCharacter};
+use asciijump::{
+    display,
+    game_objects::{platform::Platform, player_character::PlayerCharacter},
+};
 use engine::{game_object::GameObject, io};
 
 const WIDTH: usize = 10;
@@ -9,7 +12,6 @@ const SCREEN_WIDTH: u16 = 10;
 const SCREEN_HEIGHT: u16 = 20;
 
 mod asciijump;
-mod display;
 mod engine;
 mod game;
 

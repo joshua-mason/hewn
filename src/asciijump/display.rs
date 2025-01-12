@@ -21,13 +21,6 @@ impl Display {
             screen_width,
         }
     }
-
-    // TODO how do we get this from the game?
-    // ORRRRR we actually create separate display objects for different scenes.. ? could be a good interface for it! Maybe a macro or something for it
-    // interesting questions..
-    // fn game_state(&self) -> &crate::game::GameState {
-    //     &crate::game::GameState::InGame
-    // }
 }
 
 impl BaseDisplay for Display {
@@ -128,11 +121,5 @@ mod test {
 ...
 ..."
         )
-    }
-
-    #[test]
-    fn test_build_string() {
-        let input = build_string('@', 3);
-        assert_eq!(input, "@@@");
     }
 }
