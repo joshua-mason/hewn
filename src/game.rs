@@ -66,16 +66,7 @@ impl Game {
     }
 
     pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-        self.game_objects
-            .iter()
-            .filter_map(|o| {
-                if let Some(player_character) = try_get_concrete_type::<PlayerCharacter>(&**o) {
-                    Some(player_character)
-                } else {
-                    None
-                }
-            })
-            .next()
+        take_player_object(&self.game_objects())
     }
 
     pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
@@ -94,23 +85,10 @@ impl Game {
     }
 
     pub fn get_platforms(&self) -> Vec<&Platform> {
-        self.game_objects
-            .iter()
-            .filter_map(|o| {
-                if let Some(platform) = try_get_concrete_type::<Platform>(&**o) {
-                    Some(platform)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<&Platform>>()
+        take_platforms(&self.game_objects)
     }
 
     fn set_platforms(&mut self, platforms: &mut Vec<Box<dyn GameObject>>) {
-        // let game_objects = platforms
-        //     .into_iter()
-        //     .map(GameObject::Platform)
-        //     .collect::<Vec<_>>();
         self.add_game_objects(platforms);
     }
 }
@@ -146,6 +124,48 @@ impl BaseGame for Game {
             .score
             .max(self.get_player_object().unwrap().coordinate.y);
     }
+
+    fn game_objects(&self) -> &[Box<dyn GameObject>] {
+        &self.game_objects
+    }
+
+    fn debug_str(&self) -> Option<String> {
+        if let Some(player) = self.get_player_object() {
+            let a = format!(
+                "v = {:4}, x = {:3}, y = {:3}",
+                player.velocity, player.coordinate.x, player.coordinate.y
+            );
+            Some(a)
+        } else {
+            None
+        }
+    }
+}
+
+pub fn take_platforms(game_objects: &[Box<dyn GameObject>]) -> Vec<&Platform> {
+    game_objects
+        .iter()
+        .filter_map(|o| {
+            if let Some(platform) = try_get_concrete_type::<Platform>(&**o) {
+                Some(platform)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<&Platform>>()
+}
+
+pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&PlayerCharacter> {
+    game_objects
+        .iter()
+        .filter_map(|o| {
+            if let Some(player_character) = try_get_concrete_type::<PlayerCharacter>(&**o) {
+                Some(player_character)
+            } else {
+                None
+            }
+        })
+        .next()
 }
 
 // #[cfg(test)]

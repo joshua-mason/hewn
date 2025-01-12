@@ -5,6 +5,7 @@ const WIDTH: usize = 10;
 const HEIGHT: usize = 500;
 const FRAME_RATE_MILLIS: u64 = 10;
 const GAME_STEP_MILLIS: u64 = 100;
+const SCREEN_WIDTH: u16 = 10;
 const SCREEN_HEIGHT: u16 = 20;
 
 mod asciijump;
@@ -23,8 +24,7 @@ fn main() {
         .map(|p| Box::new(p) as Box<dyn GameObject>)
         .collect::<Vec<Box<dyn GameObject>>>();
     game.add_game_objects(&mut other);
-    // game_objects.append(&mut other);
-    let mut display = display::Display::new(stdout, SCREEN_HEIGHT);
+    let mut display = display::Display::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH as u16);
     let mut control = engine::control::Control::new(stdin, &mut game, &mut display);
 
     control.listen();
