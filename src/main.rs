@@ -1,5 +1,5 @@
 use asciijump::{
-    display,
+    display, game,
     game_objects::{platform::Platform, player_character::PlayerCharacter},
 };
 use engine::{game_object::GameObject, io};
@@ -13,7 +13,6 @@ const SCREEN_HEIGHT: u16 = 20;
 
 mod asciijump;
 mod engine;
-mod game;
 
 fn main() {
     let (stdout, stdin) = io::initialize_terminal();
