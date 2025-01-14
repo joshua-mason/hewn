@@ -90,7 +90,7 @@ mod test {
 
     impl Locate for TestGameObject {
         fn get_coords(&self) -> &Coordinate {
-            return &self.coords;
+            &self.coords
         }
     }
 
@@ -130,24 +130,24 @@ mod test {
 
     #[test]
     fn test_collision() {
-        let platform = (TestGameObject {
+        let platform = TestGameObject {
             coords: Coordinate { x: 5, y: 5 },
-        });
-        let player = (TestGameObject {
+        };
+        let player = TestGameObject {
             coords: Coordinate { x: 5, y: 5 },
-        });
+        };
 
         assert!(utils::detect_collision(&platform, &player));
     }
 
     #[test]
     fn test_no_collision() {
-        let platform = (TestGameObject {
+        let platform = TestGameObject {
             coords: Coordinate { x: 5, y: 5 },
-        });
-        let player = (TestGameObject {
+        };
+        let player = TestGameObject {
             coords: Coordinate { x: 7, y: 6 },
-        });
+        };
 
         assert!(!utils::detect_collision(&platform, &player));
     }

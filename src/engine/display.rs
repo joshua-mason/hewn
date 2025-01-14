@@ -53,8 +53,8 @@ pub trait BaseDisplay {
             if display_string.len() > width {
                 display_string = display_string.split_at(width).0;
             }
-            if (coords.y == (y_position as usize)) {
-                level.replace_range(coords.x..(coords.x + width), &display_string)
+            if coords.y == (y_position as usize) {
+                level.replace_range(coords.x..(coords.x + width), display_string)
             }
         }
 

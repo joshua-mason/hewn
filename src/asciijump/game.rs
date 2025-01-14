@@ -64,7 +64,7 @@ impl Game {
     }
 
     pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-        take_player_object(&self.game_objects())
+        take_player_object(self.game_objects())
     }
 
     pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
@@ -72,13 +72,7 @@ impl Game {
             .game_objects
             .iter_mut()
             .filter_map(|o| {
-                if let Some(player_character) =
-                    try_get_mut_concrete_type::<PlayerCharacter>(&mut **o)
-                {
-                    Some(player_character)
-                } else {
-                    None
-                }
+                try_get_mut_concrete_type::<PlayerCharacter>(&mut **o)
             })
             .next()
     }
@@ -94,15 +88,10 @@ impl Game {
     pub fn set_player(&mut self, player: PlayerCharacter) {
         let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(player)];
         if let Some(index) = self.entities.game_objects.iter().position(|o| {
-            if let Some(_) = try_get_concrete_type::<PlayerCharacter>(&**o) {
-                true
-            } else {
-                false
-            }
+            try_get_concrete_type::<PlayerCharacter>(&**o).is_some()
         }) {
             self.entities.game_objects.remove(index);
-        } else {
-        }
+        } 
         self.entities.add_game_objects(&mut game_objects);
     }
 }
@@ -177,11 +166,7 @@ pub fn take_platforms(game_objects: &[Box<dyn GameObject>]) -> Vec<&Platform> {
     game_objects
         .iter()
         .filter_map(|o| {
-            if let Some(platform) = try_get_concrete_type::<Platform>(&**o) {
-                Some(platform)
-            } else {
-                None
-            }
+            try_get_concrete_type::<Platform>(&**o)
         })
         .collect::<Vec<&Platform>>()
 }
@@ -190,11 +175,7 @@ pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&Playe
     game_objects
         .iter()
         .filter_map(|o| {
-            if let Some(player_character) = try_get_concrete_type::<PlayerCharacter>(&**o) {
-                Some(player_character)
-            } else {
-                None
-            }
+            try_get_concrete_type::<PlayerCharacter>(&**o)
         })
         .next()
 }
@@ -205,7 +186,7 @@ mod test {
         asciijump::game_objects::{platform::Platform, player_character::PlayerCharacter},
         engine::{
             game::BaseGame,
-            game_object::{GameObject, Locate},
+            game_object::Locate,
         },
     };
 

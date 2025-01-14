@@ -2,7 +2,7 @@ use asciijump::{
     display, game,
     game_objects::{platform::Platform, player_character::PlayerCharacter},
 };
-use engine::{game_object::GameObject, io};
+use engine::io;
 
 const WIDTH: usize = 10;
 const HEIGHT: usize = 500;
@@ -20,7 +20,7 @@ fn main() {
     let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());
     game.set_platforms(platforms);
-    let mut display = display::Display::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH as u16);
+    let mut display = display::Display::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut control = engine::control::Control::new(stdin, &mut game, &mut display);
 
     control.listen();
