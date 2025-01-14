@@ -1,9 +1,11 @@
 use super::{display::BaseDisplay, game::BaseGame};
-use crate::{display::Display, FRAME_RATE_MILLIS, GAME_STEP_MILLIS};
 use std::{
     thread,
     time::{self, Duration, Instant},
 };
+
+const FRAME_RATE_MILLIS: u64 = 10;
+const GAME_STEP_MILLIS: u64 = 100;
 
 pub struct Control<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
@@ -16,7 +18,7 @@ impl Control<'_> {
     pub fn new<'a>(
         stdin: termion::input::Keys<termion::AsyncReader>,
         game: &'a mut dyn BaseGame,
-        display: &'a mut Display,
+        display: &'a mut dyn BaseDisplay,
     ) -> Control<'a> {
         Control {
             stdin,

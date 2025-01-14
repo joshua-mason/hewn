@@ -53,7 +53,7 @@ impl BaseDisplay for Display {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::game::Game;
+    use crate::asciijump::game::Game;
     use std::io::{self};
     use termion::raw::IntoRawMode;
 
