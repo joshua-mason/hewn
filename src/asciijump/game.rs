@@ -26,7 +26,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(width: usize, height: usize) -> Game {
-        Game {
+        let mut game = Game {
             width,
             height,
             state: GameState::Menu,
@@ -34,7 +34,9 @@ impl Game {
             entities: Entities::new(),
             // game_objects: vec![],
             player_control_key: None,
-        }
+        };
+        game.set_player(PlayerCharacter::new());
+        game
     }
 
     fn move_player(&mut self) {
@@ -81,12 +83,27 @@ impl Game {
             .next()
     }
 
-    pub fn get_platforms(&self) -> Vec<&Platform> {
-        take_platforms(&self.entities.game_objects)
+    pub fn set_platforms(&mut self, platforms: Vec<Platform>) {
+        let mut game_objects = platforms
+            .into_iter()
+            .map(|p| Box::new(p) as Box<dyn GameObject>)
+            .collect::<Vec<Box<dyn GameObject>>>();
+        self.entities.add_game_objects(&mut game_objects);
     }
 
-    fn set_platforms(&mut self, platforms: &mut Vec<Box<dyn GameObject>>) {
-        self.entities.add_game_objects(platforms);
+    pub fn set_player(&mut self, player: PlayerCharacter) {
+        let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(player)];
+        if let Some(index) = self.entities.game_objects.iter().position(|o| {
+            if let Some(_) = try_get_concrete_type::<PlayerCharacter>(&**o) {
+                true
+            } else {
+                false
+            }
+        }) {
+            self.entities.game_objects.remove(index);
+        } else {
+        }
+        self.entities.add_game_objects(&mut game_objects);
     }
 }
 
@@ -105,6 +122,20 @@ impl BaseGame for Game {
         if self.state != GameState::InGame {
             return;
         }
+
+        /*
+        So here we have a weird issue - we have collision detection happening after we move.
+        This means in a test where we start on a platform, we fall through the platform...
+        I think the core issue here is we haven't fully thought it through what we want to happen, so
+        there is some "undefined" behaviour persay for the game.
+
+        A manual version of this is to have a flag on the player object that we check if we collide, then don't
+        move if that happens.. A specific fix could be to set veolicity to 0 on collision and then on nexwt turn
+        set it to 5 as we are on top of it.. ?
+
+        IDK maybe some research andd thinking to figure this one out!
+        */
+
         self.move_player();
         self.entities
             .game_objects
@@ -168,201 +199,173 @@ pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&Playe
         .next()
 }
 
-// #[cfg(test)]
-// mod test {
-//     use crate::{
-//         asciijump::game_objects::{
-//             platform::Platform, player_character::PlayerCharacter, GameObject,
-//         },
-//         engine::game_object::Locate,
-//     };
+#[cfg(test)]
+mod test {
+    use crate::{
+        asciijump::game_objects::{platform::Platform, player_character::PlayerCharacter},
+        engine::{
+            game::BaseGame,
+            game_object::{GameObject, Locate},
+        },
+    };
 
-//     use super::Game;
-//     #[test]
-//     fn test_jump() {
-//         let mut game = Game::new(10, 10);
-//         game.start_game();
-//         fast_forward(&mut game, 1);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
+    use super::Game;
+    #[test]
+    fn test_jump() {
+        let mut game = Game::new(10, 10);
+        game.start_game();
+        fast_forward(&mut game, 1);
+        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
 
-//         fast_forward(&mut game, 6);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 15);
+        fast_forward(&mut game, 6);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 15);
 
-//         fast_forward(&mut game, 4);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
-//     }
+        fast_forward(&mut game, 4);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
+    }
 
-//     #[test]
-//     fn test_start_on_platform() {
-//         let mut game = Game::new(10, 10);
-//         game.set_platforms(Platform::from_tuples(&[(1, 2)]));
-//         game.start_game();
-//         game.get_mut_player_object().unwrap().coordinate.y = 2;
-//         game.get_mut_player_object().unwrap().coordinate.x = 2;
-//         game.get_mut_player_object().unwrap().velocity = -5;
+    #[test]
+    fn test_start_on_platform() {
+        let mut game = Game::new(10, 10);
+        let platforms = Platform::from_tuples(&[(2, 2)]);
+        game.set_platforms(platforms);
+        let player = PlayerCharacter::from_tuple((2, 3, -5));
+        println!("on creation: {:?}", player);
+        println!("added to game: {:?}", game.get_player_object());
+        game.start_game();
+        println!("Before player replacement: {:?}", game);
+        game.set_player(player);
+        println!("After player replacement: {:?}", game);
+        println!("set player: {:?}", game.get_player_object());
 
-//         fast_forward(&mut game, 1);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.x, 2);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 2);
-//         assert_eq!(game.get_player_object().unwrap().velocity, 5);
+        fast_forward(&mut game, 1);
+        println!("{:?}", game);
+        assert_eq!(game.get_player_object().unwrap().coordinate.x, 2);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 2);
+        assert_eq!(game.get_player_object().unwrap().velocity, 5);
 
-//         fast_forward(&mut game, 1);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 7);
-//         assert_eq!(game.get_player_object().unwrap().velocity, 4);
-//     }
+        fast_forward(&mut game, 1);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 7);
+        assert_eq!(game.get_player_object().unwrap().velocity, 4);
+    }
 
-//     #[test]
-//     fn test_hit_platform() {
-//         let mut game = Game::new(10, 10);
-//         game.set_platforms(Platform::from_tuples(&[(1, 8)]));
-//         game.add_game_objects(vec![
-//             GameObject::PlayerCharacter(PlayerCharacter::new()),
-//             GameObject::Platform(Platform::from_tuple((1, 8))),
-//         ]);
-//         game.start_game();
+    #[test]
+    fn test_hit_platform() {
+        let mut game = Game::new(10, 10);
+        game.set_platforms(Platform::from_tuples(&[(1, 8)]));
 
-//         game.next();
+        game.start_game();
 
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
-//         fast_forward(&mut game, 9);
-//         assert_eq!(game.get_player_object().unwrap().velocity, 5);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 8);
+        game.next();
 
-//         game.next();
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
-//     }
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
+        fast_forward(&mut game, 9);
+        assert_eq!(game.get_player_object().unwrap().velocity, 5);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 8);
 
-//     #[test]
-//     fn test_player_game_object_hit_platform() {
-//         let mut game = Game::new(10, 10);
-//         game.set_platforms(Platform::from_tuples(&[(1, 8)]));
-//         game.add_game_objects(vec![
-//             GameObject::PlayerCharacter(PlayerCharacter::new()),
-//             GameObject::Platform(Platform::from_tuple((1, 8))),
-//         ]);
-//         game.start_game();
-//         game.next();
+        game.next();
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
+    }
 
-//         {
-//             let player_object = game
-//                 .game_objects
-//                 .iter()
-//                 .find(|o| match o {
-//                     GameObject::PlayerCharacter(player_character) => true,
-//                     GameObject::Platform(platform) => false,
-//                 })
-//                 .unwrap();
+    #[test]
+    fn test_player_game_object_hit_platform() {
+        let mut game = Game::new(10, 10);
+        game.set_platforms(Platform::from_tuples(&[(1, 8)]));
+        game.start_game();
+        game.next();
 
-//             println!("asdas:{:?}", player_object);
-//             assert_eq!(player_object.get_coords().y, 6);
-//         }
-//         fast_forward(&mut game, 1);
-//         {
-//             let player_object = game
-//                 .game_objects
-//                 .iter()
-//                 .find(|o| match o {
-//                     GameObject::PlayerCharacter(player_character) => true,
-//                     GameObject::Platform(platform) => false,
-//                 })
-//                 .unwrap();
+        {
+            let player_object = game.get_player_object().unwrap();
 
-//             println!("asdas:{:?}", player_object);
-//             assert_eq!(player_object.get_coords().y, 10);
-//         }
-//         fast_forward(&mut game, 7);
-//         {
-//             let player_object = game
-//                 .game_objects
-//                 .iter()
-//                 .find(|o| match o {
-//                     GameObject::PlayerCharacter(player_character) => true,
-//                     GameObject::Platform(platform) => false,
-//                 })
-//                 .unwrap();
+            println!("asdas:{:?}", player_object);
+            assert_eq!(player_object.get_coords().y, 6);
+        }
+        fast_forward(&mut game, 1);
+        {
+            let player_object = game.get_player_object().unwrap();
 
-//             println!("asdas:{:?}", player_object);
-//             assert_eq!(player_object.get_coords().y, 8);
-//         }
-//         println!("244");
-//         fast_forward(&mut game, 1);
+            println!("asdas:{:?}", player_object);
+            assert_eq!(player_object.get_coords().y, 10);
+        }
+        fast_forward(&mut game, 7);
+        {
+            let player_object = game.get_player_object().unwrap();
 
-//         {
-//             let player_object = game
-//                 .game_objects
-//                 .iter()
-//                 .find(|o| match o {
-//                     GameObject::PlayerCharacter(player_character) => true,
-//                     GameObject::Platform(platform) => false,
-//                 })
-//                 .unwrap();
+            println!("asdas:{:?}", player_object);
+            assert_eq!(player_object.get_coords().y, 8);
+        }
+        println!("244");
+        fast_forward(&mut game, 1);
 
-//             println!("asdas:{:?}", player_object);
-//             assert_eq!(player_object.get_coords().y, 13);
-//         }
-//         // assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
-//     }
+        {
+            let player_object = game.get_player_object().unwrap();
 
-//     #[test]
-//     fn test_miss_platform() {
-//         let mut game = Game::new(10, 10);
-//         game.set_platforms(Platform::from_tuples(&[(3, 15)]));
-//         game.start_game();
+            println!("asdas:{:?}", player_object);
+            assert_eq!(player_object.get_coords().y, 13);
+        }
+        // assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
+    }
 
-//         fast_forward(&mut game, 11);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
-//     }
+    #[test]
+    fn test_miss_platform() {
+        let mut game = Game::new(10, 10);
+        game.set_platforms(Platform::from_tuples(&[(3, 15)]));
+        game.start_game();
 
-//     #[test]
-//     fn test_start_jump() {
-//         let mut game = Game::new(10, 20);
-//         let platforms = Platform::from_tuples(&[(1, 1)]);
-//         game.set_platforms(platforms);
-//         game.start_game();
+        fast_forward(&mut game, 11);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
+    }
 
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
+    #[test]
+    fn test_start_jump() {
+        let mut game = Game::new(10, 20);
+        let platforms = Platform::from_tuples(&[(1, 1)]);
+        game.set_platforms(platforms);
+        game.start_game();
 
-//         game.next();
-//         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-//         fast_forward(&mut game, 10);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
-//         assert_eq!(game.get_player_object().unwrap().velocity, 5);
+        game.next();
+        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
 
-//         fast_forward(&mut game, 5);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 16);
-//     }
+        fast_forward(&mut game, 10);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
+        assert_eq!(game.get_player_object().unwrap().velocity, 5);
 
-//     #[test]
-//     fn test_fell_to_bottom_under_platform() {
-//         let mut game = Game::new(10, 20);
-//         let platforms = Platform::from_tuples(&[(1, 3)]);
-//         game.set_platforms(platforms);
-//         game.start_game();
-//         game.get_mut_player_object().unwrap().velocity = 0;
+        fast_forward(&mut game, 5);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 16);
+    }
 
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
+    #[test]
+    fn test_fell_to_bottom_under_platform() {
+        let mut game = Game::new(10, 20);
+        let platforms = Platform::from_tuples(&[(1, 3)]);
+        game.set_platforms(platforms);
+        game.start_game();
+        game.get_mut_player_object().unwrap().velocity = 0;
 
-//         game.next();
-//         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-//         game.next();
-//         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
+        game.next();
+        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-//         game.next();
-//         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
-//         fast_forward(&mut game, 10);
-//         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
-//     }
+        game.next();
+        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
 
-//     fn fast_forward(game: &mut Game, n: u16) {
-//         for _ in 0..n {
-//             game.next();
-//         }
-//     }
-// }
+        game.next();
+        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
+        fast_forward(&mut game, 10);
+        assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
+    }
+
+    fn fast_forward(game: &mut Game, n: u16) {
+        for _ in 0..n {
+            game.next();
+        }
+    }
+}

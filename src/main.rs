@@ -18,13 +18,8 @@ fn main() {
     let (stdout, stdin) = io::initialize_terminal();
     let mut game = game::Game::new(WIDTH, HEIGHT);
     let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
-    let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(PlayerCharacter::new())];
-    game.entities.add_game_objects(&mut game_objects);
-    let mut other: Vec<Box<dyn GameObject>> = platforms
-        .into_iter()
-        .map(|p| Box::new(p) as Box<dyn GameObject>)
-        .collect::<Vec<Box<dyn GameObject>>>();
-    game.entities.add_game_objects(&mut other);
+    game.set_player(PlayerCharacter::new());
+    game.set_platforms(platforms);
     let mut display = display::Display::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH as u16);
     let mut control = engine::control::Control::new(stdin, &mut game, &mut display);
 

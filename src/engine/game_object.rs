@@ -118,8 +118,8 @@ mod test {
         fn collide(&mut self, _: &dyn GameObject) {}
         fn get_collision_box(&self) -> CollisionBox {
             CollisionBox {
-                x: self.coords.x..self.coords.x,
-                y: self.coords.y..self.coords.y,
+                x: self.coords.x..(self.coords.x + 1),
+                y: self.coords.y..(self.coords.y + 1),
             }
         }
     }
