@@ -18,6 +18,7 @@ impl PlayerCharacter {
         }
     }
 
+    #[cfg(test)]
     pub fn from_tuple(tuple: (usize, usize, isize)) -> PlayerCharacter {
         PlayerCharacter {
             coordinate: Coordinate {

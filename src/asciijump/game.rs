@@ -141,6 +141,10 @@ impl BaseGame for Game {
         if self.get_player_object().unwrap().velocity < -6 {
             self.end_game();
         }
+        if self.get_player_object().unwrap().coordinate.y > self.height {
+            // TODO add win state
+            self.end_game();
+        }
 
         self.score = self
             .score
@@ -164,17 +168,17 @@ impl BaseGame for Game {
     }
 }
 
-pub fn take_platforms(game_objects: &[Box<dyn GameObject>]) -> Vec<&Platform> {
+// TODO: move to engine and split into take game object and take game objects
+pub fn take_game_objects<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Vec<&T> {
     game_objects
         .iter()
-        .filter_map(|o| try_get_concrete_type::<Platform>(&**o))
-        .collect::<Vec<&Platform>>()
+        .filter_map(|o| try_get_concrete_type::<T>(&**o))
+        .collect::<Vec<&T>>()
 }
 
 pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&PlayerCharacter> {
-    game_objects
-        .iter()
-        .filter_map(|o| try_get_concrete_type::<PlayerCharacter>(&**o))
+    take_game_objects::<PlayerCharacter>(game_objects)
+        .into_iter()
         .next()
 }
 

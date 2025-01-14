@@ -22,6 +22,7 @@ impl Platform {
         }
     }
 
+    #[cfg(test)]
     pub fn from_tuples(tuples: &[(usize, usize)]) -> Vec<Platform> {
         tuples
             .iter()
@@ -46,7 +47,6 @@ impl Platform {
                 platforms.push(Platform::from_tuple((x, index)));
                 last_platform = 0;
             }
-            let y: f64 = rng.gen(); // generates a float between 0 and 1
             last_platform += 1;
         }
 
