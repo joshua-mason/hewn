@@ -35,17 +35,9 @@ pub struct CollisionBox {
     pub y: Range<usize>,
 }
 
-pub fn try_get_concrete_type<T: Any>(abc: &dyn GameObject) -> Option<&T> {
-    abc.as_any().downcast_ref::<T>()
-}
-pub fn try_get_mut_concrete_type<T: Any>(abc: &mut dyn GameObject) -> Option<&mut T> {
-    abc.as_mut_any().downcast_mut()
-}
-
 pub mod utils {
-    use std::ops::Range;
-
     use crate::engine::game_object::GameObject;
+    use std::{any::Any, ops::Range};
 
     pub fn detect_collision(a: &dyn GameObject, b: &dyn GameObject) -> bool {
         let a_collision_box = a.get_collision_box();
@@ -75,6 +67,13 @@ pub mod utils {
                 }
             }
         }
+    }
+
+    pub fn try_get_concrete_type<T: Any>(abc: &dyn GameObject) -> Option<&T> {
+        abc.as_any().downcast_ref::<T>()
+    }
+    pub fn try_get_mut_concrete_type<T: Any>(abc: &mut dyn GameObject) -> Option<&mut T> {
+        abc.as_mut_any().downcast_mut()
     }
 }
 

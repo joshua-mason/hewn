@@ -1,8 +1,9 @@
-use crate::asciijump::game_objects::platform::Platform;
-use crate::asciijump::game_objects::player_character::PlayerCharacter;
-use crate::engine::game::{BaseGame, Entities};
-use crate::engine::game_object::utils::collision_pass;
-use crate::engine::game_object::{try_get_concrete_type, try_get_mut_concrete_type, GameObject};
+use super::game_objects::platform::Platform;
+use super::game_objects::player_character::PlayerCharacter;
+use crate::engine::{
+    collision_pass, try_get_concrete_type, try_get_mut_concrete_type, BaseGame, Entities,
+    GameObject,
+};
 use termion::event::Key;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -71,9 +72,7 @@ impl Game {
         self.entities
             .game_objects
             .iter_mut()
-            .filter_map(|o| {
-                try_get_mut_concrete_type::<PlayerCharacter>(&mut **o)
-            })
+            .filter_map(|o| try_get_mut_concrete_type::<PlayerCharacter>(&mut **o))
             .next()
     }
 
@@ -87,11 +86,14 @@ impl Game {
 
     pub fn set_player(&mut self, player: PlayerCharacter) {
         let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(player)];
-        if let Some(index) = self.entities.game_objects.iter().position(|o| {
-            try_get_concrete_type::<PlayerCharacter>(&**o).is_some()
-        }) {
+        if let Some(index) = self
+            .entities
+            .game_objects
+            .iter()
+            .position(|o| try_get_concrete_type::<PlayerCharacter>(&**o).is_some())
+        {
             self.entities.game_objects.remove(index);
-        } 
+        }
         self.entities.add_game_objects(&mut game_objects);
     }
 }
@@ -165,18 +167,14 @@ impl BaseGame for Game {
 pub fn take_platforms(game_objects: &[Box<dyn GameObject>]) -> Vec<&Platform> {
     game_objects
         .iter()
-        .filter_map(|o| {
-            try_get_concrete_type::<Platform>(&**o)
-        })
+        .filter_map(|o| try_get_concrete_type::<Platform>(&**o))
         .collect::<Vec<&Platform>>()
 }
 
 pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&PlayerCharacter> {
     game_objects
         .iter()
-        .filter_map(|o| {
-            try_get_concrete_type::<PlayerCharacter>(&**o)
-        })
+        .filter_map(|o| try_get_concrete_type::<PlayerCharacter>(&**o))
         .next()
 }
 
@@ -184,10 +182,7 @@ pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&Playe
 mod test {
     use crate::{
         asciijump::game_objects::{platform::Platform, player_character::PlayerCharacter},
-        engine::{
-            game::BaseGame,
-            game_object::Locate,
-        },
+        engine::{game::BaseGame, game_object::Locate},
     };
 
     use super::Game;

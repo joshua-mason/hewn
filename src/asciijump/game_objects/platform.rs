@@ -1,11 +1,9 @@
-use std::any::Any;
-
-use rand::Rng;
-
 use crate::engine::{
     display::build_string,
     game_object::{Collide, CollisionBox, Coordinate, DisplayObject, GameObject, Locate, NextStep},
 };
+use rand::Rng;
+use std::any::Any;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Platform {

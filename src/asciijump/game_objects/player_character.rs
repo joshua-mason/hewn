@@ -1,9 +1,8 @@
-use std::any::Any;
-
 use crate::engine::{
-    display::build_string,
+    build_string,
     game_object::{Collide, CollisionBox, Coordinate, DisplayObject, GameObject, Locate, NextStep},
 };
+use std::any::Any;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PlayerCharacter {

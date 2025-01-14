@@ -1,9 +1,7 @@
+use super::game::take_player_object;
+use crate::engine::{BaseDisplay, GameObject};
 use std::io::Stdout;
 use termion::raw::RawTerminal;
-
-use crate::engine::display::BaseDisplay;
-use crate::engine::game_object::GameObject;
-use crate::game::take_player_object;
 
 pub struct Display {
     stdout: RawTerminal<Stdout>,
