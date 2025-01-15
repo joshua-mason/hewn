@@ -23,6 +23,7 @@ pub trait GameObject: Collide + DisplayObject + NextStep + Any {
     fn get_collision_box(&self) -> CollisionBox;
 }
 
+//  TODO move to a new utils file?
 #[derive(Debug, PartialEq, Clone)]
 pub struct Coordinate {
     pub x: usize,

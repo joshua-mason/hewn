@@ -1,11 +1,11 @@
 use super::game::take_player_object;
-use crate::engine::{BaseDisplay, GameObject};
+use crate::engine::{game_object::Coordinate, BaseDisplay, GameObject};
 use std::io::Stdout;
 use termion::raw::RawTerminal;
 
 pub struct Display {
     stdout: RawTerminal<Stdout>,
-    view_cursor: u16,
+    view_cursor: Coordinate,
     screen_height: u16,
     screen_width: u16,
 }
@@ -14,7 +14,7 @@ impl Display {
     pub fn new(stdout: RawTerminal<Stdout>, screen_height: u16, screen_width: u16) -> Display {
         Display {
             stdout,
-            view_cursor: 0,
+            view_cursor: Coordinate { x: 0, y: 0 },
             screen_height,
             screen_width,
         }
@@ -25,11 +25,11 @@ impl BaseDisplay for Display {
     fn update_cursor(&mut self, game_objects: &[Box<dyn GameObject>]) {
         if let Some(player_object) = take_player_object(game_objects) {
             let y = player_object.coordinate.y;
-            let abs_diff = y.abs_diff(self.view_cursor() as usize);
+            let abs_diff = y.abs_diff(self.view_cursor().y as usize);
             if abs_diff > 1 && abs_diff < (self.screen_height() as usize - 2_usize) {
                 return;
             }
-            self.view_cursor = (y as i16 + 3 - self.screen_height() as i16).max(0) as u16;
+            self.view_cursor.y = (y as i16 + 3 - self.screen_height() as i16).max(0) as usize;
         }
     }
 
@@ -37,8 +37,8 @@ impl BaseDisplay for Display {
         &mut self.stdout
     }
 
-    fn view_cursor(&self) -> u16 {
-        self.view_cursor
+    fn view_cursor(&self) -> &Coordinate {
+        &self.view_cursor
     }
 
     fn screen_height(&self) -> u16 {

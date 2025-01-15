@@ -1,3 +1,4 @@
+use super::game_object::Coordinate;
 use super::game_object::GameObject;
 use std::io::Stdout;
 use std::io::Write;
@@ -7,7 +8,7 @@ use termion::raw::RawTerminal;
 pub trait BaseDisplay {
     fn stdout(&mut self) -> &mut RawTerminal<Stdout>;
 
-    fn view_cursor(&self) -> u16;
+    fn view_cursor(&self) -> &Coordinate;
 
     fn next(&mut self, game_objects: &[Box<dyn GameObject>], debug_string: Option<String>) {
         self.update_cursor(game_objects);
@@ -44,7 +45,8 @@ pub trait BaseDisplay {
 
     fn render_level(&mut self, game_objects: &[Box<dyn GameObject>], height: u16) -> String {
         let mut level: String = build_string('.', self.screen_width() as usize);
-        let y_position = self.screen_height() + self.view_cursor() - height;
+        let y_position = self.screen_height() + self.view_cursor().y as u16 - height;
+        let x_position = self.view_cursor().x;
 
         for game_object in game_objects {
             let coords = game_object.get_coords();
@@ -54,7 +56,15 @@ pub trait BaseDisplay {
                 display_string = display_string.split_at(width).0;
             }
             if coords.y == (y_position as usize) {
-                level.replace_range(coords.x..(coords.x + width), display_string)
+                if (coords.x + width - x_position <= level.len()) {
+                    let x_displacement = if x_position > coords.x {
+                        0
+                    } else {
+                        coords.x - x_position
+                    };
+                    let render_x_offset = coords.x + width - x_position;
+                    level.replace_range((x_displacement)..(render_x_offset), display_string)
+                }
             }
         }
 
