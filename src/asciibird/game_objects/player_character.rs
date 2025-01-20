@@ -40,6 +40,7 @@ impl PlayerCharacter {
         self.coordinate.x = 1;
         self.coordinate.y = 1;
         self.velocity = 5;
+        self.hit_wall = false;
     }
 }
 

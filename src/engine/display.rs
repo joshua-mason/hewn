@@ -46,23 +46,26 @@ pub trait BaseDisplay {
     fn render_level(&mut self, game_objects: &[Box<dyn GameObject>], height: u16) -> String {
         let mut level: String = build_string('.', self.screen_width() as usize);
         let y_position = self.screen_height() + self.view_cursor().y as u16 - height;
-        let x_position = self.view_cursor().x;
+        let cursor_x_position = self.view_cursor().x;
 
         for game_object in game_objects {
-            let coords = game_object.get_coords();
-            let width = game_object.width();
+            let game_object_coords = game_object.get_coords();
+            let game_object_width = game_object.width();
             let mut display_string: &str = &game_object.display();
-            if display_string.len() > width {
-                display_string = display_string.split_at(width).0;
+            if display_string.len() > game_object_width {
+                display_string = display_string.split_at(game_object_width).0;
             }
-            if coords.y == (y_position as usize) {
-                if (coords.x + width - x_position <= level.len()) {
-                    let x_displacement = if x_position > coords.x {
+            if game_object_coords.y == (y_position as usize)
+                && game_object_coords.x >= cursor_x_position
+            {
+                if game_object_coords.x + game_object_width - cursor_x_position <= level.len() {
+                    let x_displacement = if cursor_x_position > game_object_coords.x {
                         0
                     } else {
-                        coords.x - x_position
+                        game_object_coords.x - cursor_x_position
                     };
-                    let render_x_offset = coords.x + width - x_position;
+                    let render_x_offset =
+                        game_object_coords.x + game_object_width - cursor_x_position;
                     level.replace_range((x_displacement)..(render_x_offset), display_string)
                 }
             }
