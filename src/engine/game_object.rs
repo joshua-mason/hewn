@@ -70,6 +70,17 @@ pub mod utils {
         }
     }
 
+    pub fn take_game_objects<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Vec<&T> {
+        game_objects
+            .iter()
+            .filter_map(|o| try_get_concrete_type::<T>(&**o))
+            .collect::<Vec<&T>>()
+    }
+
+    pub fn take_game_object<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Option<&T> {
+        take_game_objects::<T>(game_objects).into_iter().next()
+    }
+
     pub fn try_get_concrete_type<T: Any>(abc: &dyn GameObject) -> Option<&T> {
         abc.as_any().downcast_ref::<T>()
     }

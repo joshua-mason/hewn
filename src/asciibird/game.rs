@@ -1,8 +1,8 @@
 use super::game_objects::player_character::PlayerCharacter;
 use super::game_objects::wall::Wall;
 use crate::engine::{
-    collision_pass, try_get_concrete_type, try_get_mut_concrete_type, BaseGame, Entities,
-    GameObject,
+    collision_pass, game_object::utils::take_game_object, try_get_concrete_type,
+    try_get_mut_concrete_type, BaseGame, Entities, GameObject,
 };
 use termion::event::Key;
 
@@ -57,7 +57,7 @@ impl Game {
     }
 
     pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-        take_player_object(self.game_objects())
+        take_game_object::<PlayerCharacter>(self.game_objects())
     }
 
     pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
@@ -144,18 +144,4 @@ impl BaseGame for Game {
             None
         }
     }
-}
-
-// TODO: move to engine and split into take game object and take game objects
-pub fn take_game_objects<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Vec<&T> {
-    game_objects
-        .iter()
-        .filter_map(|o| try_get_concrete_type::<T>(&**o))
-        .collect::<Vec<&T>>()
-}
-
-pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&PlayerCharacter> {
-    take_game_objects::<PlayerCharacter>(game_objects)
-        .into_iter()
-        .next()
 }

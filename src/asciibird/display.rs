@@ -1,5 +1,8 @@
-use super::game::take_player_object;
-use crate::engine::{game_object::Coordinate, BaseDisplay, GameObject};
+use super::game_objects::player_character::PlayerCharacter;
+use crate::engine::{
+    game_object::{utils::take_game_object, Coordinate},
+    BaseDisplay, GameObject,
+};
 use std::io::Stdout;
 use termion::raw::RawTerminal;
 
@@ -23,7 +26,7 @@ impl Display {
 
 impl BaseDisplay for Display {
     fn update_cursor(&mut self, game_objects: &[Box<dyn GameObject>]) {
-        if let Some(player_object) = take_player_object(game_objects) {
+        if let Some(player_object) = take_game_object::<PlayerCharacter>(game_objects) {
             let x = player_object.coordinate.x;
             let abs_diff = x.abs_diff(self.view_cursor().x as usize);
             if abs_diff > 1 && abs_diff < (self.screen_height() as usize - 2_usize) {

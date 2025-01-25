@@ -6,6 +6,6 @@ mod asciijump;
 mod engine;
 
 fn main() {
-    // play_asciijump();
+    play_asciijump();
     play_asciibird();
 }
