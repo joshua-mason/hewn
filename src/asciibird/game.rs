@@ -41,15 +41,12 @@ impl Game {
     }
 
     fn move_player(&mut self) {
-        match self.player_control_key {
-            Some(Key::Up) => {
-                if let Some(player) = self.get_mut_player_object() {
-                    if player.coordinate.x > 0 {
-                        player.jump()
-                    }
+        if let Some(Key::Up) = self.player_control_key {
+            if let Some(player) = self.get_mut_player_object() {
+                if player.coordinate.x > 0 {
+                    player.jump()
                 }
             }
-            _ => {}
         }
     }
     pub fn end_game(&mut self) {

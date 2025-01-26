@@ -57,17 +57,15 @@ pub trait BaseDisplay {
             }
             if game_object_coords.y == (y_position as usize)
                 && game_object_coords.x >= cursor_x_position
+                && game_object_coords.x + game_object_width - cursor_x_position <= level.len()
             {
-                if game_object_coords.x + game_object_width - cursor_x_position <= level.len() {
-                    let x_displacement = if cursor_x_position > game_object_coords.x {
-                        0
-                    } else {
-                        game_object_coords.x - cursor_x_position
-                    };
-                    let render_x_offset =
-                        game_object_coords.x + game_object_width - cursor_x_position;
-                    level.replace_range((x_displacement)..(render_x_offset), display_string)
-                }
+                let x_displacement = if cursor_x_position > game_object_coords.x {
+                    0
+                } else {
+                    game_object_coords.x - cursor_x_position
+                };
+                let render_x_offset = game_object_coords.x + game_object_width - cursor_x_position;
+                level.replace_range((x_displacement)..(render_x_offset), display_string)
             }
         }
 

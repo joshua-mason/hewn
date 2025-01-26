@@ -25,7 +25,7 @@ impl BaseDisplay for Display {
     fn update_cursor(&mut self, game_objects: &[Box<dyn GameObject>]) {
         if let Some(player_object) = take_player_object(game_objects) {
             let y = player_object.coordinate.y;
-            let abs_diff = y.abs_diff(self.view_cursor().y as usize);
+            let abs_diff = y.abs_diff(self.view_cursor().y);
             if abs_diff > 1 && abs_diff < (self.screen_height() as usize - 2_usize) {
                 return;
             }
