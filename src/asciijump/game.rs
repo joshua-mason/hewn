@@ -186,7 +186,7 @@ pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&Playe
 mod test {
     use crate::{
         asciijump::game_objects::{platform::Platform, player_character::PlayerCharacter},
-        engine::{game::BaseGame, game_object::Locate},
+        engine::{game::BaseGame, game_object::GameObject},
     };
 
     use super::Game;
