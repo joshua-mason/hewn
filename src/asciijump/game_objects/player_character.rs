@@ -1,6 +1,7 @@
 use crate::engine::{
     build_string,
-    game_object::{Collide, CollisionBox, Coordinate, DisplayObject, GameObject, Locate, NextStep},
+    game_object::{CollisionBox, Coordinate},
+    GameObject,
 };
 use std::any::Any;
 
@@ -50,33 +51,6 @@ impl Default for PlayerCharacter {
     }
 }
 
-impl Locate for PlayerCharacter {
-    fn get_coords(&self) -> &Coordinate {
-        &self.coordinate
-    }
-}
-
-impl Collide for PlayerCharacter {}
-
-impl NextStep for PlayerCharacter {
-    fn next_step(&mut self) {
-        self.coordinate.y = (self.coordinate.y as isize + self.velocity).max(0) as usize;
-        self.velocity -= 1;
-    }
-}
-
-impl DisplayObject for PlayerCharacter {
-    fn display(&self) -> String {
-        build_string('#', 1)
-    }
-    fn width(&self) -> usize {
-        1
-    }
-    fn priority(&self) -> u8 {
-        0
-    }
-}
-
 impl GameObject for PlayerCharacter {
     fn get_collision_box(&self) -> CollisionBox {
         let coords = self.get_coords();
@@ -99,5 +73,21 @@ impl GameObject for PlayerCharacter {
     }
     fn as_mut_any(&mut self) -> &mut dyn Any {
         self
+    }
+    fn get_coords(&self) -> &Coordinate {
+        &self.coordinate
+    }
+    fn next_step(&mut self) {
+        self.coordinate.y = (self.coordinate.y as isize + self.velocity).max(0) as usize;
+        self.velocity -= 1;
+    }
+    fn display(&self) -> String {
+        build_string('#', 1)
+    }
+    fn width(&self) -> usize {
+        1
+    }
+    fn priority(&self) -> u8 {
+        0
     }
 }

@@ -1,6 +1,7 @@
 use crate::engine::{
     display::build_string,
-    game_object::{Collide, CollisionBox, Coordinate, DisplayObject, GameObject, Locate, NextStep},
+    game_object::{CollisionBox, Coordinate},
+    GameObject,
 };
 use rand::Rng;
 use std::any::Any;
@@ -54,30 +55,6 @@ impl Platform {
     }
 }
 
-impl Locate for Platform {
-    fn get_coords(&self) -> &Coordinate {
-        &self.coordinate
-    }
-}
-
-impl Collide for Platform {}
-
-impl NextStep for Platform {
-    fn next_step(&mut self) {}
-}
-
-impl DisplayObject for Platform {
-    fn display(&self) -> String {
-        build_string('=', 3)
-    }
-    fn width(&self) -> usize {
-        self.length
-    }
-    fn priority(&self) -> u8 {
-        1
-    }
-}
-
 impl GameObject for Platform {
     fn get_collision_box(&self) -> CollisionBox {
         let coords = self.get_coords();
@@ -95,5 +72,18 @@ impl GameObject for Platform {
 
     fn as_mut_any(&mut self) -> &mut dyn Any {
         self
+    }
+    fn next_step(&mut self) {}
+    fn get_coords(&self) -> &Coordinate {
+        &self.coordinate
+    }
+    fn display(&self) -> String {
+        build_string('=', 3)
+    }
+    fn width(&self) -> usize {
+        self.length
+    }
+    fn priority(&self) -> u8 {
+        1
     }
 }

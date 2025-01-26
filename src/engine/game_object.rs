@@ -1,26 +1,15 @@
 use std::{any::Any, fmt::Debug, ops::Range};
 
-pub trait Locate {
-    fn get_coords(&self) -> &Coordinate;
-}
-
-pub trait Collide: Locate + Debug {}
-
-pub trait DisplayObject {
-    fn width(&self) -> usize;
-    fn display(&self) -> String;
-    fn priority(&self) -> u8;
-}
-
-pub trait NextStep {
-    fn next_step(&mut self);
-}
-
-pub trait GameObject: Collide + DisplayObject + NextStep + Any {
+pub trait GameObject: Debug + Any {
     fn as_any(&self) -> &dyn Any;
     fn as_mut_any(&mut self) -> &mut dyn Any;
     fn collide(&mut self, other: &dyn GameObject);
+    fn display(&self) -> String;
     fn get_collision_box(&self) -> CollisionBox;
+    fn get_coords(&self) -> &Coordinate;
+    fn next_step(&mut self);
+    fn priority(&self) -> u8;
+    fn width(&self) -> usize;
 }
 
 //  TODO move to a new utils file?
@@ -99,27 +88,10 @@ mod test {
         coords: Coordinate,
     }
 
-    impl Locate for TestGameObject {
+    impl GameObject for TestGameObject {
         fn get_coords(&self) -> &Coordinate {
             &self.coords
         }
-    }
-
-    impl Collide for TestGameObject {}
-
-    impl DisplayObject for TestGameObject {
-        fn display(&self) -> String {
-            "---".to_owned()
-        }
-        fn width(&self) -> usize {
-            3
-        }
-        fn priority(&self) -> u8 {
-            1
-        }
-    }
-
-    impl GameObject for TestGameObject {
         fn as_any(&self) -> &dyn Any {
             self
         }
@@ -133,9 +105,16 @@ mod test {
                 y: self.coords.y..(self.coords.y + 1),
             }
         }
-    }
 
-    impl NextStep for TestGameObject {
+        fn display(&self) -> String {
+            "---".to_owned()
+        }
+        fn width(&self) -> usize {
+            3
+        }
+        fn priority(&self) -> u8 {
+            1
+        }
         fn next_step(&mut self) {}
     }
 

@@ -1,6 +1,7 @@
 use crate::engine::{
     display::build_string,
-    game_object::{Collide, CollisionBox, Coordinate, DisplayObject, GameObject, Locate, NextStep},
+    game_object::{CollisionBox, Coordinate},
+    GameObject,
 };
 use rand::Rng;
 use std::any::Any;
@@ -59,30 +60,6 @@ impl Wall {
     }
 }
 
-impl Locate for Wall {
-    fn get_coords(&self) -> &Coordinate {
-        &self.coordinate
-    }
-}
-
-impl Collide for Wall {}
-
-impl NextStep for Wall {
-    fn next_step(&mut self) {}
-}
-
-impl DisplayObject for Wall {
-    fn display(&self) -> String {
-        build_string('|', 3)
-    }
-    fn width(&self) -> usize {
-        1
-    }
-    fn priority(&self) -> u8 {
-        1
-    }
-}
-
 impl GameObject for Wall {
     fn get_collision_box(&self) -> CollisionBox {
         let coords = self.get_coords();
@@ -100,5 +77,18 @@ impl GameObject for Wall {
 
     fn as_mut_any(&mut self) -> &mut dyn Any {
         self
+    }
+    fn display(&self) -> String {
+        build_string('|', 3)
+    }
+    fn width(&self) -> usize {
+        1
+    }
+    fn priority(&self) -> u8 {
+        1
+    }
+    fn next_step(&mut self) {}
+    fn get_coords(&self) -> &Coordinate {
+        &self.coordinate
     }
 }
