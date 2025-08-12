@@ -413,10 +413,10 @@ mod display {
 
 mod game {
 
-    use super::game_objects;
     use super::game_objects::food::Food;
     use super::game_objects::player_character::{Direction, PlayerCharacter};
     use super::game_objects::wall::Wall;
+    use crate::engine::game::Key;
     use crate::engine::game_object::utils::{take_game_objects, take_mut_game_objects};
     use crate::engine::game_object::Coordinate;
     use crate::engine::{
@@ -424,7 +424,6 @@ mod game {
         try_get_mut_concrete_type, BaseGame, Entities, GameObject,
     };
     use rand::Rng;
-    use termion::event::Key;
 
     #[derive(Debug, PartialEq, Eq)]
     pub enum GameState {
@@ -556,7 +555,7 @@ mod game {
     }
 
     impl BaseGame for Game {
-        fn set_player_control_key(&mut self, key: Option<termion::event::Key>) {
+        fn set_player_control_key(&mut self, key: Option<Key>) {
             self.player_control_key = key
         }
 

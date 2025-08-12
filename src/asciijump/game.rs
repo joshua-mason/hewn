@@ -1,10 +1,10 @@
 use super::game_objects::platform::Platform;
 use super::game_objects::player_character::PlayerCharacter;
+use crate::engine::game::Key;
 use crate::engine::{
     collision_pass, try_get_concrete_type, try_get_mut_concrete_type, BaseGame, Entities,
     GameObject,
 };
-use termion::event::Key;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
@@ -99,7 +99,7 @@ impl Game {
 }
 
 impl BaseGame for Game {
-    fn set_player_control_key(&mut self, key: Option<termion::event::Key>) {
+    fn set_player_control_key(&mut self, key: Option<Key>) {
         self.player_control_key = key
     }
 

@@ -1,3 +1,5 @@
+use crate::engine::game::termion_key_to_key;
+
 use super::{display::BaseDisplay, game::BaseGame};
 use std::{
     thread,
@@ -36,7 +38,8 @@ impl Control<'_> {
                 match key {
                     termion::event::Key::Char('q') => break,
                     key if key != termion::event::Key::Char(' ') => {
-                        self.game.set_player_control_key(Some(key));
+                        self.game
+                            .set_player_control_key(Some(termion_key_to_key(key)));
                     }
                     termion::event::Key::Char(' ') => {
                         self.game.start_game();

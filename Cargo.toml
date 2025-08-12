@@ -3,6 +3,10 @@ name = "ledoodlejump"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+wasm = []
+ascii = []
+
 [dependencies]
 rand = "0.8.5"
 termion = "4.0.3"

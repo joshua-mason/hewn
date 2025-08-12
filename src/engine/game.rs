@@ -3,7 +3,7 @@ use super::game_object::GameObject;
 pub trait BaseGame {
     fn start_game(&mut self);
 
-    fn set_player_control_key(&mut self, key: Option<termion::event::Key>);
+    fn set_player_control_key(&mut self, key: Option<Key>);
 
     fn next(&mut self);
 
@@ -37,5 +37,27 @@ impl Entities {
                 std::cmp::Ordering::Less
             }
         });
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Key {
+    Left,
+    Right,
+    Up,
+    Down,
+    Space,
+    Escape,
+}
+
+pub fn termion_key_to_key(key: termion::event::Key) -> Key {
+    match key {
+        termion::event::Key::Left => Key::Left,
+        termion::event::Key::Right => Key::Right,
+        termion::event::Key::Up => Key::Up,
+        termion::event::Key::Down => Key::Down,
+        termion::event::Key::Char(' ') => Key::Space,
+        termion::event::Key::Esc => Key::Escape,
+        _ => todo!(),
     }
 }
