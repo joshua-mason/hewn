@@ -41,6 +41,13 @@ pub mod utils {
 
     // TODO: this seems to be affected by the order of the objects - probably related to the double dispatch problem?
     pub fn collision_pass(objects: &mut [Box<dyn GameObject>]) {
+        process_collisions(objects);
+        objects.reverse();
+        process_collisions(objects);
+        objects.reverse();
+    }
+
+    fn process_collisions(objects: &mut [Box<dyn GameObject>]) {
         for i in 0..objects.len() {
             let (left, rest) = objects.split_at_mut(i + 1);
 
@@ -51,7 +58,6 @@ pub mod utils {
                 // Now upcast references: &mut dyn GameObject -> &mut dyn Collide
                 let x = &mut **a;
                 let y: &dyn GameObject = &**b;
-
                 if detect_collision(x, y) {
                     x.collide(y);
                 }
@@ -64,6 +70,15 @@ pub mod utils {
             .iter()
             .filter_map(|o| try_get_concrete_type::<T>(&**o))
             .collect::<Vec<&T>>()
+    }
+
+    pub fn take_mut_game_objects<'a, T: GameObject>(
+        game_objects: &'a mut [Box<dyn GameObject>],
+    ) -> Vec<&'a mut T> {
+        game_objects
+            .iter_mut()
+            .filter_map(|o| try_get_mut_concrete_type::<T>(&mut **o))
+            .collect::<Vec<&'a mut T>>()
     }
 
     pub fn take_game_object<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Option<&T> {
@@ -81,11 +96,26 @@ pub mod utils {
 #[cfg(test)]
 mod test {
 
-    use super::*;
+    use crate::asciibird::game_objects;
+
+    use super::{
+        utils::{collision_pass, take_game_objects},
+        *,
+    };
 
     #[derive(Debug)]
     struct TestGameObject {
         coords: Coordinate,
+        collisions: u8,
+    }
+
+    impl TestGameObject {
+        pub fn from_tuple((x, y): (usize, usize)) -> TestGameObject {
+            TestGameObject {
+                coords: Coordinate { x, y },
+                collisions: 0,
+            }
+        }
     }
 
     impl GameObject for TestGameObject {
@@ -98,7 +128,9 @@ mod test {
         fn as_mut_any(&mut self) -> &mut dyn Any {
             self
         }
-        fn collide(&mut self, _: &dyn GameObject) {}
+        fn collide(&mut self, _: &dyn GameObject) {
+            self.collisions += 1;
+        }
         fn get_collision_box(&self) -> CollisionBox {
             CollisionBox {
                 x: self.coords.x..(self.coords.x + 1),
@@ -120,25 +152,33 @@ mod test {
 
     #[test]
     fn test_collision() {
-        let platform = TestGameObject {
-            coords: Coordinate { x: 5, y: 5 },
-        };
-        let player = TestGameObject {
-            coords: Coordinate { x: 5, y: 5 },
-        };
+        let platform = TestGameObject::from_tuple((5, 5));
+        let player = TestGameObject::from_tuple((5, 5));
 
         assert!(utils::detect_collision(&platform, &player));
     }
 
     #[test]
     fn test_no_collision() {
-        let platform = TestGameObject {
-            coords: Coordinate { x: 5, y: 5 },
-        };
-        let player = TestGameObject {
-            coords: Coordinate { x: 7, y: 6 },
-        };
+        let platform = TestGameObject::from_tuple((5, 5));
+        let player = TestGameObject::from_tuple((7, 6));
 
         assert!(!utils::detect_collision(&platform, &player));
+    }
+
+    #[test]
+    fn test_collision_pass() {
+        let mut game_objects: Vec<Box<dyn GameObject>> = vec![
+            Box::new(TestGameObject::from_tuple((1, 1))),
+            Box::new(TestGameObject::from_tuple((1, 1))),
+        ];
+
+        collision_pass(&mut game_objects);
+
+        println!("{:?}", game_objects);
+
+        for game_object in take_game_objects::<TestGameObject>(&game_objects).iter() {
+            assert_eq!(game_object.collisions, 1);
+        }
     }
 }

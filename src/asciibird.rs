@@ -12,7 +12,7 @@ const SCREEN_HEIGHT: u16 = 30;
 
 pub fn play_asciibird() {
     let (stdout, stdin) = initialize_terminal();
-    let mut game = game::Game::new(WIDTH, HEIGHT);
+    let mut game = game::Game::new();
     let walls = Wall::generate_walls(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());
     game.set_walls(walls);

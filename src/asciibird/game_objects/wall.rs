@@ -47,7 +47,7 @@ impl Wall {
 
             if rng.gen_range(0..10) == 0 {
                 let y = rng.gen_range(0..(height - 5));
-                let height = 5;
+                let height: usize = 5;
                 for y in y..(y + height) {
                     walls.push(Wall::from_tuple((index, y)));
                 }
