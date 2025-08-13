@@ -77,9 +77,11 @@ pub trait BaseDisplay {
 
         let gotos =
             (0..self.screen_height()).map(|height| termion::cursor::Goto(1, height).to_string());
-        zip(levels, gotos)
-            .map(|(level, goto)| format!("{}{}", level, goto))
-            .collect::<String>()
+        zip(levels, gotos).fold(String::new(), |mut acc, (level, goto)| {
+            acc.push_str(&level);
+            acc.push_str(&goto);
+            acc
+        })
     }
 }
 

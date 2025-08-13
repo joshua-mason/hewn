@@ -58,9 +58,7 @@ pub mod utils {
                 // Now upcast references: &mut dyn GameObject -> &mut dyn Collide
                 let x = &mut **a;
                 let y: &dyn GameObject = &**b;
-                // println!("detect collision: {:?}, {:?}", x, y);
                 if detect_collision(x, y) {
-                    println!("{:?}, {:?}", x, y);
                     x.collide(y);
                 }
             }
@@ -75,11 +73,11 @@ pub mod utils {
     }
 
     pub fn take_mut_game_objects<'a, T: GameObject>(
-        game_objects: &'a mut [Box<&mut dyn GameObject>],
+        game_objects: &'a mut [Box<dyn GameObject>],
     ) -> Vec<&'a mut T> {
         game_objects
             .iter_mut()
-            .filter_map(|o| try_get_mut_concrete_type::<T>(**o))
+            .filter_map(|o| try_get_mut_concrete_type::<T>(&mut **o))
             .collect::<Vec<&'a mut T>>()
     }
 
