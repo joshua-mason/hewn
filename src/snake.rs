@@ -5,7 +5,7 @@ mod game_objects {
         use crate::engine::{
             build_string,
             game_object::{CollisionBox, Coordinate},
-            try_get_concrete_type, try_get_mut_concrete_type, GameObject,
+            try_get_concrete_type, GameObject,
         };
         use std::any::Any;
 
@@ -184,6 +184,13 @@ mod game_objects {
             fn get_collision_box(&self) -> CollisionBox {
                 let coords = self.get_coords();
 
+                if self.eaten {
+                    return CollisionBox {
+                        x: coords.x..(coords.x),
+                        y: coords.y..(coords.y),
+                    };
+                }
+
                 CollisionBox {
                     x: coords.x..(coords.x + 1),
                     y: coords.y..(coords.y + 1),
@@ -239,9 +246,7 @@ mod game_objects {
 
         impl SnakeBody {
             pub fn new(coord: Coordinate) -> SnakeBody {
-                SnakeBody {
-                    coordinate: Coordinate { x: 1, y: 1 },
-                }
+                SnakeBody { coordinate: coord }
             }
         }
 
@@ -252,8 +257,8 @@ mod game_objects {
                 let coords = self.get_coords();
 
                 CollisionBox {
-                    x: coords.x..(coords.x),
-                    y: coords.y..(coords.y),
+                    x: coords.x..(coords.x + 1),
+                    y: coords.y..(coords.y + 1),
                 }
             }
 
@@ -413,11 +418,10 @@ mod display {
 
 mod game {
 
-    use super::game_objects;
     use super::game_objects::food::Food;
     use super::game_objects::player_character::{Direction, PlayerCharacter};
     use super::game_objects::wall::Wall;
-    use crate::engine::game_object::utils::{take_game_objects, take_mut_game_objects};
+
     use crate::engine::game_object::Coordinate;
     use crate::engine::{
         collision_pass, game_object::utils::take_game_object, try_get_concrete_type,
@@ -544,12 +548,12 @@ mod game {
 
         pub fn generate_food(&mut self) {
             let mut rng = rand::thread_rng();
-            let x = rng.gen_range(0..(self.width));
-            let y = rng.gen_range(0..(self.height));
+            let x = rng.gen_range(0..self.width);
+            let y = rng.gen_range(0..self.height);
 
             // TODO we need to avoid generating on the snakes body/head
             self.set_food(Food {
-                coordinate: Coordinate { x: x, y: y },
+                coordinate: Coordinate { x, y },
                 eaten: false,
             });
         }
@@ -583,34 +587,7 @@ mod game {
                 self.end_game();
             }
 
-            // get index of anty food eaten and then remove:
-
-            // let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(food)];
-            if let Some(index) = self.entities.game_objects.iter().position(|o| {
-                if let Some(food) = try_get_concrete_type::<Food>(&**o) {
-                    return food.eaten;
-                }
-                false
-            }) {
-                self.entities.game_objects.remove(index);
-            }
-            // self.entities.add_game_objects(&mut game_objects);
-
-            // let foods = self.get_food_objects();
-            // self.entities.game_objects = self.entities.game_objects.iter_mut().filter(|o| {
-            //     if let Some(food) = take_game_object::<Food>(o) {
-            //         if food.eaten {
-            //             return false;
-            //         }
-            //     }
-            //     true
-            // });
-
-            // }).for_each(|f| {
-            //     self.game_objects().iter().filter(|o| {
-            //         if Some(food) = take_game_object<Food>(o);
-            //     })
-            // });
+            // Keep eaten food in place for one tick so tests can observe state change
 
             self.score = self
                 .score
