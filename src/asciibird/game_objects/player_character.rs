@@ -54,14 +54,13 @@ impl Default for PlayerCharacter {
 impl GameObject for PlayerCharacter {
     fn get_collision_box(&self) -> CollisionBox {
         let coords = self.get_coords();
-        let next_y_coordinate = (coords.y as isize + self.velocity).max(0) as usize;
         CollisionBox {
             x: coords.x..(coords.x + 1),
             y: coords.y..(coords.y + 1),
         }
     }
 
-    fn collide(&mut self, other: &dyn GameObject) {
+    fn collide(&mut self, _other: &dyn GameObject) {
         self.hit_wall = true;
     }
     fn as_any(&self) -> &dyn Any {
