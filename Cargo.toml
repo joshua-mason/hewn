@@ -1,8 +1,8 @@
 [package]
 name = "hewn"
 version = "0.1.0"
-edition = "2025"
-description = "Terminal and WASM game engine, fun and simple."
+edition = "2021"
+description = "A simple game engine built for educational purposes."
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/joshua-mason/hewn"
