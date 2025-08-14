@@ -1,7 +1,6 @@
 // use asciibird::play_asciibird;
 // use asciijump::play_asciijump;
 use snake::play_snake_in_terminal;
-use wasm_bindgen::prelude::*;
 
 // mod asciibird;
 // mod asciijump;

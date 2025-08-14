@@ -4,16 +4,8 @@
 //!
 //! Includes examples: Snake, Doodle Jump, Flappy Bird.
 
-// use asciibird::play_asciibird;
-// use asciijump::play_asciijump;
 use wasm_bindgen::prelude::*;
 
-#[cfg(not(target_arch = "wasm32"))]
-use snake::play_snake_in_terminal;
-use wasm_bindgen::prelude::*;
-
-// mod asciibird;
-// mod asciijump;
 mod engine;
 mod snake;
 
