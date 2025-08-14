@@ -1,7 +1,13 @@
 [package]
-name = "ledoodlejump"
+name = "hewn"
 version = "0.1.0"
-edition = "2021"
+edition = "2025"
+description = "Terminal and WASM game engine, fun and simple."
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/joshua-mason/hewn"
+keywords = ["game", "engine", "wasm", "terminal"]
+categories = ["game-engines"]
 
 [dependencies]
 wasm-bindgen = "0.2"
