@@ -11,7 +11,3 @@ Hewn is a simple, fun, and portable game engine for building terminal and WASM g
 - Simple game object and entity system
 - Minimal dependencies
 - Example game: ASCII Jump
-
-## Getting Started
-
-Add to your `Cargo.toml`:
