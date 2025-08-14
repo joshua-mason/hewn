@@ -1,3 +1,9 @@
+//! # Hewn
+//!
+//! **Status:** Alpha – experimental game engine for learning.
+//!
+//! Includes examples: Snake, Doodle Jump, Flappy Bird.
+
 // use asciibird::play_asciibird;
 // use asciijump::play_asciijump;
 use wasm_bindgen::prelude::*;
