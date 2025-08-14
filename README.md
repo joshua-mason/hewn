@@ -1,5 +1,8 @@
 # Hewn
 
+> **Note:** This crate is experimental and in early development.
+> Expect breaking changes and incomplete features.  
+
 Hewn is a simple, fun, and portable game engine for building terminal and WASM games in Rust.
 
 ## Features
