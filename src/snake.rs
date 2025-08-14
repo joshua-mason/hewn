@@ -1,6 +1,6 @@
-use crate::engine::{
-    control::Control, game_object::Coordinate, initialize_terminal, BaseDisplay, TerminalRenderer,
-};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::engine::{control::TerminalControl, initialize_terminal, TerminalRenderer};
+use crate::engine::{game_object::Coordinate, BaseDisplay};
 use game_objects::{player_character::PlayerCharacter, wall::Wall};
 
 const WIDTH: usize = 30;
@@ -8,7 +8,8 @@ const HEIGHT: usize = 25;
 const SCREEN_WIDTH: u16 = 30;
 const SCREEN_HEIGHT: u16 = 25;
 
-pub fn play_snake() {
+#[cfg(not(target_arch = "wasm32"))]
+pub fn play_snake_in_terminal() {
     let (stdout, stdin) = initialize_terminal();
     let mut game = game::Game::new(WIDTH, HEIGHT);
     let walls = Wall::generate_walls(WIDTH, HEIGHT);
@@ -20,10 +21,26 @@ pub fn play_snake() {
         renderer: Box::new(renderer),
         view_cursor: Coordinate { x: 0, y: 0 },
     };
-    let mut control = Control::new(stdin, &mut game, &mut display);
+    let mut control = TerminalControl::new(stdin, &mut game, &mut display);
 
     control.listen();
 }
+
+// pub fn play_snake_in_web() {
+//     let mut game = game::Game::new(WIDTH, HEIGHT);
+//     let walls = Wall::generate_walls(WIDTH, HEIGHT);
+//     game.set_player(PlayerCharacter::new());
+//     game.set_walls(walls);
+//     game.generate_food();
+//     let renderer = WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH);
+//     let mut display = BaseDisplay {
+//         renderer: Box::new(renderer),
+//         view_cursor: Coordinate { x: 0, y: 0 },
+//     };
+//     let mut control = TerminalControl::new(stdin, &mut game, &mut display);
+
+//     control.listen();
+// }
 
 mod game_objects {
 
@@ -396,7 +413,7 @@ mod game_objects {
     }
 }
 
-mod game {
+pub mod game {
 
     use super::game_objects::food::Food;
     use super::game_objects::player_character::{Direction, PlayerCharacter};
@@ -410,6 +427,7 @@ mod game {
         try_get_mut_concrete_type, BaseGame, Entities, GameObject,
     };
     use rand::Rng;
+    use wasm_bindgen::prelude::wasm_bindgen;
 
     #[derive(Debug, PartialEq, Eq)]
     pub enum GameState {
@@ -419,14 +437,15 @@ mod game {
     }
 
     #[derive(Debug)]
+    #[wasm_bindgen]
     pub struct Game {
         pub width: usize,
         pub height: usize,
 
-        pub state: GameState,
+        state: GameState,
         pub score: usize,
 
-        pub entities: Entities,
+        entities: Entities,
         player_control_key: Option<Key>,
     }
 
@@ -595,6 +614,13 @@ mod game {
             }
         }
     }
+
+    #[cfg(test)]
+    impl Game {
+        pub fn entities_for_test(&self) -> &Entities {
+            &self.entities
+        }
+    }
 }
 
 #[cfg(test)]
@@ -615,16 +641,16 @@ mod test {
         // game.set_walls(walls);
         game.set_food(Food::from_tuple((1, 2)));
 
-        let food = take_game_object::<Food>(&game.entities.game_objects);
-        let player = take_game_object::<PlayerCharacter>(&game.entities.game_objects);
+        let food = take_game_object::<Food>(&game.entities_for_test().game_objects);
+        let player = take_game_object::<PlayerCharacter>(&game.entities_for_test().game_objects);
         assert!(detect_collision(food.unwrap(), player.unwrap()));
         println!("Next");
         game.start_game();
         game.next();
-        println!("Done {:?}", game.entities.game_objects);
+        println!("Done {:?}", game.entities_for_test().game_objects);
 
-        let food = take_game_object::<Food>(&game.entities.game_objects);
-        let player = take_game_object::<PlayerCharacter>(&game.entities.game_objects);
+        let food = take_game_object::<Food>(&game.entities_for_test().game_objects);
+        let player = take_game_object::<PlayerCharacter>(&game.entities_for_test().game_objects);
 
         assert!(food.unwrap().eaten);
         assert!(!detect_collision(food.unwrap(), player.unwrap()));

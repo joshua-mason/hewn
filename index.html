@@ -1,0 +1,54 @@
+<script type="module" lang="ts">
+    import init, { SnakeGame, WasmKey } from './pkg/ledoodlejump.js';
+
+    async function main() {
+        await init();                  // initializes ledoodlejump_bg.wasm
+        const game = SnakeGame.new();
+        game.start();
+
+        const pre = document.getElementById('game-output');
+
+        function renderGame() {
+            const output = game.render();
+            // Split on '|' and join with newlines for <pre>
+            pre.textContent = output.split('|').join('\n');
+        }
+
+        const mapKey = (e) => {
+            switch (e.key) {
+                case 'ArrowLeft': return WasmKey.Left;
+                case 'ArrowRight': return WasmKey.Right;
+                case 'ArrowUp': return WasmKey.Up;
+                case 'ArrowDown': return WasmKey.Down;
+                case ' ': return WasmKey.Space;
+                case 'Escape': return WasmKey.Escape;
+                default: return undefined;
+            }
+        };
+
+        addEventListener('keydown', (e) => {
+            const k = mapKey(e);
+            if (k === WasmKey.Space) {
+                game.tick();
+                renderGame();
+            }
+            if (k !== undefined) game.set_player_control_key(k);
+        });
+
+        // Optionally, render initial state
+        renderGame();
+
+        // function loop() {
+        //     game.tick();
+        //     renderGame();
+        //     requestAnimationFrame(loop);
+        // }
+        // loop();
+    }
+    window.main = main;
+    // main();
+</script>
+<div>
+    <button id="start" onclick="window.main()">Start</button>
+    <pre id="game-output"></pre>
+</div>

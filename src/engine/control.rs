@@ -1,4 +1,6 @@
+#[cfg(not(target_arch = "wasm32"))]
 use crate::engine::game::map_termion_key;
+use crate::engine::game::Key;
 
 use super::{display::BaseDisplay, game::BaseGame};
 use std::{
@@ -9,20 +11,22 @@ use std::{
 const FRAME_RATE_MILLIS: u64 = 10;
 const GAME_STEP_MILLIS: u64 = 100;
 
-pub struct Control<'a> {
+#[cfg(not(target_arch = "wasm32"))]
+pub struct TerminalControl<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
     pub game: &'a mut dyn BaseGame,
     pub display: &'a mut BaseDisplay,
     last_frame_time: Instant,
 }
 
-impl Control<'_> {
+#[cfg(not(target_arch = "wasm32"))]
+impl TerminalControl<'_> {
     pub fn new<'a>(
         stdin: termion::input::Keys<termion::AsyncReader>,
         game: &'a mut dyn BaseGame,
         display: &'a mut BaseDisplay,
-    ) -> Control<'a> {
-        Control {
+    ) -> TerminalControl<'a> {
+        TerminalControl {
             stdin,
             game,
             last_frame_time: Instant::now(),
@@ -63,5 +67,33 @@ impl Control<'_> {
             self.display
                 .next(self.game.game_objects(), self.game.debug_str());
         }
+    }
+}
+
+pub struct WebControl {
+    game: Box<dyn BaseGame>,
+    display: BaseDisplay,
+}
+
+impl WebControl {
+    pub fn new(game: Box<dyn BaseGame>, display: BaseDisplay) -> WebControl {
+        WebControl { game, display }
+    }
+
+    pub fn start(&mut self) {
+        self.game.start_game();
+    }
+
+    pub fn set_player_control_key(&mut self, key: Option<Key>) {
+        self.game.set_player_control_key(key);
+    }
+
+    pub fn tick(&mut self) {
+        self.game.next();
+    }
+
+    pub fn render(&mut self) -> String {
+        self.display
+            .next(self.game.game_objects(), self.game.debug_str())
     }
 }

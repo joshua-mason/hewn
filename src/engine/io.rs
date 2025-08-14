@@ -1,7 +1,10 @@
 use std::io::{self, Stdout};
+#[cfg(not(target_arch = "wasm32"))]
 use termion::input::TermRead;
+#[cfg(not(target_arch = "wasm32"))]
 use termion::raw::{IntoRawMode, RawTerminal};
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn initialize_terminal() -> (
     RawTerminal<Stdout>,
     termion::input::Keys<termion::AsyncReader>,

@@ -50,6 +50,7 @@ pub enum Key {
     Escape,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn map_termion_key(key: termion::event::Key) -> Key {
     match key {
         termion::event::Key::Left => Key::Left,

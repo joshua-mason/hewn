@@ -11,4 +11,5 @@ pub use self::game_object::utils::collision_pass;
 pub use self::game_object::utils::try_get_concrete_type;
 pub use self::game_object::utils::try_get_mut_concrete_type;
 pub use self::game_object::GameObject;
+#[cfg(not(target_arch = "wasm32"))]
 pub use self::io::initialize_terminal;
