@@ -34,6 +34,7 @@ impl SnakeGame {
             engine::display::BaseDisplay {
                 renderer: Box::new(engine::display::WebRenderer::new(height, width)),
                 view_cursor: engine::game_object::Coordinate { x: 0, y: 0 },
+                cursor_strategy: Box::new(engine::display::cursor::StaticCursorStrategy::new()),
             },
         );
         SnakeGame { web_control }

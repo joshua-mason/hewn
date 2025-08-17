@@ -1,3 +1,4 @@
+use crate::engine::cursor;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::engine::{control::TerminalControl, initialize_terminal, TerminalRenderer};
 use crate::engine::{game_object::Coordinate, BaseDisplay};
@@ -20,6 +21,7 @@ pub fn play_snake_in_terminal() {
     let mut display = BaseDisplay {
         renderer: Box::new(renderer),
         view_cursor: Coordinate { x: 0, y: 0 },
+        cursor_strategy: Box::new(cursor::StaticCursorStrategy::new()),
     };
     let mut control = TerminalControl::new(stdin, &mut game, &mut display);
 
@@ -162,6 +164,9 @@ mod game_objects {
             fn get_coords(&self) -> &Coordinate {
                 &self.coordinate
             }
+            fn is_player(&self) -> bool {
+                true
+            }
         }
     }
 
@@ -255,6 +260,9 @@ mod game_objects {
             fn get_coords(&self) -> &Coordinate {
                 &self.coordinate
             }
+            fn is_player(&self) -> bool {
+                false
+            }
         }
     }
 
@@ -311,6 +319,9 @@ mod game_objects {
 
             fn get_coords(&self) -> &Coordinate {
                 &self.coordinate
+            }
+            fn is_player(&self) -> bool {
+                false
             }
         }
     }
@@ -392,6 +403,9 @@ mod game_objects {
             fn next_step(&mut self) {}
             fn get_coords(&self) -> &Coordinate {
                 &self.coordinate
+            }
+            fn is_player(&self) -> bool {
+                false
             }
         }
     }

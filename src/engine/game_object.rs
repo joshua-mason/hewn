@@ -10,6 +10,7 @@ pub trait GameObject: Debug + Any {
     fn next_step(&mut self);
     fn priority(&self) -> u8;
     fn width(&self) -> usize;
+    fn is_player(&self) -> bool;
 }
 
 //  TODO move to a new utils file?
@@ -85,6 +86,10 @@ pub mod utils {
         take_game_objects::<T>(game_objects).into_iter().next()
     }
 
+    pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&dyn GameObject> {
+        game_objects.iter().find(|o| o.is_player()).map(|o| &**o)
+    }
+
     pub fn try_get_concrete_type<T: Any>(abc: &dyn GameObject) -> Option<&T> {
         abc.as_any().downcast_ref::<T>()
     }
@@ -146,6 +151,9 @@ mod test {
             1
         }
         fn next_step(&mut self) {}
+        fn is_player(&self) -> bool {
+            false
+        }
     }
 
     #[test]

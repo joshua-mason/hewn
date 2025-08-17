@@ -1,5 +1,5 @@
 use crate::engine::{
-    control::TerminalControl, game_object::Coordinate, initialize_terminal, BaseDisplay,
+    control::TerminalControl, cursor, game_object::Coordinate, initialize_terminal, BaseDisplay,
     TerminalRenderer,
 };
 use game_objects::{player_character::PlayerCharacter, wall::Wall};
@@ -22,6 +22,7 @@ pub fn play_asciibird() {
     let mut display = BaseDisplay {
         renderer: Box::new(renderer),
         view_cursor: Coordinate { x: 0, y: 0 },
+        cursor_strategy: Box::new(cursor::FollowPlayerXCursorStrategy::new()),
     };
     let mut control = TerminalControl::new(stdin, &mut game, &mut display);
 

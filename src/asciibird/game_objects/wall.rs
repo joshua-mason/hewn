@@ -91,4 +91,7 @@ impl GameObject for Wall {
     fn get_coords(&self) -> &Coordinate {
         &self.coordinate
     }
+    fn is_player(&self) -> bool {
+        false
+    }
 }

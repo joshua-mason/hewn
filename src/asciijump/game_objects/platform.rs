@@ -86,4 +86,7 @@ impl GameObject for Platform {
     fn priority(&self) -> u8 {
         1
     }
+    fn is_player(&self) -> bool {
+        false
+    }
 }

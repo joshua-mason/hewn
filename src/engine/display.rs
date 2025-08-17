@@ -1,9 +1,13 @@
+use crate::engine::display::cursor::CursorStrategy;
+use crate::engine::game_object::utils;
+
 use super::game_object::Coordinate;
 use super::game_object::GameObject;
 
 pub struct BaseDisplay {
     pub view_cursor: Coordinate,
     pub renderer: Box<dyn Renderer>,
+    pub cursor_strategy: Box<dyn CursorStrategy>,
 }
 use std::{
     io::{Stdout, Write},
@@ -19,6 +23,10 @@ impl BaseDisplay {
         debug_string: Option<String>,
     ) -> String {
         let renderer = self.renderer.as_mut();
+        let strategy = self.cursor_strategy.as_mut();
+        if let Some(player_object) = utils::take_player_object(game_objects) {
+            strategy.update(&mut self.view_cursor, &*renderer, player_object);
+        }
 
         let mut level_strings: Vec<String> = vec![];
         for height in 0..renderer.screen_height() {
@@ -57,21 +65,84 @@ impl BaseDisplay {
         renderer.render(debug_string, view, h)
     }
 }
+pub mod cursor {
+    use crate::engine::{game_object::Coordinate, GameObject, Renderer};
 
-pub fn build_string(ch: char, length: usize) -> String {
-    ch.to_string().repeat(length)
-}
+    pub trait CursorStrategy {
+        fn update(
+            &mut self,
+            cursor: &mut Coordinate,
+            renderer: &dyn Renderer,
+            player_object: &dyn GameObject,
+        );
+    }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn test_build_string() {
-        let input = build_string('@', 3);
-        assert_eq!(input, "@@@");
+    pub struct StaticCursorStrategy {}
+
+    impl StaticCursorStrategy {
+        pub fn new() -> StaticCursorStrategy {
+            StaticCursorStrategy {}
+        }
+    }
+
+    impl CursorStrategy for StaticCursorStrategy {
+        fn update(&mut self, _: &mut Coordinate, _: &dyn Renderer, _: &dyn GameObject) {}
+    }
+
+    pub struct FollowPlayerYCursorStrategy {
+        offset: usize,
+    }
+
+    impl FollowPlayerYCursorStrategy {
+        pub fn new() -> FollowPlayerYCursorStrategy {
+            FollowPlayerYCursorStrategy { offset: 3 }
+        }
+    }
+
+    impl CursorStrategy for FollowPlayerYCursorStrategy {
+        fn update(
+            &mut self,
+            cursor: &mut Coordinate,
+            renderer: &dyn Renderer,
+            player_object: &dyn GameObject,
+        ) {
+            let y = player_object.get_coords().y;
+            let abs_diff = y.abs_diff(cursor.y);
+            if abs_diff > 1 && abs_diff < (renderer.screen_height() as usize - 2_usize) {
+                return;
+            }
+            cursor.y =
+                (y as i16 + self.offset as i16 - renderer.screen_height() as i16).max(0) as usize;
+        }
+    }
+
+    pub struct FollowPlayerXCursorStrategy {
+        offset: usize,
+    }
+
+    impl FollowPlayerXCursorStrategy {
+        pub fn new() -> FollowPlayerXCursorStrategy {
+            FollowPlayerXCursorStrategy { offset: 16 }
+        }
+    }
+
+    impl CursorStrategy for FollowPlayerXCursorStrategy {
+        fn update(
+            &mut self,
+            cursor: &mut Coordinate,
+            renderer: &dyn Renderer,
+            player_object: &dyn GameObject,
+        ) {
+            let x = player_object.get_coords().x;
+            let abs_diff = x.abs_diff(cursor.x);
+            if abs_diff > 1 && abs_diff < (renderer.screen_height() as usize - 2_usize) {
+                return;
+            }
+            cursor.x =
+                (x as i16 + self.offset as i16 - renderer.screen_width() as i16).max(0) as usize;
+        }
     }
 }
-
 pub trait Renderer {
     fn screen_height(&self) -> u16;
     fn screen_width(&self) -> u16;
@@ -181,5 +252,19 @@ impl Renderer for WebRenderer {
 
     fn screen_width(&self) -> u16 {
         self.screen_width
+    }
+}
+
+pub fn build_string(ch: char, length: usize) -> String {
+    ch.to_string().repeat(length)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_build_string() {
+        let input = build_string('@', 3);
+        assert_eq!(input, "@@@");
     }
 }

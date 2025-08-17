@@ -8,7 +8,7 @@ mod engine;
 mod snake;
 
 fn main() {
-    // play_snake_in_terminal();
+    play_snake_in_terminal();
     play_asciijump();
     play_asciibird();
 }

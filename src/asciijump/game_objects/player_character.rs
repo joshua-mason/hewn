@@ -90,4 +90,7 @@ impl GameObject for PlayerCharacter {
     fn priority(&self) -> u8 {
         0
     }
+    fn is_player(&self) -> bool {
+        true
+    }
 }
