@@ -435,7 +435,6 @@ pub mod game {
     }
 
     #[derive(Debug)]
-    #[wasm_bindgen]
     pub struct Game {
         pub width: usize,
         pub height: usize,

@@ -1,7 +1,7 @@
-use crate::engine::{
-    control::TerminalControl, cursor, game_object::Coordinate, initialize_terminal, BaseDisplay,
-    TerminalRenderer,
-};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::engine::{control::TerminalControl, initialize_terminal, TerminalRenderer};
+use crate::engine::{cursor, game_object::Coordinate, BaseDisplay};
+
 use game_objects::{player_character::PlayerCharacter, wall::Wall};
 
 pub mod game;
@@ -12,7 +12,8 @@ const HEIGHT: usize = 30;
 const SCREEN_WIDTH: u16 = 50;
 const SCREEN_HEIGHT: u16 = 30;
 
-pub fn play_asciibird() {
+#[cfg(not(target_arch = "wasm32"))]
+pub fn play_asciibird_in_terminal() {
     let (stdout, stdin) = initialize_terminal();
     let mut game = game::Game::new();
     let walls = Wall::generate_walls(WIDTH, HEIGHT);

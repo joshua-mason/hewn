@@ -1,5 +1,5 @@
-use asciibird::play_asciibird;
-use asciijump::play_asciijump;
+use asciibird::play_asciibird_in_terminal;
+use asciijump::play_asciijump_in_terminal;
 use snake::play_snake_in_terminal;
 
 mod asciibird;
@@ -9,6 +9,6 @@ mod snake;
 
 fn main() {
     play_snake_in_terminal();
-    play_asciijump();
-    play_asciibird();
+    play_asciijump_in_terminal();
+    play_asciibird_in_terminal();
 }

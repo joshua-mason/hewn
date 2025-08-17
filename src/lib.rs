@@ -6,6 +6,8 @@
 
 use wasm_bindgen::prelude::*;
 
+mod asciibird;
+mod asciijump;
 mod engine;
 mod snake;
 
@@ -20,13 +22,14 @@ pub enum WasmKey {
 }
 
 #[wasm_bindgen]
-pub struct SnakeGame {
+pub struct Game {
     web_control: engine::control::WebControl,
 }
 
 #[wasm_bindgen]
-impl SnakeGame {
-    pub fn new() -> SnakeGame {
+impl Game {
+    // generic but this specific constructure implements a specific game
+    pub fn new_snake() -> Game {
         let width: u16 = 30;
         let height: u16 = 25;
         let web_control = engine::control::WebControl::new(
@@ -34,16 +37,51 @@ impl SnakeGame {
             engine::display::BaseDisplay {
                 renderer: Box::new(engine::display::WebRenderer::new(height, width)),
                 view_cursor: engine::game_object::Coordinate { x: 0, y: 0 },
+                // this depends on the game
                 cursor_strategy: Box::new(engine::display::cursor::StaticCursorStrategy::new()),
             },
         );
-        SnakeGame { web_control }
+        Game { web_control }
     }
 
+    pub fn new_asciijump() -> Game {
+        let width: u16 = 30;
+        let height: u16 = 25;
+        let web_control = engine::control::WebControl::new(
+            Box::new(asciijump::game::Game::new(width as usize, height as usize)),
+            engine::display::BaseDisplay {
+                renderer: Box::new(engine::display::WebRenderer::new(height, width)),
+                view_cursor: engine::game_object::Coordinate { x: 0, y: 0 },
+                cursor_strategy: Box::new(
+                    engine::display::cursor::FollowPlayerYCursorStrategy::new(),
+                ),
+            },
+        );
+        Game { web_control }
+    }
+
+    pub fn new_asciibird() -> Game {
+        let width: u16 = 30;
+        let height: u16 = 25;
+        let web_control = engine::control::WebControl::new(
+            Box::new(asciibird::game::Game::new()),
+            engine::display::BaseDisplay {
+                renderer: Box::new(engine::display::WebRenderer::new(height, width)),
+                view_cursor: engine::game_object::Coordinate { x: 0, y: 0 },
+                cursor_strategy: Box::new(
+                    engine::display::cursor::FollowPlayerXCursorStrategy::new(),
+                ),
+            },
+        );
+        Game { web_control }
+    }
+
+    // generic
     pub fn start(&mut self) {
         self.web_control.start();
     }
 
+    // generic
     pub fn set_player_control_key(&mut self, key: Option<WasmKey>) {
         fn map_wasm_key(k: WasmKey) -> engine::game::Key {
             match k {
@@ -59,10 +97,12 @@ impl SnakeGame {
             .set_player_control_key(key.map(map_wasm_key));
     }
 
+    // generic
     pub fn tick(&mut self) {
         self.web_control.tick();
     }
 
+    // generic
     pub fn render(&mut self) -> String {
         self.web_control.render()
     }

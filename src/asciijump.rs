@@ -1,7 +1,7 @@
-use crate::engine::{
-    control::TerminalControl, cursor, game_object::Coordinate, initialize_terminal, BaseDisplay,
-    TerminalRenderer,
-};
+use crate::engine::{game_object::Coordinate, BaseDisplay};
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::engine::{control::TerminalControl, initialize_terminal, TerminalRenderer};
 use game_objects::{platform::Platform, player_character::PlayerCharacter};
 
 pub mod game;
@@ -12,7 +12,10 @@ const HEIGHT: usize = 500;
 const SCREEN_WIDTH: u16 = 10;
 const SCREEN_HEIGHT: u16 = 20;
 
-pub fn play_asciijump() {
+#[cfg(not(target_arch = "wasm32"))]
+pub fn play_asciijump_in_terminal() {
+    use crate::engine::cursor;
+
     let (stdout, stdin) = initialize_terminal();
     let mut game = game::Game::new(WIDTH, HEIGHT);
     let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
