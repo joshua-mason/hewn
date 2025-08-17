@@ -26,22 +26,6 @@ pub fn play_snake_in_terminal() {
     control.listen();
 }
 
-// pub fn play_snake_in_web() {
-//     let mut game = game::Game::new(WIDTH, HEIGHT);
-//     let walls = Wall::generate_walls(WIDTH, HEIGHT);
-//     game.set_player(PlayerCharacter::new());
-//     game.set_walls(walls);
-//     game.generate_food();
-//     let renderer = WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH);
-//     let mut display = BaseDisplay {
-//         renderer: Box::new(renderer),
-//         view_cursor: Coordinate { x: 0, y: 0 },
-//     };
-//     let mut control = TerminalControl::new(stdin, &mut game, &mut display);
-
-//     control.listen();
-// }
-
 mod game_objects {
 
     pub mod player_character {

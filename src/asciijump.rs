@@ -1,7 +1,9 @@
-use crate::engine::{control::Control, initialize_terminal};
+use crate::engine::{
+    control::TerminalControl, game_object::Coordinate, initialize_terminal, BaseDisplay,
+    TerminalRenderer,
+};
 use game_objects::{platform::Platform, player_character::PlayerCharacter};
 
-pub mod display;
 pub mod game;
 pub mod game_objects;
 
@@ -16,8 +18,12 @@ pub fn play_asciijump() {
     let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());
     game.set_platforms(platforms);
-    let mut display = display::Display::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
-    let mut control = Control::new(stdin, &mut game, &mut display);
+    let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
+    let mut display = BaseDisplay {
+        renderer: Box::new(renderer),
+        view_cursor: Coordinate { x: 0, y: 0 },
+    };
+    let mut control = TerminalControl::new(stdin, &mut game, &mut display);
 
     control.listen();
 }
