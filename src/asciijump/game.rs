@@ -128,6 +128,11 @@ impl BaseGame for Game {
         */
 
         self.move_player();
+
+        // This and the collision pass are generic to all games, so I wonder if we can somehow refactor
+        // this out - although I don't know if order matters in this case, or how opinionated to be,
+        // as I suppose you might want to not have this part of your logic? but then you set the game objects
+        // to not be able to collide I guess.
         self.entities
             .game_objects
             .iter_mut()

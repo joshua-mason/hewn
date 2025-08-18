@@ -1,41 +1,20 @@
-use crate::engine::cursor;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::engine::{control::TerminalControl, initialize_terminal, TerminalRenderer};
-use crate::engine::{game_object::Coordinate, BaseDisplay};
 use game_objects::{player_character::PlayerCharacter, wall::Wall};
+use hewn::cursor;
+use hewn::game::Key;
+use hewn::{control::WebControl, WasmKey};
+use hewn::{game_object::Coordinate, BaseDisplay};
 
-const WIDTH: usize = 30;
-const HEIGHT: usize = 25;
-const SCREEN_WIDTH: u16 = 30;
-const SCREEN_HEIGHT: u16 = 25;
+pub const WIDTH: usize = 30;
+pub const HEIGHT: usize = 25;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub fn play_snake_in_terminal() {
-    let (stdout, stdin) = initialize_terminal();
-    let mut game = game::Game::new(WIDTH, HEIGHT);
-    let walls = Wall::generate_walls(WIDTH, HEIGHT);
-    game.set_player(PlayerCharacter::new());
-    game.set_walls(walls);
-    game.generate_food();
-    let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
-    let mut display = BaseDisplay {
-        renderer: Box::new(renderer),
-        view_cursor: Coordinate { x: 0, y: 0 },
-        cursor_strategy: Box::new(cursor::StaticCursorStrategy::new()),
-    };
-    let mut control = TerminalControl::new(stdin, &mut game, &mut display);
+use wasm_bindgen::prelude::wasm_bindgen;
 
-    control.listen();
-}
-
-mod game_objects {
-
+pub mod game_objects {
     pub mod player_character {
-
-        use crate::engine::{
-            build_string,
-            game_object::{CollisionBox, Coordinate},
-            try_get_concrete_type, GameObject,
+        use hewn::display::build_string;
+        use hewn::game_object::utils::try_get_concrete_type;
+        use hewn::game_object::{
+            GameObject, {CollisionBox, Coordinate},
         };
         use std::any::Any;
 
@@ -172,10 +151,9 @@ mod game_objects {
 
     pub mod food {
 
-        use crate::engine::{
-            build_string,
-            game_object::{CollisionBox, Coordinate},
-            GameObject,
+        use hewn::{
+            display::build_string,
+            game_object::{CollisionBox, Coordinate, GameObject},
         };
         use std::any::Any;
 
@@ -269,10 +247,9 @@ mod game_objects {
     pub mod snake_body {
         use std::any::Any;
 
-        use crate::engine::{
-            build_string,
-            game_object::{CollisionBox, Coordinate},
-            GameObject,
+        use hewn::{
+            display::build_string,
+            game_object::{CollisionBox, Coordinate, GameObject},
         };
 
         #[derive(Debug)]
@@ -327,10 +304,9 @@ mod game_objects {
     }
 
     pub mod wall {
-        use crate::engine::{
+        use hewn::{
             display::build_string,
-            game_object::{CollisionBox, Coordinate},
-            GameObject,
+            game_object::{CollisionBox, Coordinate, GameObject},
         };
         use std::any::Any;
 
@@ -411,21 +387,18 @@ mod game_objects {
     }
 }
 
-pub mod game {
+pub mod snake {
 
     use super::game_objects::food::Food;
     use super::game_objects::player_character::{Direction, PlayerCharacter};
     use super::game_objects::wall::Wall;
-    use crate::engine::game::Key;
-    use crate::engine::game_object::utils::{take_game_objects, take_mut_game_objects};
+    use hewn::game::{BaseGame, Entities, Key};
 
-    use crate::engine::game_object::Coordinate;
-    use crate::engine::{
-        collision_pass, game_object::utils::take_game_object, try_get_concrete_type,
-        try_get_mut_concrete_type, BaseGame, Entities, GameObject,
+    use hewn::game_object::utils::{
+        collision_pass, take_game_object, try_get_concrete_type, try_get_mut_concrete_type,
     };
+    use hewn::game_object::{Coordinate, GameObject};
     use rand::Rng;
-    use wasm_bindgen::prelude::wasm_bindgen;
 
     #[derive(Debug, PartialEq, Eq)]
     pub enum GameState {
@@ -557,10 +530,12 @@ pub mod game {
     }
 
     impl BaseGame for Game {
+        // duplication across games - consider options to refactor out?
         fn set_player_control_key(&mut self, key: Option<Key>) {
             self.player_control_key = key
         }
 
+        // duplication across games - consider options to refactor out?
         fn start_game(&mut self) {
             self.score = 0;
             self.get_mut_player_object().unwrap().reset();
@@ -591,6 +566,7 @@ pub mod game {
                 .max(self.get_player_object().unwrap().coordinate.x);
         }
 
+        // duplication across games - consider options to refactor out?
         fn game_objects(&self) -> &[Box<dyn GameObject>] {
             &self.entities.game_objects
         }
@@ -622,9 +598,9 @@ pub mod game {
 
 #[cfg(test)]
 mod test {
-    use crate::engine::{
+    use hewn::{
+        game::BaseGame,
         game_object::utils::{detect_collision, take_game_object},
-        BaseGame,
     };
 
     use super::{game_objects::food::Food, *};
@@ -632,7 +608,7 @@ mod test {
     #[test]
     fn test_eat_food() {
         // let (stdout, stdin) = initialize_terminal();
-        let mut game = game::Game::new(WIDTH, HEIGHT);
+        let mut game = crate::game::snake::Game::new(WIDTH, HEIGHT);
         // let walls = Wall::generate_walls(WIDTH, HEIGHT);
         game.set_player(PlayerCharacter::new());
         // game.set_walls(walls);
