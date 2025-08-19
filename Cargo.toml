@@ -24,4 +24,4 @@ termion = "4"
 crate-type = ["cdylib", "rlib"]
 
 [workspace]
-members = ["examples/snake", "examples/asciibird"]
+members = ["examples/snake", "examples/asciibird", "examples/asciijump"]

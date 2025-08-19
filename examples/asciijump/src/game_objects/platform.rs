@@ -1,7 +1,6 @@
-use crate::engine::{
+use hewn::{
     display::build_string,
-    game_object::{CollisionBox, Coordinate},
-    GameObject,
+    game_object::{CollisionBox, Coordinate, GameObject},
 };
 use rand::Rng;
 use std::any::Any;

@@ -1,7 +1,6 @@
-use crate::engine::{
-    build_string,
-    game_object::{CollisionBox, Coordinate},
-    GameObject,
+use hewn::{
+    display::build_string,
+    game_object::{CollisionBox, Coordinate, GameObject},
 };
 use std::any::Any;
 

@@ -18,7 +18,6 @@
 
 use wasm_bindgen::prelude::*;
 
-mod asciijump;
 mod engine;
 
 pub use engine::control;
