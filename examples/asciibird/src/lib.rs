@@ -1,14 +1,9 @@
 pub mod game;
 pub mod game_objects;
 
-use crate::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::game::{default, SCREEN_HEIGHT, SCREEN_WIDTH};
 use hewn::WasmKey;
 use wasm_bindgen::prelude::*;
-
-use crate::{
-    game::{HEIGHT, WIDTH},
-    game_objects::{player_character::PlayerCharacter, wall::Wall},
-};
 
 #[wasm_bindgen]
 pub struct Game {
@@ -18,10 +13,7 @@ pub struct Game {
 #[wasm_bindgen]
 impl Game {
     pub fn new_asciibird() -> Game {
-        let mut game = game::Game::new();
-        let walls = Wall::generate_walls(WIDTH, HEIGHT);
-        game.set_player(PlayerCharacter::new());
-        game.set_walls(walls);
+        let game = default();
 
         let asciibird_pointer = Box::new(game);
         let web_control = hewn::control::WebControl::new(

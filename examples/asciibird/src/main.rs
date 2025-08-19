@@ -1,9 +1,8 @@
 mod game;
 mod game_objects;
 
-use game::{HEIGHT, WIDTH};
-use game_objects::player_character::PlayerCharacter;
-use game_objects::wall::Wall;
+use asciibird::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use hewn::cursor;
 use hewn::game_object::Coordinate;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -16,12 +15,8 @@ fn main() {
 fn play_asciibird_in_terminal() {
     let (stdout, stdin) = initialize_terminal();
 
-    use asciibird::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
-    use hewn::cursor;
-    let mut game = game::Game::new();
-    let walls = Wall::generate_walls(WIDTH, HEIGHT);
-    game.set_player(PlayerCharacter::new());
-    game.set_walls(walls);
+    use crate::game::default;
+    let mut game = default();
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = BaseDisplay {
         renderer: Box::new(renderer),

@@ -13,6 +13,14 @@ pub const HEIGHT: usize = 30;
 pub const SCREEN_WIDTH: u16 = 50;
 pub const SCREEN_HEIGHT: u16 = 30;
 
+pub fn default() -> Game {
+    let mut game = Game::new();
+    let walls = Wall::generate_walls(WIDTH, HEIGHT);
+    game.set_player(PlayerCharacter::new());
+    game.set_walls(walls);
+    game
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
     InGame,
