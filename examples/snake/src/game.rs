@@ -1,13 +1,5 @@
-use game_objects::{player_character::PlayerCharacter, wall::Wall};
-use hewn::cursor;
-use hewn::game::Key;
-use hewn::{control::WebControl, WasmKey};
-use hewn::{game_object::Coordinate, BaseDisplay};
-
 pub const WIDTH: usize = 30;
 pub const HEIGHT: usize = 25;
-
-use wasm_bindgen::prelude::wasm_bindgen;
 
 pub mod game_objects {
     pub mod player_character {
@@ -388,7 +380,6 @@ pub mod game_objects {
 }
 
 pub mod snake {
-
     use super::game_objects::food::Food;
     use super::game_objects::player_character::{Direction, PlayerCharacter};
     use super::game_objects::wall::Wall;
@@ -603,6 +594,7 @@ mod test {
         game_object::utils::{detect_collision, take_game_object},
     };
 
+    use super::game_objects::player_character::PlayerCharacter;
     use super::{game_objects::food::Food, *};
 
     #[test]

@@ -1,5 +1,8 @@
+use game::{HEIGHT, WIDTH};
 use hewn::WasmKey;
 use wasm_bindgen::prelude::*;
+
+use crate::game::game_objects::{player_character::PlayerCharacter, wall::Wall};
 
 pub mod game;
 
@@ -13,11 +16,15 @@ impl Game {
     pub fn new_snake() -> Game {
         let width: u16 = 30;
         let height: u16 = 25;
+        let mut game = crate::game::snake::Game::new(width as usize, height as usize);
+        let walls = Wall::generate_walls(WIDTH, HEIGHT);
+        game.set_player(PlayerCharacter::new());
+        game.set_walls(walls);
+        game.generate_food();
+        let snake_pointer = Box::new(game);
+
         let web_control = hewn::control::WebControl::new(
-            Box::new(crate::game::snake::Game::new(
-                width as usize,
-                height as usize,
-            )),
+            snake_pointer,
             hewn::display::BaseDisplay {
                 renderer: Box::new(hewn::display::WebRenderer::new(height, width)),
                 view_cursor: hewn::game_object::Coordinate { x: 0, y: 0 },
@@ -28,17 +35,10 @@ impl Game {
         Game { web_control }
     }
 
-    /// TODO: Add documentation for start method
-    /// Initializes and starts the game
     pub fn start(&mut self) {
         self.web_control.start();
     }
 
-    /// TODO: Add documentation for set_player_control_key method
-    /// Sets the current player input key
-    ///
-    /// # Arguments
-    /// TODO: Document key parameter
     pub fn set_player_control_key(&mut self, key: Option<WasmKey>) {
         fn map_wasm_key(k: WasmKey) -> hewn::game::Key {
             match k {
@@ -54,17 +54,10 @@ impl Game {
             .set_player_control_key(key.map(map_wasm_key));
     }
 
-    /// TODO: Add documentation for tick method
-    /// Advances the game by one frame/step
     pub fn tick(&mut self) {
         self.web_control.tick();
     }
 
-    /// TODO: Add documentation for render method
-    /// Renders the current game state and returns it as a string
-    ///
-    /// # Returns
-    /// TODO: Document return value format
     pub fn render(&mut self) -> String {
         self.web_control.render()
     }
