@@ -1,7 +1,13 @@
 //! # Hewn
 //!
-//! **Status:** Alpha – This crate is an experimental game engine for learning.
+//! **Status:** Alpha – This is an experimental crate for educational purposes.
 //!
+//! Hewn is a crate for making games in the terminal and exporting as WebAssembly.
+//!
+//! Hewn was created as an abstraction from an original terminal game, `asciijump`, in order
+//! to explore how a basic game engine might work in a low level language.
+//!
+//! <!--
 //! # Getting started
 //!
 //! We represent a game in this library with these core concepts:
@@ -14,7 +20,7 @@
 //! ## Game Objects
 //!
 //!
-//! *
+//! -->
 
 use wasm_bindgen::prelude::*;
 
