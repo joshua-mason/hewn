@@ -3,10 +3,8 @@ pub mod player_character;
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        asciijump::game_objects::{platform, player_character},
-        engine::game_object::{utils, Coordinate},
-    };
+    use crate::game_objects::{platform, player_character};
+    use hewn::game_object::{utils, Coordinate};
 
     #[test]
     fn test_velocity_collision() {

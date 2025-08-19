@@ -1,26 +1,24 @@
-use crate::engine::{game_object::Coordinate, BaseDisplay};
-
+use asciijump::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use hewn::cursor;
 #[cfg(not(target_arch = "wasm32"))]
-use crate::engine::{control::TerminalControl, initialize_terminal, TerminalRenderer};
-use game_objects::{platform::Platform, player_character::PlayerCharacter};
+use hewn::{control::TerminalControl, initialize_terminal, TerminalRenderer};
+use hewn::{game_object::Coordinate, BaseDisplay};
+
+use crate::game::default;
 
 pub mod game;
 pub mod game_objects;
 
-const WIDTH: usize = 10;
-const HEIGHT: usize = 500;
-const SCREEN_WIDTH: u16 = 10;
-const SCREEN_HEIGHT: u16 = 20;
+fn main() {
+    play_asciijump_in_terminal();
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn play_asciijump_in_terminal() {
-    use crate::engine::cursor;
-
     let (stdout, stdin) = initialize_terminal();
-    let mut game = game::Game::new(WIDTH, HEIGHT);
-    let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
-    game.set_player(PlayerCharacter::new());
-    game.set_platforms(platforms);
+    let mut game = default();
+    // TODO where we input height and width as args, can we make it a struct so labelled instead of just
+    // guessing?
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = BaseDisplay {
         renderer: Box::new(renderer),

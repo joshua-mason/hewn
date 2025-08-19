@@ -1,10 +1,25 @@
 use super::game_objects::platform::Platform;
 use super::game_objects::player_character::PlayerCharacter;
-use crate::engine::game::Key;
-use crate::engine::{
-    collision_pass, try_get_concrete_type, try_get_mut_concrete_type, BaseGame, Entities,
-    GameObject,
+use hewn::{
+    game::{BaseGame, Entities, Key},
+    game_object::{
+        utils::{collision_pass, try_get_concrete_type, try_get_mut_concrete_type},
+        GameObject,
+    },
 };
+
+pub const WIDTH: usize = 10;
+pub const HEIGHT: usize = 500;
+pub const SCREEN_WIDTH: u16 = 10;
+pub const SCREEN_HEIGHT: u16 = 20;
+
+pub fn default() -> Game {
+    let mut game = Game::new(WIDTH, HEIGHT);
+    let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
+    game.set_player(PlayerCharacter::new());
+    game.set_platforms(platforms);
+    game
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
@@ -128,6 +143,11 @@ impl BaseGame for Game {
         */
 
         self.move_player();
+
+        // This and the collision pass are generic to all games, so I wonder if we can somehow refactor
+        // this out - although I don't know if order matters in this case, or how opinionated to be,
+        // as I suppose you might want to not have this part of your logic? but then you set the game objects
+        // to not be able to collide I guess.
         self.entities
             .game_objects
             .iter_mut()
@@ -184,10 +204,8 @@ pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&Playe
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        asciijump::game_objects::{platform::Platform, player_character::PlayerCharacter},
-        engine::{game::BaseGame, game_object::GameObject},
-    };
+    use crate::game_objects::{platform::Platform, player_character::PlayerCharacter};
+    use hewn::{game::BaseGame, game_object::GameObject};
 
     use super::Game;
     #[test]

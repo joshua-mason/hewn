@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hewn AsciiJump Game Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px;
+        }
+
+        .title {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .game-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .start-button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .start-button:hover {
+            background: #ddd;
+        }
+
+        #game-output {
+            background: #000;
+            color: #fff;
+            border: 1px solid #fff;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1;
+            white-space: pre;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow: hidden;
+        }
+
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 1.5rem;
+            }
+
+            #game-output {
+                font-size: 0.7rem;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="title">ASCIIJUMP</div>
+    </div>
+
+    <div class="game-container">
+        <button id="start" class="start-button" onclick="window.main()">START GAME</button>
+        <pre id="game-output">Press START GAME to begin</pre>
+    </div>
+
+    <script type="module" lang="ts">
+        import init, { Game, WasmKey } from './pkg/asciijump.js';
+
+        async function main() {
+            await init();
+            const game = Game.new_asciijump();
+            game.start();
+
+            const pre = document.getElementById('game-output');
+            const startButton = document.getElementById('start');
+
+            startButton.style.display = 'none';
+            document.body.classList.add('game-started');
+
+            function renderGame() {
+                const output = game.render();
+                pre.textContent = output.split('|').join('\n');
+            }
+
+            const mapKey = (e) => {
+                switch (e.key) {
+                    case 'ArrowLeft': return WasmKey.Left;
+                    case 'ArrowRight': return WasmKey.Right;
+                    case 'ArrowUp': return WasmKey.Up;
+                    case 'ArrowDown': return WasmKey.Down;
+                    case ' ': return WasmKey.Space;
+                    case 'Escape': return WasmKey.Escape;
+                    default: return undefined;
+                }
+            };
+
+            addEventListener('keydown', (e) => {
+                const k = mapKey(e);
+                if (k !== undefined) game.set_player_control_key(k);
+            });
+
+            function gameLoop() {
+                game.tick();
+                renderGame();
+                // TODO I wonder if realistically in the engine we should be resetting to 
+                // null after the tick?
+                game.set_player_control_key(null);
+            }
+
+            renderGame();
+            setInterval(gameLoop, 200);
+        }
+
+        window.main = main;
+    </script>
+</body>
+
+</html>

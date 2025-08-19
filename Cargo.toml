@@ -1,6 +1,6 @@
 [package]
 name = "hewn"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 edition = "2021"
 description = "A simple game engine built for educational purposes."
 license = "MIT"
@@ -22,3 +22,6 @@ termion = "4"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[workspace]
+members = ["examples/snake", "examples/asciibird", "examples/asciijump"]

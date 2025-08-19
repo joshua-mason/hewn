@@ -13,7 +13,6 @@ pub trait GameObject: Debug + Any {
     fn is_player(&self) -> bool;
 }
 
-//  TODO move to a new utils file?
 #[derive(Debug, PartialEq, Clone)]
 pub struct Coordinate {
     pub x: usize,
