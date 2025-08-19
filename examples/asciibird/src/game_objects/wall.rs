@@ -1,7 +1,6 @@
-use crate::engine::{
+use hewn::{
     display::build_string,
-    game_object::{CollisionBox, Coordinate},
-    GameObject,
+    game_object::{CollisionBox, Coordinate, GameObject},
 };
 use rand::Rng;
 use std::any::Any;
@@ -79,7 +78,7 @@ impl GameObject for Wall {
         self
     }
     fn display(&self) -> String {
-        build_string('|', 3)
+        build_string('\\', 3)
     }
     fn width(&self) -> usize {
         1

@@ -1,10 +1,17 @@
-use super::game_objects::player_character::PlayerCharacter;
-use super::game_objects::wall::Wall;
-use crate::engine::game::Key;
-use crate::engine::{
-    collision_pass, game_object::utils::take_game_object, try_get_concrete_type,
-    try_get_mut_concrete_type, BaseGame, Entities, GameObject,
+use hewn::game::Key;
+use hewn::game::{BaseGame, Entities};
+use hewn::game_object::utils::{
+    collision_pass, take_game_object, try_get_concrete_type, try_get_mut_concrete_type,
 };
+use hewn::game_object::GameObject;
+
+use crate::game_objects::player_character::PlayerCharacter;
+use crate::game_objects::wall::Wall;
+
+pub const WIDTH: usize = 1000;
+pub const HEIGHT: usize = 30;
+pub const SCREEN_WIDTH: u16 = 50;
+pub const SCREEN_HEIGHT: u16 = 30;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
@@ -27,7 +34,6 @@ impl Game {
             state: GameState::InGame,
             score: 0,
             entities: Entities::new(),
-            // game_objects: vec![],
             player_control_key: None,
         };
         game.set_player(PlayerCharacter::new());

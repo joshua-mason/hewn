@@ -18,7 +18,6 @@
 
 use wasm_bindgen::prelude::*;
 
-mod asciibird;
 mod asciijump;
 mod engine;
 
@@ -33,8 +32,6 @@ pub use engine::initialize_terminal;
 pub use engine::BaseDisplay;
 #[cfg(not(target_arch = "wasm32"))]
 pub use engine::TerminalRenderer;
-
-// pub use examples::Game;
 
 // /// TODO: Add documentation for WasmKey enum
 // /// Represents keyboard inputs that can be sent from JavaScript to the WASM game
