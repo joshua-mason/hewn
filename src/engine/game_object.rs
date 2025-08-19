@@ -39,6 +39,7 @@ pub mod utils {
             && overlapping_1d(a_collision_box.y, b_collision_box.y)
     }
 
+    // TODO: this seems to be affected by the order of the objects - probably related to the double dispatch problem?
     pub fn collision_pass(objects: &mut [Box<dyn GameObject>]) {
         process_collisions(objects);
         objects.reverse();
