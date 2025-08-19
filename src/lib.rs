@@ -38,20 +38,12 @@ pub use engine::BaseDisplay;
 #[cfg(not(target_arch = "wasm32"))]
 pub use engine::TerminalRenderer;
 
-// /// TODO: Add documentation for WasmKey enum
-// /// Represents keyboard inputs that can be sent from JavaScript to the WASM game
 #[wasm_bindgen]
 pub enum WasmKey {
-    /// TODO: Document Left key
     Left,
-    /// TODO: Document Right key
     Right,
-    /// TODO: Document Up key
     Up,
-    /// TODO: Document Down key
     Down,
-    /// TODO: Document Space key
     Space,
-    /// TODO: Document Escape key
     Escape,
 }

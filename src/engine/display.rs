@@ -4,8 +4,6 @@ use crate::engine::game_object::utils;
 use super::game_object::Coordinate;
 use super::game_object::GameObject;
 
-/// TODO: Add documentation for BaseDisplay struct
-/// Handles rendering and camera/viewport management
 pub struct BaseDisplay {
     pub view_cursor: Coordinate,
     pub renderer: Box<dyn Renderer>,
@@ -19,11 +17,6 @@ use std::{
 use termion::raw::RawTerminal;
 
 impl BaseDisplay {
-    /// TODO: Document next method
-    /// Renders the current frame and returns it as a string
-    /// 
-    /// # Arguments
-    /// TODO: Document parameters
     pub fn next(
         &mut self,
         game_objects: &[Box<dyn GameObject>],

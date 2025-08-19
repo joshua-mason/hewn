@@ -1,41 +1,24 @@
 use std::{any::Any, fmt::Debug, ops::Range};
 
-/// TODO: Add comprehensive documentation for GameObject trait
-/// Core trait that all game entities must implement
 pub trait GameObject: Debug + Any {
-    /// TODO: Document as_any method - used for downcasting
     fn as_any(&self) -> &dyn Any;
-    /// TODO: Document as_mut_any method - mutable downcasting
     fn as_mut_any(&mut self) -> &mut dyn Any;
-    /// TODO: Document collide method - handles collision with another object
     fn collide(&mut self, other: &dyn GameObject);
-    /// TODO: Document display method - returns visual representation
     fn display(&self) -> String;
-    /// TODO: Document get_collision_box method - returns collision boundaries
     fn get_collision_box(&self) -> CollisionBox;
-    /// TODO: Document get_coords method - returns object position
     fn get_coords(&self) -> &Coordinate;
-    /// TODO: Document next_step method - updates object for next frame
     fn next_step(&mut self);
-    /// TODO: Document priority method - rendering/update order
     fn priority(&self) -> u8;
-    /// TODO: Document width method - object width in characters
     fn width(&self) -> usize;
-    /// TODO: Document is_player method - identifies player-controlled objects
     fn is_player(&self) -> bool;
 }
 
-/// TODO: Add documentation for Coordinate struct
-/// Represents a 2D position in the game world
-/// TODO: Consider moving to a new utils file?
 #[derive(Debug, PartialEq, Clone)]
 pub struct Coordinate {
     pub x: usize,
     pub y: usize,
 }
 
-/// TODO: Add documentation for CollisionBox struct
-/// Defines collision boundaries using x and y ranges
 #[derive(Debug)]
 pub struct CollisionBox {
     pub x: Range<usize>,
@@ -46,8 +29,6 @@ pub mod utils {
     use crate::engine::game_object::GameObject;
     use std::{any::Any, ops::Range};
 
-    /// TODO: Document detect_collision function
-    /// Checks if two game objects are colliding
     pub fn detect_collision(a: &dyn GameObject, b: &dyn GameObject) -> bool {
         let a_collision_box = a.get_collision_box();
         let b_collision_box = b.get_collision_box();
@@ -58,9 +39,6 @@ pub mod utils {
             && overlapping_1d(a_collision_box.y, b_collision_box.y)
     }
 
-    /// TODO: Document collision_pass function
-    /// Processes collisions between all objects in both directions
-    /// TODO: Fix order dependency issue (double dispatch problem?)
     pub fn collision_pass(objects: &mut [Box<dyn GameObject>]) {
         process_collisions(objects);
         objects.reverse();
