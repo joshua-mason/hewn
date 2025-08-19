@@ -1,8 +1,6 @@
-use game::{HEIGHT, WIDTH};
+use crate::game::default;
 use hewn::WasmKey;
 use wasm_bindgen::prelude::*;
-
-use crate::game::game_objects::{player_character::PlayerCharacter, wall::Wall};
 
 pub mod game;
 
@@ -16,11 +14,7 @@ impl Game {
     pub fn new_snake() -> Game {
         let width: u16 = 30;
         let height: u16 = 25;
-        let mut game = crate::game::snake::Game::new(width as usize, height as usize);
-        let walls = Wall::generate_walls(WIDTH, HEIGHT);
-        game.set_player(PlayerCharacter::new());
-        game.set_walls(walls);
-        game.generate_food();
+        let game = default();
         let snake_pointer = Box::new(game);
 
         let web_control = hewn::control::WebControl::new(

@@ -1,5 +1,16 @@
+use crate::game::game_objects::{player_character::PlayerCharacter, wall::Wall};
+
 pub const WIDTH: usize = 30;
 pub const HEIGHT: usize = 25;
+
+pub fn default() -> snake::Game {
+    let mut game = snake::Game::new(WIDTH, HEIGHT);
+    let walls = Wall::generate_walls(WIDTH, HEIGHT);
+    game.set_player(PlayerCharacter::new());
+    game.set_walls(walls);
+    game.generate_food();
+    game
+}
 
 pub mod game_objects {
     pub mod player_character {

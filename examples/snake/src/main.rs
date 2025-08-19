@@ -1,9 +1,4 @@
 mod game;
-
-use game::game_objects::player_character::PlayerCharacter;
-use game::game_objects::wall::Wall;
-use game::snake;
-use game::{HEIGHT, WIDTH};
 use hewn::game_object::Coordinate;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -17,12 +12,10 @@ const SCREEN_HEIGHT: u16 = 25;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn play_snake_in_terminal() {
+    use crate::game::default;
+
     let (stdout, stdin) = initialize_terminal();
-    let mut game = snake::Game::new(WIDTH, HEIGHT);
-    let walls = Wall::generate_walls(WIDTH, HEIGHT);
-    game.set_player(PlayerCharacter::new());
-    game.set_walls(walls);
-    game.generate_food();
+    let mut game = default();
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = BaseDisplay {
         renderer: Box::new(renderer),
