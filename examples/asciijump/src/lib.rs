@@ -1,17 +1,8 @@
 pub mod game;
 pub mod game_objects;
-
-use crate::{
-    game::{SCREEN_HEIGHT, SCREEN_WIDTH},
-    game_objects::platform::Platform,
-};
+use crate::game::{default, SCREEN_HEIGHT, SCREEN_WIDTH};
 use hewn::WasmKey;
 use wasm_bindgen::prelude::*;
-
-use crate::{
-    game::{HEIGHT, WIDTH},
-    game_objects::player_character::PlayerCharacter,
-};
 
 #[wasm_bindgen]
 pub struct Game {
@@ -21,11 +12,9 @@ pub struct Game {
 #[wasm_bindgen]
 impl Game {
     pub fn new_asciijump() -> Game {
-        let mut asciijump = game::Game::new(WIDTH, HEIGHT);
-        let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
-        asciijump.set_player(PlayerCharacter::new());
-        asciijump.set_platforms(platforms);
-        let asciijump_pointer = Box::new(asciijump);
+        let game = default();
+
+        let asciijump_pointer = Box::new(game);
         let web_control = hewn::control::WebControl::new(
             asciijump_pointer,
             hewn::display::BaseDisplay {
