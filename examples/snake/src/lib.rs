@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Game {
-    web_control: hewn::control::WebControl,
+    web_control: hewn::io::WebControl,
 }
 
 #[wasm_bindgen]
@@ -17,7 +17,7 @@ impl Game {
         let game = default();
         let snake_pointer = Box::new(game);
 
-        let web_control = hewn::control::WebControl::new(
+        let web_control = hewn::io::WebControl::new(
             snake_pointer,
             hewn::display::BaseDisplay {
                 renderer: Box::new(hewn::display::WebRenderer::new(height, width)),

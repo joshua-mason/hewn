@@ -1,8 +1,8 @@
 use asciijump::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use hewn::cursor;
-#[cfg(not(target_arch = "wasm32"))]
-use hewn::{control::TerminalControl, initialize_terminal, TerminalRenderer};
 use hewn::{game_object::Coordinate, BaseDisplay};
+#[cfg(not(target_arch = "wasm32"))]
+use hewn::{initialize_terminal, io::TerminalControl, TerminalRenderer};
 
 use crate::game::default;
 

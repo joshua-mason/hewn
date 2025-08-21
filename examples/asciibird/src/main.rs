@@ -6,7 +6,7 @@ use hewn::cursor;
 use hewn::game_object::Coordinate;
 
 #[cfg(not(target_arch = "wasm32"))]
-use hewn::{control::TerminalControl, display::BaseDisplay, initialize_terminal, TerminalRenderer};
+use hewn::{display::BaseDisplay, initialize_terminal, io::TerminalControl, TerminalRenderer};
 fn main() {
     play_asciibird_in_terminal();
 }

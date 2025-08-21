@@ -65,6 +65,7 @@ impl BaseDisplay {
         renderer.render(debug_string, view, h)
     }
 }
+
 pub mod cursor {
     use crate::engine::{game_object::Coordinate, GameObject, Renderer};
 
@@ -190,7 +191,7 @@ impl Renderer for TerminalRenderer {
         )
         .unwrap();
         self.stdout().lock().flush().unwrap();
-        // TODO unused
+        // TODO unused return value as we flush to the stdout in terminal renderer
         view
     }
 
@@ -229,7 +230,7 @@ impl WebRenderer {
 
 impl Renderer for WebRenderer {
     fn render(&mut self, debug_string: Option<String>, view: String, h: u16) -> String {
-        // TODO unused
+        // TODO unused return value as we just pass through the view
         view
     }
 
