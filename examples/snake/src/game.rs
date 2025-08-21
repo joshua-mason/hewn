@@ -418,7 +418,6 @@ pub mod snake {
         pub score: usize,
 
         entities: Entities,
-        player_control_key: Option<Key>,
     }
 
     impl Game {
@@ -429,16 +428,15 @@ pub mod snake {
                 state: GameState::Menu,
                 score: 0,
                 entities: Entities::new(),
-                player_control_key: None,
             };
             game.set_player(PlayerCharacter::new());
             game
         }
 
-        fn move_player(&mut self) {
+        fn move_player(&mut self, key: Option<Key>) {
             // TODO this is very verbose... I wonder if there is something we can do to help simplify what's going on here
             // can't get_mut_player_object earlier because then we can't access self.player_control_key
-            match self.player_control_key {
+            match key {
                 Some(Key::Left) => {
                     if let Some(player) = self.get_mut_player_object() {
                         player.turn(Direction::Left);
@@ -533,11 +531,6 @@ pub mod snake {
 
     impl BaseGame for Game {
         // duplication across games - consider options to refactor out?
-        fn set_player_control_key(&mut self, key: Option<Key>) {
-            self.player_control_key = key
-        }
-
-        // duplication across games - consider options to refactor out?
         fn start_game(&mut self) {
             self.score = 0;
             self.get_mut_player_object().unwrap().reset();
@@ -549,12 +542,12 @@ pub mod snake {
             &self.entities
         }
 
-        fn next(&mut self) {
+        fn next(&mut self, key: Option<Key>) {
             if self.state != GameState::InGame {
                 return;
             }
 
-            self.move_player();
+            self.move_player(key);
             self.entities
                 .game_objects
                 .iter_mut()
@@ -622,7 +615,7 @@ mod test {
         assert!(detect_collision(food.unwrap(), player.unwrap()));
         println!("Next");
         game.start_game();
-        game.next();
+        game.next(None);
         println!("Done {:?}", game.entities_for_test().game_objects);
 
         let food = take_game_object::<Food>(&game.entities_for_test().game_objects);

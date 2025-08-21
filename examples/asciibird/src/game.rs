@@ -1,7 +1,7 @@
 use hewn::game::Key;
 use hewn::game::{BaseGame, Entities};
 use hewn::game_object::utils::{
-    collision_pass, take_game_object, maybe_get_concrete_type, maybe_get_concrete_type_mut,
+    collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
 };
 use hewn::game_object::GameObject;
 
@@ -31,9 +31,7 @@ pub enum GameState {
 pub struct Game {
     pub state: GameState,
     pub score: usize,
-
     pub entities: Entities,
-    player_control_key: Option<Key>,
 }
 
 impl Game {
@@ -42,14 +40,13 @@ impl Game {
             state: GameState::InGame,
             score: 0,
             entities: Entities::new(),
-            player_control_key: None,
         };
         game.set_player(PlayerCharacter::new());
         game
     }
 
-    fn move_player(&mut self) {
-        if let Some(Key::Up) = self.player_control_key {
+    fn move_player(&mut self, key: Option<Key>) {
+        if let Some(Key::Up) = key {
             if let Some(player) = self.get_mut_player_object() {
                 if player.coordinate.x > 0 {
                     player.jump()
@@ -96,22 +93,18 @@ impl Game {
 }
 
 impl BaseGame for Game {
-    fn set_player_control_key(&mut self, key: Option<Key>) {
-        self.player_control_key = key
-    }
-
     fn start_game(&mut self) {
         self.score = 0;
         self.get_mut_player_object().unwrap().reset();
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self) {
+    fn next(&mut self, key: Option<Key>) {
         if self.state != GameState::InGame {
             return;
         }
 
-        self.move_player();
+        self.move_player(key);
         self.entities
             .game_objects
             .iter_mut()

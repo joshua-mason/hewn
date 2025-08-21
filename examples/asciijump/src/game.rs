@@ -37,7 +37,6 @@ pub struct Game {
     pub score: usize,
 
     pub entities: Entities,
-    player_control_key: Option<Key>,
 }
 
 impl Game {
@@ -48,16 +47,14 @@ impl Game {
             state: GameState::Menu,
             score: 0,
             entities: Entities::new(),
-            // game_objects: vec![],
-            player_control_key: None,
         };
         game.set_player(PlayerCharacter::new());
         game
     }
 
-    fn move_player(&mut self) {
+    fn move_player(&mut self, key: Option<Key>) {
         let width = self.width;
-        match self.player_control_key {
+        match key {
             Some(Key::Left) => {
                 if let Some(player) = self.get_mut_player_object() {
                     if player.coordinate.x > 0 {
@@ -114,9 +111,6 @@ impl Game {
 }
 
 impl BaseGame for Game {
-    fn set_player_control_key(&mut self, key: Option<Key>) {
-        self.player_control_key = key
-    }
     fn entities(&self) -> &Entities {
         &self.entities
     }
@@ -127,7 +121,7 @@ impl BaseGame for Game {
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self) {
+    fn next(&mut self, key: Option<Key>) {
         if self.state != GameState::InGame {
             return;
         }
@@ -145,7 +139,7 @@ impl BaseGame for Game {
         IDK maybe some research andd thinking to figure this one out!
         */
 
-        self.move_player();
+        self.move_player(key);
 
         // This and the collision pass are generic to all games, so I wonder if we can somehow refactor
         // this out - although I don't know if order matters in this case, or how opinionated to be,
@@ -254,14 +248,14 @@ mod test {
 
         game.start_game();
 
-        game.next();
+        game.next(None);
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
         fast_forward(&mut game, 9);
         assert_eq!(game.get_player_object().unwrap().velocity, 5);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 8);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
     }
 
@@ -270,7 +264,7 @@ mod test {
         let mut game = Game::new(10, 10);
         game.set_platforms(Platform::from_tuples(&[(1, 8)]));
         game.start_game();
-        game.next();
+        game.next(None);
 
         {
             let player_object = game.get_player_object().unwrap();
@@ -323,7 +317,7 @@ mod test {
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
 
@@ -345,15 +339,15 @@ mod test {
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
         fast_forward(&mut game, 10);
@@ -362,7 +356,7 @@ mod test {
 
     fn fast_forward(game: &mut Game, n: u16) {
         for _ in 0..n {
-            game.next();
+            game.next(None);
         }
     }
 }

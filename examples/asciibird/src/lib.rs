@@ -31,26 +31,22 @@ impl Game {
         self.web_runtime.start();
     }
 
-    pub fn set_player_control_key(&mut self, key: Option<WasmKey>) {
-        fn map_wasm_key(k: WasmKey) -> hewn::game::Key {
-            match k {
-                WasmKey::Left => hewn::game::Key::Left,
-                WasmKey::Right => hewn::game::Key::Right,
-                WasmKey::Up => hewn::game::Key::Up,
-                WasmKey::Down => hewn::game::Key::Down,
-                WasmKey::Space => hewn::game::Key::Space,
-                WasmKey::Escape => hewn::game::Key::Escape,
-            }
-        }
-        self.web_runtime
-            .set_player_control_key(key.map(map_wasm_key));
-    }
-
-    pub fn tick(&mut self) {
-        self.web_runtime.tick();
+    pub fn tick(&mut self, key: Option<WasmKey>) {
+        self.web_runtime.tick(key.map(map_wasm_key));
     }
 
     pub fn render(&mut self) -> String {
         self.web_runtime.render()
+    }
+}
+
+fn map_wasm_key(k: WasmKey) -> hewn::game::Key {
+    match k {
+        WasmKey::Left => hewn::game::Key::Left,
+        WasmKey::Right => hewn::game::Key::Right,
+        WasmKey::Up => hewn::game::Key::Up,
+        WasmKey::Down => hewn::game::Key::Down,
+        WasmKey::Space => hewn::game::Key::Space,
+        WasmKey::Escape => hewn::game::Key::Escape,
     }
 }

@@ -31,6 +31,7 @@ pub struct TerminalRuntime<'a> {
     pub game: &'a mut dyn BaseGame,
     pub display: &'a mut BaseDisplay,
     last_frame_time: Instant,
+    player_control_key: Option<Key>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -45,6 +46,7 @@ impl TerminalRuntime<'_> {
             game,
             last_frame_time: Instant::now(),
             display,
+            player_control_key: None,
         }
     }
 
@@ -56,26 +58,25 @@ impl TerminalRuntime<'_> {
                 match key {
                     termion::event::Key::Char('q') => break,
                     key if key != termion::event::Key::Char(' ') => {
-                        self.game.set_player_control_key(Some(map_termion_key(key)));
+                        self.player_control_key = map_termion_key(key);
                     }
                     termion::event::Key::Char(' ') => {
                         self.game.start_game();
                     }
                     _ => {
-                        self.game.set_player_control_key(None);
+                        self.player_control_key = None;
                     }
                 }
             }
-
             thread::sleep(time::Duration::from_millis(FRAME_RATE_MILLIS));
 
             let now = time::Instant::now();
             if now - self.last_frame_time > Duration::from_millis(GAME_STEP_MILLIS) {
-                self.game.next();
+                self.game.next(self.player_control_key);
                 self.last_frame_time = now;
 
                 if input.is_none() {
-                    self.game.set_player_control_key(None);
+                    self.player_control_key = None;
                 }
             }
             self.display
@@ -98,12 +99,8 @@ impl WebRuntime {
         self.game.start_game();
     }
 
-    pub fn set_player_control_key(&mut self, key: Option<Key>) {
-        self.game.set_player_control_key(key);
-    }
-
-    pub fn tick(&mut self) {
-        self.game.next();
+    pub fn tick(&mut self, key: Option<Key>) {
+        self.game.next(key);
     }
 
     pub fn render(&mut self) -> String {

@@ -6,16 +6,17 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Game {
-    web_runtime: hewn::io::WebRuntime,
+    web_control: hewn::io::WebRuntime,
 }
 
+// lot of duplication across the examples, refactor
 #[wasm_bindgen]
 impl Game {
     pub fn new_asciijump() -> Game {
         let game = default();
 
         let asciijump_pointer = Box::new(game);
-        let web_runtime = hewn::io::WebRuntime::new(
+        let web_control = hewn::io::WebRuntime::new(
             asciijump_pointer,
             hewn::display::BaseDisplay {
                 renderer: Box::new(hewn::display::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),
@@ -23,33 +24,29 @@ impl Game {
                 cursor_strategy: Box::new(hewn::display::cursor::FollowPlayerYCursorStrategy::new()),
             },
         );
-        Game { web_runtime }
+        Game { web_control }
     }
 
     pub fn start(&mut self) {
-        self.web_runtime.start();
+        self.web_control.start();
     }
 
-    pub fn set_player_control_key(&mut self, key: Option<WasmKey>) {
-        fn map_wasm_key(k: WasmKey) -> hewn::game::Key {
-            match k {
-                WasmKey::Left => hewn::game::Key::Left,
-                WasmKey::Right => hewn::game::Key::Right,
-                WasmKey::Up => hewn::game::Key::Up,
-                WasmKey::Down => hewn::game::Key::Down,
-                WasmKey::Space => hewn::game::Key::Space,
-                WasmKey::Escape => hewn::game::Key::Escape,
-            }
-        }
-        self.web_runtime
-            .set_player_control_key(key.map(map_wasm_key));
-    }
-
-    pub fn tick(&mut self) {
-        self.web_runtime.tick();
+    pub fn tick(&mut self, key: Option<WasmKey>) {
+        self.web_control.tick(key.map(map_wasm_key));
     }
 
     pub fn render(&mut self) -> String {
-        self.web_runtime.render()
+        self.web_control.render()
+    }
+}
+
+fn map_wasm_key(k: WasmKey) -> hewn::game::Key {
+    match k {
+        WasmKey::Left => hewn::game::Key::Left,
+        WasmKey::Right => hewn::game::Key::Right,
+        WasmKey::Up => hewn::game::Key::Up,
+        WasmKey::Down => hewn::game::Key::Down,
+        WasmKey::Space => hewn::game::Key::Space,
+        WasmKey::Escape => hewn::game::Key::Escape,
     }
 }
