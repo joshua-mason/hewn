@@ -33,7 +33,7 @@ pub use engine::game_object;
 pub use engine::io;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use engine::initialize_terminal;
+pub use engine::initialize_terminal_io;
 pub use engine::BaseDisplay;
 #[cfg(not(target_arch = "wasm32"))]
 pub use engine::TerminalRenderer;

@@ -9,4 +9,4 @@ pub mod io;
 pub use self::display::*;
 pub use self::game_object::GameObject;
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::io::initialize_terminal;
+pub use self::io::initialize_terminal_io;

@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Game {
-    web_control: hewn::io::WebControl,
+    web_runtime: hewn::io::WebRuntime,
 }
 
 #[wasm_bindgen]
@@ -17,7 +17,7 @@ impl Game {
         let game = default();
         let snake_pointer = Box::new(game);
 
-        let web_control = hewn::io::WebControl::new(
+        let web_runtime = hewn::io::WebRuntime::new(
             snake_pointer,
             hewn::display::BaseDisplay {
                 renderer: Box::new(hewn::display::WebRenderer::new(height, width)),
@@ -26,11 +26,11 @@ impl Game {
                 cursor_strategy: Box::new(hewn::display::cursor::StaticCursorStrategy::new()),
             },
         );
-        Game { web_control }
+        Game { web_runtime }
     }
 
     pub fn start(&mut self) {
-        self.web_control.start();
+        self.web_runtime.start();
     }
 
     pub fn set_player_control_key(&mut self, key: Option<WasmKey>) {
@@ -44,15 +44,15 @@ impl Game {
                 WasmKey::Escape => hewn::game::Key::Escape,
             }
         }
-        self.web_control
+        self.web_runtime
             .set_player_control_key(key.map(map_wasm_key));
     }
 
     pub fn tick(&mut self) {
-        self.web_control.tick();
+        self.web_runtime.tick();
     }
 
     pub fn render(&mut self) -> String {
-        self.web_control.render()
+        self.web_runtime.render()
     }
 }

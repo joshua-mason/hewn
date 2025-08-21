@@ -2,7 +2,7 @@ mod game;
 use hewn::game_object::Coordinate;
 
 #[cfg(not(target_arch = "wasm32"))]
-use hewn::{display::BaseDisplay, initialize_terminal, io::TerminalControl, TerminalRenderer};
+use hewn::{display::BaseDisplay, initialize_terminal_io, io::TerminalRuntime, TerminalRenderer};
 fn main() {
     play_snake_in_terminal();
 }
@@ -14,7 +14,7 @@ const SCREEN_HEIGHT: u16 = 25;
 fn play_snake_in_terminal() {
     use crate::game::default;
 
-    let (stdout, stdin) = initialize_terminal();
+    let (stdout, stdin) = initialize_terminal_io();
     let mut game = default();
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = BaseDisplay {
@@ -22,7 +22,7 @@ fn play_snake_in_terminal() {
         view_cursor: Coordinate { x: 0, y: 0 },
         cursor_strategy: Box::new(hewn::display::cursor::StaticCursorStrategy::new()),
     };
-    let mut control = TerminalControl::new(stdin, &mut game, &mut display);
+    let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut display);
 
-    control.listen();
+    runtime.start();
 }

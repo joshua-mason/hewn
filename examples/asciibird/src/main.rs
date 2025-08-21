@@ -6,14 +6,14 @@ use hewn::cursor;
 use hewn::game_object::Coordinate;
 
 #[cfg(not(target_arch = "wasm32"))]
-use hewn::{display::BaseDisplay, initialize_terminal, io::TerminalControl, TerminalRenderer};
+use hewn::{display::BaseDisplay, initialize_terminal_io, io::TerminalRuntime, TerminalRenderer};
 fn main() {
     play_asciibird_in_terminal();
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn play_asciibird_in_terminal() {
-    let (stdout, stdin) = initialize_terminal();
+    let (stdout, stdin) = initialize_terminal_io();
 
     use crate::game::default;
     let mut game = default();
@@ -23,7 +23,7 @@ fn play_asciibird_in_terminal() {
         view_cursor: Coordinate { x: 0, y: 0 },
         cursor_strategy: Box::new(cursor::FollowPlayerXCursorStrategy::new()),
     };
-    let mut control = TerminalControl::new(stdin, &mut game, &mut display);
+    let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut display);
 
-    control.listen();
+    runtime.start();
 }

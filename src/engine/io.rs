@@ -16,7 +16,7 @@ const FRAME_RATE_MILLIS: u64 = 10;
 const GAME_STEP_MILLIS: u64 = 100;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn initialize_terminal() -> (
+pub fn initialize_terminal_io() -> (
     RawTerminal<Stdout>,
     termion::input::Keys<termion::AsyncReader>,
 ) {
@@ -26,7 +26,7 @@ pub fn initialize_terminal() -> (
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub struct TerminalControl<'a> {
+pub struct TerminalRuntime<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
     pub game: &'a mut dyn BaseGame,
     pub display: &'a mut BaseDisplay,
@@ -34,13 +34,13 @@ pub struct TerminalControl<'a> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl TerminalControl<'_> {
+impl TerminalRuntime<'_> {
     pub fn new<'a>(
         stdin: termion::input::Keys<termion::AsyncReader>,
         game: &'a mut dyn BaseGame,
         display: &'a mut BaseDisplay,
-    ) -> TerminalControl<'a> {
-        TerminalControl {
+    ) -> TerminalRuntime<'a> {
+        TerminalRuntime {
             stdin,
             game,
             last_frame_time: Instant::now(),
@@ -48,7 +48,7 @@ impl TerminalControl<'_> {
         }
     }
 
-    pub fn listen(&mut self) {
+    pub fn start(&mut self) {
         loop {
             let input = self.stdin.next();
 
@@ -84,14 +84,14 @@ impl TerminalControl<'_> {
     }
 }
 
-pub struct WebControl {
+pub struct WebRuntime {
     game: Box<dyn BaseGame>,
     display: BaseDisplay,
 }
 
-impl WebControl {
-    pub fn new(game: Box<dyn BaseGame>, display: BaseDisplay) -> WebControl {
-        WebControl { game, display }
+impl WebRuntime {
+    pub fn new(game: Box<dyn BaseGame>, display: BaseDisplay) -> WebRuntime {
+        WebRuntime { game, display }
     }
 
     pub fn start(&mut self) {
