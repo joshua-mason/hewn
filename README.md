@@ -1,13 +1,16 @@
 # Hewn
 
-> **Note:** This crate is experimental and in early development.
-> Expect breaking changes and incomplete features.  
+Hewn is a primitive Rust game engine for learning and tinkering, with Terminal and WebAssembly support.
 
-Hewn is a simple, fun, and portable game engine for building terminal and WASM games in Rust.
+- Crate: [crates.io/hewn](https://crates.io/crates/hewn)
+- Examples: `examples/asciijump`, `examples/asciibird`, `examples/snake`
 
-## Features
+Quick start:
 
-- Terminal and WASM support
-- Simple game object and entity system
-- Minimal dependencies
-- Example game: ASCII Jump
+```bash
+# Terminal
+cargo run -p asciijump
+
+# Web (serve locally)
+cd examples/asciijump && python3 -m http.server
+```
