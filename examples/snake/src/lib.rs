@@ -1,8 +1,8 @@
+pub mod game;
+
 use crate::game::default;
 use hewn::WasmKey;
 use wasm_bindgen::prelude::*;
-
-pub mod game;
 
 #[wasm_bindgen]
 pub struct Game {

@@ -468,7 +468,7 @@ pub mod snake {
         }
 
         pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-            take_game_object::<PlayerCharacter>(self.game_objects())
+            take_game_object::<PlayerCharacter>(&self.entities().game_objects)
         }
 
         // pub fn get_food_objects(&mut self) -> Vec<&mut Food> {
@@ -544,6 +544,11 @@ pub mod snake {
             self.state = GameState::InGame;
         }
 
+        // duplication across games - consider options to refactor out?
+        fn entities(&self) -> &Entities {
+            &self.entities
+        }
+
         fn next(&mut self) {
             if self.state != GameState::InGame {
                 return;
@@ -566,11 +571,6 @@ pub mod snake {
             self.score = self
                 .score
                 .max(self.get_player_object().unwrap().coordinate.x);
-        }
-
-        // duplication across games - consider options to refactor out?
-        fn game_objects(&self) -> &[Box<dyn GameObject>] {
-            &self.entities.game_objects
         }
 
         fn debug_str(&self) -> Option<String> {

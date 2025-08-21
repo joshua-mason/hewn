@@ -65,7 +65,7 @@ impl TerminalControl<'_> {
                 }
             }
             self.display
-                .next(self.game.game_objects(), self.game.debug_str());
+                .next(&self.game.entities().game_objects, self.game.debug_str());
         }
     }
 }
@@ -94,6 +94,6 @@ impl WebControl {
 
     pub fn render(&mut self) -> String {
         self.display
-            .next(self.game.game_objects(), self.game.debug_str())
+            .next(&self.game.entities().game_objects, self.game.debug_str())
     }
 }

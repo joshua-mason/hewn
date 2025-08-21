@@ -80,7 +80,7 @@ impl Game {
     }
 
     pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-        take_player_object(self.game_objects())
+        take_player_object(&self.entities().game_objects)
     }
 
     pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
@@ -116,6 +116,9 @@ impl Game {
 impl BaseGame for Game {
     fn set_player_control_key(&mut self, key: Option<Key>) {
         self.player_control_key = key
+    }
+    fn entities(&self) -> &Entities {
+        &self.entities
     }
 
     fn start_game(&mut self) {
@@ -169,10 +172,6 @@ impl BaseGame for Game {
         self.score = self
             .score
             .max(self.get_player_object().unwrap().coordinate.y);
-    }
-
-    fn game_objects(&self) -> &[Box<dyn GameObject>] {
-        &self.entities.game_objects
     }
 
     fn debug_str(&self) -> Option<String> {

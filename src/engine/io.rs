@@ -10,7 +10,6 @@ pub fn initialize_terminal() -> (
     termion::input::Keys<termion::AsyncReader>,
 ) {
     let stdout = io::stdout().into_raw_mode().unwrap();
-
     let stdin = termion::async_stdin().keys();
     (stdout, stdin)
 }

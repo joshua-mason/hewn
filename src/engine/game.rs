@@ -1,14 +1,17 @@
 use super::game_object::GameObject;
 
 pub trait BaseGame {
+    // Game logic
     fn start_game(&mut self);
-
-    fn set_player_control_key(&mut self, key: Option<Key>);
-
     fn next(&mut self);
 
-    fn game_objects(&self) -> &[Box<dyn GameObject>];
+    // Game control
+    fn set_player_control_key(&mut self, key: Option<Key>);
 
+    // Game state
+    fn entities(&self) -> &Entities;
+
+    // render
     fn debug_str(&self) -> Option<String>;
 }
 

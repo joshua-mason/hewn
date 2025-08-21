@@ -62,7 +62,7 @@ impl Game {
     }
 
     pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-        take_game_object::<PlayerCharacter>(self.game_objects())
+        take_game_object::<PlayerCharacter>(&self.entities().game_objects)
     }
 
     pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
@@ -134,8 +134,8 @@ impl BaseGame for Game {
             .max(self.get_player_object().unwrap().coordinate.x);
     }
 
-    fn game_objects(&self) -> &[Box<dyn GameObject>] {
-        &self.entities.game_objects
+    fn entities(&self) -> &Entities {
+        &self.entities
     }
 
     fn debug_str(&self) -> Option<String> {
