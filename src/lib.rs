@@ -27,7 +27,6 @@ use wasm_bindgen::prelude::*;
 mod engine;
 
 pub use engine::control;
-pub use engine::control::WebControl;
 pub use engine::cursor;
 pub use engine::display;
 pub use engine::game;
