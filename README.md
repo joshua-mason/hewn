@@ -12,5 +12,9 @@ Quick start:
 cargo run -p asciijump
 
 # Web (serve locally)
-cd examples/asciijump && python3 -m http.server
+# Install wasm-pack if you haven't already
+# https://drager.github.io/wasm-pack/installer/
+cd examples/asciijump
+wasm-pack build --release --target web
+python3 -m http.server
 ```
