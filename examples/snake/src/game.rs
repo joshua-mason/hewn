@@ -15,7 +15,7 @@ pub fn default() -> snake::Game {
 pub mod game_objects {
     pub mod player_character {
         use hewn::display::build_string;
-        use hewn::game_object::utils::try_get_concrete_type;
+        use hewn::game_object::utils::maybe_get_concrete_type;
         use hewn::game_object::{
             GameObject, {CollisionBox, Coordinate},
         };
@@ -106,13 +106,13 @@ pub mod game_objects {
             }
 
             fn collide(&mut self, other: &dyn GameObject) {
-                if let Some(_food) = try_get_concrete_type::<Food>(other) {
+                if let Some(_food) = maybe_get_concrete_type::<Food>(other) {
                     self.size += 1;
                 }
-                if let Some(_wall) = try_get_concrete_type::<Wall>(other) {
+                if let Some(_wall) = maybe_get_concrete_type::<Wall>(other) {
                     self.hit_wall = true;
                 }
-                if let Some(_wall) = try_get_concrete_type::<SnakeBody>(other) {
+                if let Some(_wall) = maybe_get_concrete_type::<SnakeBody>(other) {
                     self.hit_wall = true;
                 }
             }
@@ -397,7 +397,7 @@ pub mod snake {
     use hewn::game::{BaseGame, Entities, Key};
 
     use hewn::game_object::utils::{
-        collision_pass, take_game_object, try_get_concrete_type, try_get_mut_concrete_type,
+        collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
     };
     use hewn::game_object::{Coordinate, GameObject};
     use rand::Rng;
@@ -479,7 +479,7 @@ pub mod snake {
             self.entities
                 .game_objects
                 .iter_mut()
-                .filter_map(|o| try_get_mut_concrete_type::<PlayerCharacter>(&mut **o))
+                .filter_map(|o| maybe_get_concrete_type_mut::<PlayerCharacter>(&mut **o))
                 .next()
         }
 
@@ -489,7 +489,7 @@ pub mod snake {
                 .entities
                 .game_objects
                 .iter()
-                .position(|o| try_get_concrete_type::<PlayerCharacter>(&**o).is_some())
+                .position(|o| maybe_get_concrete_type::<PlayerCharacter>(&**o).is_some())
             {
                 self.entities.game_objects.remove(index);
             }
@@ -503,7 +503,7 @@ pub mod snake {
                 .entities
                 .game_objects
                 .iter()
-                .position(|o| try_get_concrete_type::<Food>(&**o).is_some())
+                .position(|o| maybe_get_concrete_type::<Food>(&**o).is_some())
             {
                 self.entities.game_objects.remove(index);
             }

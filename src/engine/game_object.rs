@@ -65,34 +65,35 @@ pub mod utils {
         }
     }
 
-    pub fn take_game_objects<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Vec<&T> {
+    pub fn downcast_refs<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Vec<&T> {
         game_objects
             .iter()
-            .filter_map(|o| try_get_concrete_type::<T>(&**o))
+            .filter_map(|o| maybe_get_concrete_type::<T>(&**o))
             .collect::<Vec<&T>>()
     }
 
-    pub fn take_mut_game_objects<'a, T: GameObject>(
+    pub fn downcast_muts<'a, T: GameObject>(
         game_objects: &'a mut [Box<dyn GameObject>],
     ) -> Vec<&'a mut T> {
         game_objects
             .iter_mut()
-            .filter_map(|o| try_get_mut_concrete_type::<T>(&mut **o))
+            .filter_map(|o| maybe_get_concrete_type_mut::<T>(&mut **o))
             .collect::<Vec<&'a mut T>>()
     }
 
     pub fn take_game_object<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Option<&T> {
-        take_game_objects::<T>(game_objects).into_iter().next()
+        downcast_refs::<T>(game_objects).into_iter().next()
     }
 
     pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&dyn GameObject> {
         game_objects.iter().find(|o| o.is_player()).map(|o| &**o)
     }
 
-    pub fn try_get_concrete_type<T: Any>(abc: &dyn GameObject) -> Option<&T> {
+    pub fn maybe_get_concrete_type<T: Any>(abc: &dyn GameObject) -> Option<&T> {
         abc.as_any().downcast_ref::<T>()
     }
-    pub fn try_get_mut_concrete_type<T: Any>(abc: &mut dyn GameObject) -> Option<&mut T> {
+
+    pub fn maybe_get_concrete_type_mut<T: Any>(abc: &mut dyn GameObject) -> Option<&mut T> {
         abc.as_mut_any().downcast_mut()
     }
 }
@@ -101,7 +102,7 @@ pub mod utils {
 mod test {
 
     use super::{
-        utils::{collision_pass, take_game_objects},
+        utils::{collision_pass, downcast_refs},
         *,
     };
 
@@ -182,7 +183,7 @@ mod test {
 
         println!("{:?}", game_objects);
 
-        for game_object in take_game_objects::<TestGameObject>(&game_objects).iter() {
+        for game_object in downcast_refs::<TestGameObject>(&game_objects).iter() {
             assert_eq!(game_object.collisions, 1);
         }
     }

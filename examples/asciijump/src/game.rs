@@ -3,7 +3,7 @@ use super::game_objects::player_character::PlayerCharacter;
 use hewn::{
     game::{BaseGame, Entities, Key},
     game_object::{
-        utils::{collision_pass, try_get_concrete_type, try_get_mut_concrete_type},
+        utils::{collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut},
         GameObject,
     },
 };
@@ -87,7 +87,7 @@ impl Game {
         self.entities
             .game_objects
             .iter_mut()
-            .filter_map(|o| try_get_mut_concrete_type::<PlayerCharacter>(&mut **o))
+            .filter_map(|o| maybe_get_concrete_type_mut::<PlayerCharacter>(&mut **o))
             .next()
     }
 
@@ -105,7 +105,7 @@ impl Game {
             .entities
             .game_objects
             .iter()
-            .position(|o| try_get_concrete_type::<PlayerCharacter>(&**o).is_some())
+            .position(|o| maybe_get_concrete_type::<PlayerCharacter>(&**o).is_some())
         {
             self.entities.game_objects.remove(index);
         }
@@ -191,7 +191,7 @@ impl BaseGame for Game {
 pub fn take_game_objects<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Vec<&T> {
     game_objects
         .iter()
-        .filter_map(|o| try_get_concrete_type::<T>(&**o))
+        .filter_map(|o| maybe_get_concrete_type::<T>(&**o))
         .collect::<Vec<&T>>()
 }
 

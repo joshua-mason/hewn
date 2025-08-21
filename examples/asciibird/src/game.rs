@@ -1,7 +1,7 @@
 use hewn::game::Key;
 use hewn::game::{BaseGame, Entities};
 use hewn::game_object::utils::{
-    collision_pass, take_game_object, try_get_concrete_type, try_get_mut_concrete_type,
+    collision_pass, take_game_object, maybe_get_concrete_type, maybe_get_concrete_type_mut,
 };
 use hewn::game_object::GameObject;
 
@@ -69,7 +69,7 @@ impl Game {
         self.entities
             .game_objects
             .iter_mut()
-            .filter_map(|o| try_get_mut_concrete_type::<PlayerCharacter>(&mut **o))
+            .filter_map(|o| maybe_get_concrete_type_mut::<PlayerCharacter>(&mut **o))
             .next()
     }
 
@@ -79,7 +79,7 @@ impl Game {
             .entities
             .game_objects
             .iter()
-            .position(|o| try_get_concrete_type::<PlayerCharacter>(&**o).is_some())
+            .position(|o| maybe_get_concrete_type::<PlayerCharacter>(&**o).is_some())
         {
             self.entities.game_objects.remove(index);
         }
