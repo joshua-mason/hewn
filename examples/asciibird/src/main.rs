@@ -4,19 +4,22 @@ mod game_objects;
 use asciibird::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use hewn::cursor;
 use hewn::game_object::Coordinate;
-
 #[cfg(not(target_arch = "wasm32"))]
-use hewn::{display::BaseDisplay, initialize_terminal_io, runtime::TerminalRuntime, TerminalRenderer};
+use hewn::{
+    display::BaseDisplay, initialize_terminal_io, runtime::TerminalRuntime, TerminalRenderer,
+};
+
 fn main() {
     play_asciibird_in_terminal();
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn play_asciibird_in_terminal() {
+    use crate::game::default_game;
+
     let (stdout, stdin) = initialize_terminal_io();
 
-    use crate::game::default;
-    let mut game = default();
+    let mut game = default_game();
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = BaseDisplay {
         renderer: Box::new(renderer),

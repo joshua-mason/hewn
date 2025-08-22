@@ -1,6 +1,6 @@
 pub mod game;
 
-use crate::game::default;
+use crate::game::default_game;
 use hewn::runtime::WasmGameApi;
 use wasm_bindgen::prelude::*;
 
@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 pub fn new_game_api() -> WasmGameApi {
     let width: u16 = 30;
     let height: u16 = 25;
-    let game = default();
+    let game = default_game();
     let snake_pointer = Box::new(game);
     let web_runtime = hewn::runtime::WebRuntime::new(
         snake_pointer,

@@ -1,11 +1,12 @@
 use super::game_objects::platform::Platform;
 use super::game_objects::player_character::PlayerCharacter;
 use hewn::{
-    game::{BaseGame, Entities, Key},
+    game::{BaseGame, Entities},
     game_object::{
         utils::{collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut},
         GameObject,
     },
+    runtime::Key,
 };
 
 pub const WIDTH: usize = 10;
@@ -13,7 +14,7 @@ pub const HEIGHT: usize = 500;
 pub const SCREEN_WIDTH: u16 = 10;
 pub const SCREEN_HEIGHT: u16 = 20;
 
-pub fn default() -> Game {
+pub fn default_game() -> Game {
     let mut game = Game::new(WIDTH, HEIGHT);
     let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());

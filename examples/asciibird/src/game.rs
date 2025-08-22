@@ -1,9 +1,9 @@
-use hewn::game::Key;
 use hewn::game::{BaseGame, Entities};
 use hewn::game_object::utils::{
     collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
 };
 use hewn::game_object::GameObject;
+use hewn::runtime::Key;
 
 use crate::game_objects::player_character::PlayerCharacter;
 use crate::game_objects::wall::Wall;
@@ -13,7 +13,7 @@ pub const HEIGHT: usize = 30;
 pub const SCREEN_WIDTH: u16 = 50;
 pub const SCREEN_HEIGHT: u16 = 30;
 
-pub fn default() -> Game {
+pub fn default_game() -> Game {
     let mut game = Game::new();
     let walls = Wall::generate_walls(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());

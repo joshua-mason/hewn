@@ -3,7 +3,7 @@ use crate::game::game_objects::{player_character::PlayerCharacter, wall::Wall};
 pub const WIDTH: usize = 30;
 pub const HEIGHT: usize = 25;
 
-pub fn default() -> snake::Game {
+pub fn default_game() -> snake::Game {
     let mut game = snake::Game::new(WIDTH, HEIGHT);
     let walls = Wall::generate_walls(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());

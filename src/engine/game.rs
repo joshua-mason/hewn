@@ -1,6 +1,5 @@
+use crate::game_object::GameObject;
 use crate::runtime::Key;
-
-use super::game_object::GameObject;
 
 pub trait BaseGame {
     // Game logic
