@@ -182,7 +182,6 @@ fn map_wasm_key(k: Option<WasmKey>) -> Option<Key> {
         WasmKey::Down => Some(Key::Down),
         WasmKey::Space => Some(Key::Space),
         WasmKey::Escape => Some(Key::Escape),
-        _ => None,
     }
 }
 
