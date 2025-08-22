@@ -11,6 +11,7 @@ use std::{
 #[cfg(not(target_arch = "wasm32"))]
 use termion::raw::RawTerminal;
 
+/// A view of the game world.
 pub struct View {
     pub view_cursor: Coordinate,
     pub renderer: Box<dyn Renderer>,
@@ -67,6 +68,7 @@ impl View {
     }
 }
 
+/// Player view cursor and strategies.
 pub mod cursor {
     use crate::{game_object::Coordinate, game_object::GameObject, view::Renderer};
 
@@ -145,6 +147,8 @@ pub mod cursor {
         }
     }
 }
+
+/// Trait which all renderers must implement.
 pub trait Renderer {
     fn screen_height(&self) -> u16;
     fn screen_width(&self) -> u16;
@@ -152,6 +156,7 @@ pub trait Renderer {
     fn render(&mut self, debug_string: Option<String>, view: String, h: u16) -> String;
 }
 
+/// A renderer for the terminal.
 #[cfg(not(target_arch = "wasm32"))]
 pub struct TerminalRenderer {
     stdout: RawTerminal<Stdout>,
@@ -215,6 +220,7 @@ impl Renderer for TerminalRenderer {
     }
 }
 
+/// A renderer for the web.
 pub struct WebRenderer {
     screen_height: u16,
     screen_width: u16,
@@ -257,6 +263,7 @@ impl Renderer for WebRenderer {
     }
 }
 
+/// Utility function to build a string of a given character and length.
 pub fn build_string(ch: char, length: usize) -> String {
     ch.to_string().repeat(length)
 }
