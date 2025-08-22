@@ -2,7 +2,9 @@ mod game;
 use hewn::game_object::Coordinate;
 
 #[cfg(not(target_arch = "wasm32"))]
-use hewn::{display::BaseDisplay, initialize_terminal_io, io::TerminalRuntime, TerminalRenderer};
+use hewn::{
+    display::BaseDisplay, initialize_terminal_io, runtime::TerminalRuntime, TerminalRenderer,
+};
 fn main() {
     play_snake_in_terminal();
 }

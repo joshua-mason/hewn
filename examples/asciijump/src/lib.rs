@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Game {
-    web_control: hewn::io::WebRuntime,
+    web_control: hewn::runtime::WebRuntime,
 }
 
 // lot of duplication across the examples, refactor
@@ -16,7 +16,7 @@ impl Game {
         let game = default();
 
         let asciijump_pointer = Box::new(game);
-        let web_control = hewn::io::WebRuntime::new(
+        let web_control = hewn::runtime::WebRuntime::new(
             asciijump_pointer,
             hewn::display::BaseDisplay {
                 renderer: Box::new(hewn::display::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),

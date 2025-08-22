@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Game {
-    web_runtime: hewn::io::WebRuntime,
+    web_runtime: hewn::runtime::WebRuntime,
 }
 
 #[wasm_bindgen]
@@ -16,7 +16,7 @@ impl Game {
         let game = default();
 
         let asciibird_pointer = Box::new(game);
-        let web_runtime = hewn::io::WebRuntime::new(
+        let web_runtime = hewn::runtime::WebRuntime::new(
             asciibird_pointer,
             hewn::display::BaseDisplay {
                 renderer: Box::new(hewn::display::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),
