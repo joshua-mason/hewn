@@ -1,14 +1,9 @@
-use crate::engine::display::cursor::CursorStrategy;
-use crate::engine::game_object::utils;
+//! View, cursor and renderer.
 
 use super::game_object::Coordinate;
 use super::game_object::GameObject;
-
-pub struct BaseDisplay {
-    pub view_cursor: Coordinate,
-    pub renderer: Box<dyn Renderer>,
-    pub cursor_strategy: Box<dyn CursorStrategy>,
-}
+use crate::engine::game_object::utils;
+use crate::engine::view::cursor::CursorStrategy;
 use std::{
     io::{Stdout, Write},
     iter::zip,
@@ -16,7 +11,13 @@ use std::{
 #[cfg(not(target_arch = "wasm32"))]
 use termion::raw::RawTerminal;
 
-impl BaseDisplay {
+pub struct View {
+    pub view_cursor: Coordinate,
+    pub renderer: Box<dyn Renderer>,
+    pub cursor_strategy: Box<dyn CursorStrategy>,
+}
+
+impl View {
     pub fn next(
         &mut self,
         game_objects: &[Box<dyn GameObject>],
@@ -67,7 +68,7 @@ impl BaseDisplay {
 }
 
 pub mod cursor {
-    use crate::{display::Renderer, game_object::Coordinate, game_object::GameObject};
+    use crate::{game_object::Coordinate, game_object::GameObject, view::Renderer};
 
     pub trait CursorStrategy {
         fn update(

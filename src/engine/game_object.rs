@@ -1,3 +1,5 @@
+//! Game object traits and utils.
+
 use std::{any::Any, fmt::Debug, ops::Range};
 
 pub trait GameObject: Debug + Any {

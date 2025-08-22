@@ -1,4 +1,4 @@
-use hewn::game::{BaseGame, Entities};
+use hewn::game::{Entities, GameLogic};
 use hewn::game_object::utils::{
     collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
 };
@@ -92,7 +92,7 @@ impl Game {
     }
 }
 
-impl BaseGame for Game {
+impl GameLogic for Game {
     fn start_game(&mut self) {
         self.score = 0;
         self.get_mut_player_object().unwrap().reset();

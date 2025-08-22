@@ -12,10 +12,11 @@ pub fn new_game_api() -> WasmGameApi {
     let snake_pointer = Box::new(game);
     let web_runtime = hewn::runtime::WebRuntime::new(
         snake_pointer,
-        hewn::display::BaseDisplay {
-            renderer: Box::new(hewn::display::WebRenderer::new(height, width)),
+        // should the game actually own the display and the runtime only handle the IO?
+        hewn::view::View {
+            renderer: Box::new(hewn::view::WebRenderer::new(height, width)),
             view_cursor: hewn::game_object::Coordinate { x: 0, y: 0 },
-            cursor_strategy: Box::new(hewn::display::cursor::StaticCursorStrategy::new()),
+            cursor_strategy: Box::new(hewn::view::cursor::StaticCursorStrategy::new()),
         },
     );
     hewn::runtime::new_wasm_game_api(web_runtime)

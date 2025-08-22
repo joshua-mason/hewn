@@ -1,7 +1,9 @@
+//! Game logic trait and entity handling.
+
 use crate::game_object::GameObject;
 use crate::runtime::Key;
 
-pub trait BaseGame {
+pub trait GameLogic {
     // Game logic
     fn start_game(&mut self);
     fn next(&mut self, key: Option<Key>);

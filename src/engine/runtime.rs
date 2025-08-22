@@ -1,4 +1,6 @@
-use super::{display::BaseDisplay, game::BaseGame};
+//! Wasm and terminal game runtimes.
+
+use super::{game::GameLogic, view::View};
 #[cfg(not(target_arch = "wasm32"))]
 use std::io::{self, Stdout};
 use std::{
@@ -37,8 +39,8 @@ pub fn initialize_terminal_io() -> (
 #[cfg(not(target_arch = "wasm32"))]
 pub struct TerminalRuntime<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
-    pub game: &'a mut dyn BaseGame,
-    pub display: &'a mut BaseDisplay,
+    pub game: &'a mut dyn GameLogic,
+    pub display: &'a mut View,
     last_frame_time: Instant,
     player_control_key: Option<Key>,
 }
@@ -47,8 +49,8 @@ pub struct TerminalRuntime<'a> {
 impl TerminalRuntime<'_> {
     pub fn new<'a>(
         stdin: termion::input::Keys<termion::AsyncReader>,
-        game: &'a mut dyn BaseGame,
-        display: &'a mut BaseDisplay,
+        game: &'a mut dyn GameLogic,
+        display: &'a mut View,
     ) -> TerminalRuntime<'a> {
         TerminalRuntime {
             stdin,
@@ -108,12 +110,12 @@ pub fn map_termion_key(key: termion::event::Key) -> Option<Key> {
 }
 
 pub struct WebRuntime {
-    game: Box<dyn BaseGame>,
-    display: BaseDisplay,
+    game: Box<dyn GameLogic>,
+    display: View,
 }
 
 impl WebRuntime {
-    pub fn new(game: Box<dyn BaseGame>, display: BaseDisplay) -> WebRuntime {
+    pub fn new(game: Box<dyn GameLogic>, display: View) -> WebRuntime {
         WebRuntime { game, display }
     }
 
@@ -121,6 +123,7 @@ impl WebRuntime {
         self.game.start_game();
     }
 
+    // next_frame? and self.game.next_frame?
     pub fn tick(&mut self, key: Option<WasmKey>) {
         self.game.next(map_wasm_key(key));
     }

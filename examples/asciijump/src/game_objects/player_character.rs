@@ -1,5 +1,5 @@
 use hewn::{
-    display::build_string,
+    view::build_string,
     game_object::{CollisionBox, Coordinate, GameObject},
 };
 use std::any::Any;
