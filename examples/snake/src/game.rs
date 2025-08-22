@@ -1,11 +1,8 @@
 use crate::game::game_objects::{player_character::PlayerCharacter, wall::Wall};
 
-pub const WIDTH: usize = 30;
-pub const HEIGHT: usize = 25;
-
-pub fn default_game() -> snake::Game {
-    let mut game = snake::Game::new(WIDTH, HEIGHT);
-    let walls = Wall::generate_walls(WIDTH, HEIGHT);
+pub fn default_game(width: u16, height: u16) -> snake::Game {
+    let mut game = snake::Game::new(width, height);
+    let walls = Wall::generate_walls(width, height);
     game.set_player(PlayerCharacter::new());
     game.set_walls(walls);
     game.generate_food();
@@ -319,24 +316,24 @@ pub mod game_objects {
         }
 
         impl Wall {
-            pub fn from_tuple(coords: (usize, usize)) -> Wall {
+            pub fn from_tuple(coords: (u16, u16)) -> Wall {
                 Wall {
                     coordinate: Coordinate {
-                        x: coords.0,
-                        y: coords.1,
+                        x: coords.0 as usize,
+                        y: coords.1 as usize,
                     },
                 }
             }
 
             #[cfg(test)]
-            pub fn from_tuples(tuples: &[(usize, usize)]) -> Vec<Wall> {
+            pub fn from_tuples(tuples: &[(u16, u16)]) -> Vec<Wall> {
                 tuples
                     .iter()
                     .map(|tuple| Wall::from_tuple(*tuple))
                     .collect::<Vec<_>>()
             }
 
-            pub fn generate_walls(width: usize, height: usize) -> Vec<Wall> {
+            pub fn generate_walls(width: u16, height: u16) -> Vec<Wall> {
                 let mut walls: Vec<Wall> = vec![];
                 for x_index in 0..width {
                     walls.push(Wall::from_tuple((x_index, 1)));
@@ -411,8 +408,8 @@ pub mod snake {
 
     #[derive(Debug)]
     pub struct Game {
-        pub width: usize,
-        pub height: usize,
+        pub width: u16,
+        pub height: u16,
         pub score: usize,
 
         state: GameState,
@@ -420,7 +417,7 @@ pub mod snake {
     }
 
     impl Game {
-        pub fn new(width: usize, height: usize) -> Game {
+        pub fn new(width: u16, height: u16) -> Game {
             let mut game = Game {
                 width,
                 height,
@@ -467,10 +464,6 @@ pub mod snake {
         pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
             take_game_object::<PlayerCharacter>(&self.entities().game_objects)
         }
-
-        // pub fn get_food_objects(&mut self) -> Vec<&mut Food> {
-        //     take_mut_game_objects::<Food>(self.entities.game_objects.iter_mut().as_mut_slice())
-        // }
 
         pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
             self.entities
@@ -522,7 +515,10 @@ pub mod snake {
 
             // TODO we need to avoid generating on the snakes body/head
             self.set_food(Food {
-                coordinate: Coordinate { x, y },
+                coordinate: Coordinate {
+                    x: x as usize,
+                    y: y as usize,
+                },
                 eaten: false,
             });
         }
@@ -602,11 +598,8 @@ mod test {
 
     #[test]
     fn test_eat_food() {
-        // let (stdout, stdin) = initialize_terminal();
-        let mut game = crate::game::snake::Game::new(WIDTH, HEIGHT);
-        // let walls = Wall::generate_walls(WIDTH, HEIGHT);
+        let mut game = crate::game::snake::Game::new(30, 25);
         game.set_player(PlayerCharacter::new());
-        // game.set_walls(walls);
         game.set_food(Food::from_tuple((1, 2)));
 
         let food = take_game_object::<Food>(&game.entities_for_test().game_objects);

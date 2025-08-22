@@ -6,12 +6,12 @@ use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
 #[cfg(not(target_arch = "wasm32"))]
 use hewn::view::{TerminalRenderer, View};
 
-const SCREEN_WIDTH: u16 = 30;
-const SCREEN_HEIGHT: u16 = 25;
+const SCREEN_WIDTH: u16 = 40;
+const SCREEN_HEIGHT: u16 = 10;
 
 fn main() {
     let (stdout, stdin) = initialize_terminal_io();
-    let mut game = default_game();
+    let mut game = default_game(SCREEN_WIDTH, SCREEN_HEIGHT);
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = View {
         renderer: Box::new(renderer),
