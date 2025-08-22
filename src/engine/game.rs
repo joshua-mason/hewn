@@ -1,3 +1,5 @@
+use crate::runtime::Key;
+
 use super::game_object::GameObject;
 
 pub trait BaseGame {
@@ -37,28 +39,5 @@ impl Entities {
                 std::cmp::Ordering::Less
             }
         });
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Key {
-    Left,
-    Right,
-    Up,
-    Down,
-    Space,
-    Escape,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn map_termion_key(key: termion::event::Key) -> Option<Key> {
-    match key {
-        termion::event::Key::Left => Some(Key::Left),
-        termion::event::Key::Right => Some(Key::Right),
-        termion::event::Key::Up => Some(Key::Up),
-        termion::event::Key::Down => Some(Key::Down),
-        termion::event::Key::Char(' ') => Some(Key::Space),
-        termion::event::Key::Esc => Some(Key::Escape),
-        _ => None,
     }
 }

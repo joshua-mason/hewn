@@ -394,7 +394,8 @@ pub mod snake {
     use super::game_objects::food::Food;
     use super::game_objects::player_character::{Direction, PlayerCharacter};
     use super::game_objects::wall::Wall;
-    use hewn::game::{BaseGame, Entities, Key};
+    use hewn::game::{BaseGame, Entities};
+    use hewn::Key;
 
     use hewn::game_object::utils::{
         collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,

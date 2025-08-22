@@ -95,12 +95,12 @@
     </div>
 
     <script type="module" lang="ts">
-        import init, { Game, WasmKey } from './pkg/snake.js';
+        import init, { new_game_api, WasmKey } from './pkg/snake.js';
 
         async function main() {
             await init();
-            const game = Game.new_snake();
-            game.start();
+            const gameApi = new_game_api();
+            gameApi.start();
 
             const pre = document.getElementById('game-output');
             const startButton = document.getElementById('start');
@@ -109,7 +109,7 @@
             document.body.classList.add('game-started');
 
             function renderGame() {
-                const output = game.render();
+                const output = gameApi.render();
                 pre.textContent = output.split('|').join('\n');
             }
 
@@ -125,13 +125,18 @@
                 }
             };
 
+            let key = undefined;
+
             addEventListener('keydown', (e) => {
                 const k = mapKey(e);
-                if (k !== undefined) game.set_player_control_key(k);
+                if (k !== undefined) {
+                    key = k;
+                }
             });
 
             function gameLoop() {
-                game.tick();
+                gameApi.tick(key);
+                key = undefined;
                 renderGame();
             }
 

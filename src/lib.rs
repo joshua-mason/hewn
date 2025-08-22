@@ -22,8 +22,6 @@
 //!
 //! -->
 
-use wasm_bindgen::prelude::*;
-
 mod engine;
 
 pub use engine::cursor;
@@ -31,19 +29,10 @@ pub use engine::display;
 pub use engine::game;
 pub use engine::game_object;
 pub use engine::runtime;
+pub use engine::runtime::Key;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use engine::initialize_terminal_io;
 pub use engine::BaseDisplay;
 #[cfg(not(target_arch = "wasm32"))]
 pub use engine::TerminalRenderer;
-
-#[wasm_bindgen]
-pub enum WasmKey {
-    Left,
-    Right,
-    Up,
-    Down,
-    Space,
-    Escape,
-}

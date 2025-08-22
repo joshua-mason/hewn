@@ -1,7 +1,5 @@
 use super::{display::BaseDisplay, game::BaseGame};
 #[cfg(not(target_arch = "wasm32"))]
-use crate::engine::game::map_termion_key;
-use crate::engine::game::Key;
 use std::io::{self, Stdout};
 use std::{
     thread,
@@ -11,9 +9,20 @@ use std::{
 use termion::input::TermRead;
 #[cfg(not(target_arch = "wasm32"))]
 use termion::raw::{IntoRawMode, RawTerminal};
+use wasm_bindgen::prelude::*;
 
 const FRAME_RATE_MILLIS: u64 = 10;
 const GAME_STEP_MILLIS: u64 = 100;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Key {
+    Left,
+    Right,
+    Up,
+    Down,
+    Space,
+    Escape,
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn initialize_terminal_io() -> (
@@ -85,6 +94,19 @@ impl TerminalRuntime<'_> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn map_termion_key(key: termion::event::Key) -> Option<Key> {
+    match key {
+        termion::event::Key::Left => Some(Key::Left),
+        termion::event::Key::Right => Some(Key::Right),
+        termion::event::Key::Up => Some(Key::Up),
+        termion::event::Key::Down => Some(Key::Down),
+        termion::event::Key::Char(' ') => Some(Key::Space),
+        termion::event::Key::Esc => Some(Key::Escape),
+        _ => None,
+    }
+}
+
 pub struct WebRuntime {
     game: Box<dyn BaseGame>,
     display: BaseDisplay,
@@ -99,12 +121,62 @@ impl WebRuntime {
         self.game.start_game();
     }
 
-    pub fn tick(&mut self, key: Option<Key>) {
-        self.game.next(key);
+    pub fn tick(&mut self, key: Option<WasmKey>) {
+        self.game.next(map_wasm_key(key));
     }
 
     pub fn render(&mut self) -> String {
         self.display
             .next(&self.game.entities().game_objects, self.game.debug_str())
     }
+}
+
+#[wasm_bindgen]
+pub struct WasmGameApi {
+    web_runtime: WebRuntime,
+}
+
+#[wasm_bindgen]
+impl WasmGameApi {
+    pub fn start(&mut self) {
+        self.web_runtime.start();
+    }
+
+    pub fn tick(&mut self, key: Option<WasmKey>) {
+        self.web_runtime.tick(key);
+    }
+
+    pub fn render(&mut self) -> String {
+        self.web_runtime.render()
+    }
+}
+
+pub fn new_wasm_game_api(web_runtime: WebRuntime) -> WasmGameApi {
+    WasmGameApi { web_runtime }
+}
+
+fn map_wasm_key(k: Option<WasmKey>) -> Option<Key> {
+    if k.is_none() {
+        return None;
+    }
+    let k = k.unwrap();
+    match k {
+        WasmKey::Left => Some(Key::Left),
+        WasmKey::Right => Some(Key::Right),
+        WasmKey::Up => Some(Key::Up),
+        WasmKey::Down => Some(Key::Down),
+        WasmKey::Space => Some(Key::Space),
+        WasmKey::Escape => Some(Key::Escape),
+        _ => None,
+    }
+}
+
+#[wasm_bindgen]
+pub enum WasmKey {
+    Left,
+    Right,
+    Up,
+    Down,
+    Space,
+    Escape,
 }
