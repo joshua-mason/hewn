@@ -173,9 +173,15 @@ mod test {
     #[test]
     fn test_no_collision() {
         let platform = TestGameObject::from_tuple((5, 5));
-        let player = TestGameObject::from_tuple((7, 6));
+        let player_up = TestGameObject::from_tuple((5, 6));
+        let player_down = TestGameObject::from_tuple((5, 4));
+        let player_left = TestGameObject::from_tuple((4, 5));
+        let player_right = TestGameObject::from_tuple((6, 5));
 
-        assert!(!utils::detect_collision(&platform, &player));
+        assert!(!utils::detect_collision(&platform, &player_up));
+        assert!(!utils::detect_collision(&platform, &player_down));
+        assert!(!utils::detect_collision(&platform, &player_left));
+        assert!(!utils::detect_collision(&platform, &player_right));
     }
 
     #[test]

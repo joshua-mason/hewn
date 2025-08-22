@@ -97,8 +97,8 @@ pub mod game_objects {
                 };
 
                 CollisionBox {
-                    x: coords.x..(next_coords.0 + 1),
-                    y: coords.y..(next_coords.1 + 1),
+                    x: coords.x..(coords.x + 1),
+                    y: coords.y..(coords.y + 1),
                 }
             }
 
@@ -164,6 +164,9 @@ pub mod game_objects {
         }
 
         impl Food {
+            const PRIORITY: u8 = 0;
+            const WIDTH: usize = 1;
+
             pub fn new() -> Food {
                 Food {
                     coordinate: Coordinate { x: 3, y: 3 },
@@ -228,10 +231,10 @@ pub mod game_objects {
                 build_string('+', 1)
             }
             fn width(&self) -> usize {
-                1
+                Self::WIDTH
             }
             fn priority(&self) -> u8 {
-                0
+                Self::PRIORITY
             }
             fn next_step(&mut self) {}
 
@@ -258,8 +261,13 @@ pub mod game_objects {
         }
 
         impl SnakeBody {
+            const WIDTH: usize = 1;
+            const PRIORITY: u8 = 0;
             pub fn new(coord: Coordinate) -> SnakeBody {
                 SnakeBody { coordinate: coord }
+            }
+            pub fn set_coordinate(&mut self, coord: Coordinate) {
+                self.coordinate = coord;
             }
         }
 
@@ -287,10 +295,10 @@ pub mod game_objects {
                 build_string('o', 1)
             }
             fn width(&self) -> usize {
-                1
+                Self::WIDTH
             }
             fn priority(&self) -> u8 {
-                0
+                Self::PRIORITY
             }
             fn next_step(&mut self) {}
 
@@ -388,9 +396,12 @@ pub mod game_objects {
 }
 
 pub mod snake {
-    use super::game_objects::food::Food;
-    use super::game_objects::player_character::{Direction, PlayerCharacter};
-    use super::game_objects::wall::Wall;
+    use super::game_objects::{
+        food::Food,
+        player_character::{Direction, PlayerCharacter},
+        snake_body::SnakeBody,
+        wall::Wall,
+    };
     use hewn::game::{Entities, GameLogic};
     use hewn::game_object::utils::{
         collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
@@ -473,6 +484,38 @@ pub mod snake {
                 .next()
         }
 
+        pub fn get_food_object(&self) -> Option<&Food> {
+            take_game_object::<Food>(&self.entities().game_objects)
+        }
+
+        pub fn remove_food_object(&mut self) {
+            if let Some(index) = self
+                .entities
+                .game_objects
+                .iter()
+                .position(|o| maybe_get_concrete_type::<Food>(&**o).is_some())
+            {
+                self.entities.game_objects.remove(index);
+            }
+        }
+
+        pub fn add_body_segment(&mut self) {
+            let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(SnakeBody::new(
+                self.get_player_object().unwrap().coordinate.clone(),
+            ))];
+            self.entities.add_game_objects(&mut game_objects);
+        }
+
+        pub fn check_food_state(&mut self) {
+            if let Some(food) = self.get_food_object() {
+                if food.eaten {
+                    self.add_body_segment();
+                    self.remove_food_object();
+                    self.generate_food();
+                }
+            }
+        }
+
         pub fn set_player(&mut self, player: PlayerCharacter) {
             let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(player)];
             if let Some(index) = self
@@ -486,17 +529,9 @@ pub mod snake {
             self.entities.add_game_objects(&mut game_objects);
         }
 
-        // TODO can we just make this use generics rather than repeating each time?
         pub fn set_food(&mut self, food: Food) {
             let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(food)];
-            if let Some(index) = self
-                .entities
-                .game_objects
-                .iter()
-                .position(|o| maybe_get_concrete_type::<Food>(&**o).is_some())
-            {
-                self.entities.game_objects.remove(index);
-            }
+
             self.entities.add_game_objects(&mut game_objects);
         }
 
@@ -510,8 +545,8 @@ pub mod snake {
 
         pub fn generate_food(&mut self) {
             let mut rng = rand::thread_rng();
-            let x = rng.gen_range(0..self.width);
-            let y = rng.gen_range(0..self.height);
+            let x = rng.gen_range(1..(self.width - 1));
+            let y = rng.gen_range(1..(self.height - 1));
 
             // TODO we need to avoid generating on the snakes body/head
             self.set_food(Food {
@@ -521,6 +556,17 @@ pub mod snake {
                 },
                 eaten: false,
             });
+        }
+
+        pub fn update_body_segments(&mut self, first_coordinate: Coordinate) {
+            let mut next_coordinate: Coordinate = first_coordinate;
+            for body in self.entities.game_objects.iter_mut() {
+                if let Some(snake_body) = maybe_get_concrete_type_mut::<SnakeBody>(&mut **body) {
+                    let current_coordinate = snake_body.get_coords().clone();
+                    snake_body.set_coordinate(next_coordinate.clone());
+                    next_coordinate = current_coordinate;
+                }
+            }
         }
     }
 
@@ -541,7 +587,7 @@ pub mod snake {
             if self.state != GameState::InGame {
                 return;
             }
-
+            let start_player_coordinate = self.get_player_object().unwrap().coordinate.clone();
             self.move_player(key);
             self.entities
                 .game_objects
@@ -554,11 +600,11 @@ pub mod snake {
                 self.end_game();
             }
 
-            // Keep eaten food in place for one tick so tests can observe state change
-
+            self.check_food_state();
+            self.update_body_segments(start_player_coordinate);
             self.score = self
                 .score
-                .max(self.get_player_object().unwrap().coordinate.x);
+                .max(self.get_player_object().unwrap().size as usize);
         }
 
         fn debug_str(&self) -> Option<String> {
@@ -615,5 +661,7 @@ mod test {
 
         assert!(food.unwrap().eaten);
         assert!(!detect_collision(food.unwrap(), player.unwrap()));
+        assert_eq!(game.score, 1);
+        assert_eq!(player.unwrap().size, 2);
     }
 }
