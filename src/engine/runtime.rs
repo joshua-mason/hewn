@@ -1,4 +1,6 @@
-use super::{display::BaseDisplay, game::BaseGame};
+//! Wasm and terminal game runtimes.
+
+use super::{game::GameLogic, view::View};
 #[cfg(not(target_arch = "wasm32"))]
 use std::io::{self, Stdout};
 use std::{
@@ -14,6 +16,7 @@ use wasm_bindgen::prelude::*;
 const FRAME_RATE_MILLIS: u64 = 10;
 const GAME_STEP_MILLIS: u64 = 100;
 
+/// Key for player control.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Key {
     Left,
@@ -24,6 +27,7 @@ pub enum Key {
     Escape,
 }
 
+/// Initialize terminal IO.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn initialize_terminal_io() -> (
     RawTerminal<Stdout>,
@@ -34,11 +38,12 @@ pub fn initialize_terminal_io() -> (
     (stdout, stdin)
 }
 
+/// A runtime for a terminal game.
 #[cfg(not(target_arch = "wasm32"))]
 pub struct TerminalRuntime<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
-    pub game: &'a mut dyn BaseGame,
-    pub display: &'a mut BaseDisplay,
+    pub game: &'a mut dyn GameLogic,
+    pub display: &'a mut View,
     last_frame_time: Instant,
     player_control_key: Option<Key>,
 }
@@ -47,8 +52,8 @@ pub struct TerminalRuntime<'a> {
 impl TerminalRuntime<'_> {
     pub fn new<'a>(
         stdin: termion::input::Keys<termion::AsyncReader>,
-        game: &'a mut dyn BaseGame,
-        display: &'a mut BaseDisplay,
+        game: &'a mut dyn GameLogic,
+        display: &'a mut View,
     ) -> TerminalRuntime<'a> {
         TerminalRuntime {
             stdin,
@@ -59,6 +64,7 @@ impl TerminalRuntime<'_> {
         }
     }
 
+    /// Start the game loop listening for player input and rendering the game.
     pub fn start(&mut self) {
         loop {
             let input = self.stdin.next();
@@ -94,6 +100,7 @@ impl TerminalRuntime<'_> {
     }
 }
 
+/// Map a termion key to a Hewn key.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn map_termion_key(key: termion::event::Key) -> Option<Key> {
     match key {
@@ -107,30 +114,36 @@ pub fn map_termion_key(key: termion::event::Key) -> Option<Key> {
     }
 }
 
+/// A runtime for a web game.
 pub struct WebRuntime {
-    game: Box<dyn BaseGame>,
-    display: BaseDisplay,
+    game: Box<dyn GameLogic>,
+    display: View,
 }
 
 impl WebRuntime {
-    pub fn new(game: Box<dyn BaseGame>, display: BaseDisplay) -> WebRuntime {
+    /// Create a new web runtime.
+    pub fn new(game: Box<dyn GameLogic>, display: View) -> WebRuntime {
         WebRuntime { game, display }
     }
 
+    /// Start the game loop.
     pub fn start(&mut self) {
         self.game.start_game();
     }
 
+    /// Compute the next game state based on player input.
     pub fn tick(&mut self, key: Option<WasmKey>) {
         self.game.next(map_wasm_key(key));
     }
 
+    /// Render the game to a string.
     pub fn render(&mut self) -> String {
         self.display
             .next(&self.game.entities().game_objects, self.game.debug_str())
     }
 }
 
+/// A web game API.
 #[wasm_bindgen]
 pub struct WasmGameApi {
     web_runtime: WebRuntime,
@@ -155,6 +168,8 @@ pub fn new_wasm_game_api(web_runtime: WebRuntime) -> WasmGameApi {
     WasmGameApi { web_runtime }
 }
 
+/// Map a web key to a Hewn key.
+/// TODO: do we need this, or should we just expose the Hewn key enum?
 fn map_wasm_key(k: Option<WasmKey>) -> Option<Key> {
     if k.is_none() {
         return None;

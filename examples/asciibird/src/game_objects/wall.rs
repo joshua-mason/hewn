@@ -1,6 +1,6 @@
 use hewn::{
-    display::build_string,
     game_object::{CollisionBox, Coordinate, GameObject},
+    view::build_string,
 };
 use rand::Rng;
 use std::any::Any;

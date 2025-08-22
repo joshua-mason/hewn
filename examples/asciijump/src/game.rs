@@ -1,7 +1,7 @@
 use super::game_objects::platform::Platform;
 use super::game_objects::player_character::PlayerCharacter;
 use hewn::{
-    game::{BaseGame, Entities},
+    game::{Entities, GameLogic},
     game_object::{
         utils::{collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut},
         GameObject,
@@ -111,7 +111,7 @@ impl Game {
     }
 }
 
-impl BaseGame for Game {
+impl GameLogic for Game {
     fn entities(&self) -> &Entities {
         &self.entities
     }
@@ -199,7 +199,7 @@ pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&Playe
 #[cfg(test)]
 mod test {
     use crate::game_objects::{platform::Platform, player_character::PlayerCharacter};
-    use hewn::{game::BaseGame, game_object::GameObject};
+    use hewn::{game::GameLogic, game_object::GameObject};
 
     use super::Game;
     #[test]

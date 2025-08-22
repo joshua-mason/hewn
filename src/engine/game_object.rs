@@ -1,5 +1,8 @@
+//! Game object traits and utils.
+
 use std::{any::Any, fmt::Debug, ops::Range};
 
+/// Trait which all game objects must implement.
 pub trait GameObject: Debug + Any {
     fn as_any(&self) -> &dyn Any;
     fn as_mut_any(&mut self) -> &mut dyn Any;
@@ -13,18 +16,21 @@ pub trait GameObject: Debug + Any {
     fn is_player(&self) -> bool;
 }
 
+/// A coordinate in the game world.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Coordinate {
     pub x: usize,
     pub y: usize,
 }
 
+/// A collision box for a game object.
 #[derive(Debug)]
 pub struct CollisionBox {
     pub x: Range<usize>,
     pub y: Range<usize>,
 }
 
+/// Utility functions for game objects.
 pub mod utils {
     use crate::engine::game_object::GameObject;
     use std::{any::Any, ops::Range};

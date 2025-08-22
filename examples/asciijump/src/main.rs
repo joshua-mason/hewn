@@ -1,8 +1,11 @@
 use asciijump::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
-use hewn::cursor;
-use hewn::{game_object::Coordinate, BaseDisplay};
+use hewn::view::cursor;
+use hewn::game_object::Coordinate;
 #[cfg(not(target_arch = "wasm32"))]
-use hewn::{initialize_terminal_io, runtime::TerminalRuntime, TerminalRenderer};
+use hewn::{
+    view::{View, TerminalRenderer},
+    runtime::{initialize_terminal_io, TerminalRuntime},
+};
 
 use crate::game::default_game;
 
@@ -20,7 +23,7 @@ pub fn play_asciijump_in_terminal() {
     // TODO where we input height and width as args, can we make it a struct so labelled instead of just
     // guessing?
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
-    let mut display = BaseDisplay {
+    let mut display = View {
         renderer: Box::new(renderer),
         view_cursor: Coordinate { x: 0, y: 0 },
         cursor_strategy: Box::new(cursor::FollowPlayerYCursorStrategy::new()),

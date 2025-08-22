@@ -10,10 +10,10 @@ pub fn new_game_api() -> WasmGameApi {
     let asciijump_pointer = Box::new(game);
     let web_runtime = hewn::runtime::WebRuntime::new(
         asciijump_pointer,
-        hewn::display::BaseDisplay {
-            renderer: Box::new(hewn::display::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),
+        hewn::view::View {
+            renderer: Box::new(hewn::view::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),
             view_cursor: hewn::game_object::Coordinate { x: 0, y: 0 },
-            cursor_strategy: Box::new(hewn::display::cursor::FollowPlayerYCursorStrategy::new()),
+            cursor_strategy: Box::new(hewn::view::cursor::FollowPlayerYCursorStrategy::new()),
         },
     );
     hewn::runtime::new_wasm_game_api(web_runtime)

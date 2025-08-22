@@ -14,11 +14,11 @@ pub fn default_game() -> snake::Game {
 
 pub mod game_objects {
     pub mod player_character {
-        use hewn::display::build_string;
         use hewn::game_object::utils::maybe_get_concrete_type;
         use hewn::game_object::{
             GameObject, {CollisionBox, Coordinate},
         };
+        use hewn::view::build_string;
         use std::any::Any;
 
         use super::{food::Food, snake_body::SnakeBody, wall::Wall};
@@ -155,8 +155,8 @@ pub mod game_objects {
     pub mod food {
 
         use hewn::{
-            display::build_string,
             game_object::{CollisionBox, Coordinate, GameObject},
+            view::build_string,
         };
         use std::any::Any;
 
@@ -251,8 +251,8 @@ pub mod game_objects {
         use std::any::Any;
 
         use hewn::{
-            display::build_string,
             game_object::{CollisionBox, Coordinate, GameObject},
+            view::build_string,
         };
 
         #[derive(Debug)]
@@ -308,8 +308,8 @@ pub mod game_objects {
 
     pub mod wall {
         use hewn::{
-            display::build_string,
             game_object::{CollisionBox, Coordinate, GameObject},
+            view::build_string,
         };
         use std::any::Any;
 
@@ -394,13 +394,12 @@ pub mod snake {
     use super::game_objects::food::Food;
     use super::game_objects::player_character::{Direction, PlayerCharacter};
     use super::game_objects::wall::Wall;
-    use hewn::game::{BaseGame, Entities};
-    use hewn::Key;
-
+    use hewn::game::{Entities, GameLogic};
     use hewn::game_object::utils::{
         collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
     };
     use hewn::game_object::{Coordinate, GameObject};
+    use hewn::runtime::Key;
     use rand::Rng;
 
     #[derive(Debug, PartialEq, Eq)]
@@ -414,10 +413,9 @@ pub mod snake {
     pub struct Game {
         pub width: usize,
         pub height: usize,
-
-        state: GameState,
         pub score: usize,
 
+        state: GameState,
         entities: Entities,
     }
 
@@ -530,7 +528,7 @@ pub mod snake {
         }
     }
 
-    impl BaseGame for Game {
+    impl GameLogic for Game {
         // duplication across games - consider options to refactor out?
         fn start_game(&mut self) {
             self.score = 0;
@@ -595,7 +593,7 @@ pub mod snake {
 #[cfg(test)]
 mod test {
     use hewn::{
-        game::BaseGame,
+        game::GameLogic,
         game_object::utils::{detect_collision, take_game_object},
     };
 
