@@ -3,7 +3,7 @@ use crate::game::game_objects::{player_character::PlayerCharacter, wall::Wall};
 pub const WIDTH: usize = 30;
 pub const HEIGHT: usize = 25;
 
-pub fn default() -> snake::Game {
+pub fn default_game() -> snake::Game {
     let mut game = snake::Game::new(WIDTH, HEIGHT);
     let walls = Wall::generate_walls(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());
@@ -15,7 +15,7 @@ pub fn default() -> snake::Game {
 pub mod game_objects {
     pub mod player_character {
         use hewn::display::build_string;
-        use hewn::game_object::utils::try_get_concrete_type;
+        use hewn::game_object::utils::maybe_get_concrete_type;
         use hewn::game_object::{
             GameObject, {CollisionBox, Coordinate},
         };
@@ -106,13 +106,13 @@ pub mod game_objects {
             }
 
             fn collide(&mut self, other: &dyn GameObject) {
-                if let Some(_food) = try_get_concrete_type::<Food>(other) {
+                if let Some(_food) = maybe_get_concrete_type::<Food>(other) {
                     self.size += 1;
                 }
-                if let Some(_wall) = try_get_concrete_type::<Wall>(other) {
+                if let Some(_wall) = maybe_get_concrete_type::<Wall>(other) {
                     self.hit_wall = true;
                 }
-                if let Some(_wall) = try_get_concrete_type::<SnakeBody>(other) {
+                if let Some(_wall) = maybe_get_concrete_type::<SnakeBody>(other) {
                     self.hit_wall = true;
                 }
             }
@@ -394,10 +394,11 @@ pub mod snake {
     use super::game_objects::food::Food;
     use super::game_objects::player_character::{Direction, PlayerCharacter};
     use super::game_objects::wall::Wall;
-    use hewn::game::{BaseGame, Entities, Key};
+    use hewn::game::{BaseGame, Entities};
+    use hewn::Key;
 
     use hewn::game_object::utils::{
-        collision_pass, take_game_object, try_get_concrete_type, try_get_mut_concrete_type,
+        collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
     };
     use hewn::game_object::{Coordinate, GameObject};
     use rand::Rng;
@@ -418,7 +419,6 @@ pub mod snake {
         pub score: usize,
 
         entities: Entities,
-        player_control_key: Option<Key>,
     }
 
     impl Game {
@@ -429,16 +429,15 @@ pub mod snake {
                 state: GameState::Menu,
                 score: 0,
                 entities: Entities::new(),
-                player_control_key: None,
             };
             game.set_player(PlayerCharacter::new());
             game
         }
 
-        fn move_player(&mut self) {
+        fn move_player(&mut self, key: Option<Key>) {
             // TODO this is very verbose... I wonder if there is something we can do to help simplify what's going on here
             // can't get_mut_player_object earlier because then we can't access self.player_control_key
-            match self.player_control_key {
+            match key {
                 Some(Key::Left) => {
                     if let Some(player) = self.get_mut_player_object() {
                         player.turn(Direction::Left);
@@ -468,7 +467,7 @@ pub mod snake {
         }
 
         pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-            take_game_object::<PlayerCharacter>(self.game_objects())
+            take_game_object::<PlayerCharacter>(&self.entities().game_objects)
         }
 
         // pub fn get_food_objects(&mut self) -> Vec<&mut Food> {
@@ -479,7 +478,7 @@ pub mod snake {
             self.entities
                 .game_objects
                 .iter_mut()
-                .filter_map(|o| try_get_mut_concrete_type::<PlayerCharacter>(&mut **o))
+                .filter_map(|o| maybe_get_concrete_type_mut::<PlayerCharacter>(&mut **o))
                 .next()
         }
 
@@ -489,7 +488,7 @@ pub mod snake {
                 .entities
                 .game_objects
                 .iter()
-                .position(|o| try_get_concrete_type::<PlayerCharacter>(&**o).is_some())
+                .position(|o| maybe_get_concrete_type::<PlayerCharacter>(&**o).is_some())
             {
                 self.entities.game_objects.remove(index);
             }
@@ -503,7 +502,7 @@ pub mod snake {
                 .entities
                 .game_objects
                 .iter()
-                .position(|o| try_get_concrete_type::<Food>(&**o).is_some())
+                .position(|o| maybe_get_concrete_type::<Food>(&**o).is_some())
             {
                 self.entities.game_objects.remove(index);
             }
@@ -533,23 +532,23 @@ pub mod snake {
 
     impl BaseGame for Game {
         // duplication across games - consider options to refactor out?
-        fn set_player_control_key(&mut self, key: Option<Key>) {
-            self.player_control_key = key
-        }
-
-        // duplication across games - consider options to refactor out?
         fn start_game(&mut self) {
             self.score = 0;
             self.get_mut_player_object().unwrap().reset();
             self.state = GameState::InGame;
         }
 
-        fn next(&mut self) {
+        // duplication across games - consider options to refactor out?
+        fn entities(&self) -> &Entities {
+            &self.entities
+        }
+
+        fn next(&mut self, key: Option<Key>) {
             if self.state != GameState::InGame {
                 return;
             }
 
-            self.move_player();
+            self.move_player(key);
             self.entities
                 .game_objects
                 .iter_mut()
@@ -566,11 +565,6 @@ pub mod snake {
             self.score = self
                 .score
                 .max(self.get_player_object().unwrap().coordinate.x);
-        }
-
-        // duplication across games - consider options to refactor out?
-        fn game_objects(&self) -> &[Box<dyn GameObject>] {
-            &self.entities.game_objects
         }
 
         fn debug_str(&self) -> Option<String> {
@@ -622,7 +616,7 @@ mod test {
         assert!(detect_collision(food.unwrap(), player.unwrap()));
         println!("Next");
         game.start_game();
-        game.next();
+        game.next(None);
         println!("Done {:?}", game.entities_for_test().game_objects);
 
         let food = take_game_object::<Food>(&game.entities_for_test().game_objects);

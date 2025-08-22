@@ -1,9 +1,9 @@
-use hewn::game::Key;
 use hewn::game::{BaseGame, Entities};
 use hewn::game_object::utils::{
-    collision_pass, take_game_object, try_get_concrete_type, try_get_mut_concrete_type,
+    collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
 };
 use hewn::game_object::GameObject;
+use hewn::runtime::Key;
 
 use crate::game_objects::player_character::PlayerCharacter;
 use crate::game_objects::wall::Wall;
@@ -13,7 +13,7 @@ pub const HEIGHT: usize = 30;
 pub const SCREEN_WIDTH: u16 = 50;
 pub const SCREEN_HEIGHT: u16 = 30;
 
-pub fn default() -> Game {
+pub fn default_game() -> Game {
     let mut game = Game::new();
     let walls = Wall::generate_walls(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());
@@ -31,9 +31,7 @@ pub enum GameState {
 pub struct Game {
     pub state: GameState,
     pub score: usize,
-
     pub entities: Entities,
-    player_control_key: Option<Key>,
 }
 
 impl Game {
@@ -42,14 +40,13 @@ impl Game {
             state: GameState::InGame,
             score: 0,
             entities: Entities::new(),
-            player_control_key: None,
         };
         game.set_player(PlayerCharacter::new());
         game
     }
 
-    fn move_player(&mut self) {
-        if let Some(Key::Up) = self.player_control_key {
+    fn move_player(&mut self, key: Option<Key>) {
+        if let Some(Key::Up) = key {
             if let Some(player) = self.get_mut_player_object() {
                 if player.coordinate.x > 0 {
                     player.jump()
@@ -62,14 +59,14 @@ impl Game {
     }
 
     pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-        take_game_object::<PlayerCharacter>(self.game_objects())
+        take_game_object::<PlayerCharacter>(&self.entities().game_objects)
     }
 
     pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
         self.entities
             .game_objects
             .iter_mut()
-            .filter_map(|o| try_get_mut_concrete_type::<PlayerCharacter>(&mut **o))
+            .filter_map(|o| maybe_get_concrete_type_mut::<PlayerCharacter>(&mut **o))
             .next()
     }
 
@@ -79,7 +76,7 @@ impl Game {
             .entities
             .game_objects
             .iter()
-            .position(|o| try_get_concrete_type::<PlayerCharacter>(&**o).is_some())
+            .position(|o| maybe_get_concrete_type::<PlayerCharacter>(&**o).is_some())
         {
             self.entities.game_objects.remove(index);
         }
@@ -96,22 +93,18 @@ impl Game {
 }
 
 impl BaseGame for Game {
-    fn set_player_control_key(&mut self, key: Option<Key>) {
-        self.player_control_key = key
-    }
-
     fn start_game(&mut self) {
         self.score = 0;
         self.get_mut_player_object().unwrap().reset();
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self) {
+    fn next(&mut self, key: Option<Key>) {
         if self.state != GameState::InGame {
             return;
         }
 
-        self.move_player();
+        self.move_player(key);
         self.entities
             .game_objects
             .iter_mut()
@@ -134,8 +127,8 @@ impl BaseGame for Game {
             .max(self.get_player_object().unwrap().coordinate.x);
     }
 
-    fn game_objects(&self) -> &[Box<dyn GameObject>] {
-        &self.entities.game_objects
+    fn entities(&self) -> &Entities {
+        &self.entities
     }
 
     fn debug_str(&self) -> Option<String> {

@@ -1,55 +1,20 @@
 pub mod game;
 pub mod game_objects;
-use crate::game::{default, SCREEN_HEIGHT, SCREEN_WIDTH};
-use hewn::WasmKey;
+use crate::game::{default_game, SCREEN_HEIGHT, SCREEN_WIDTH};
+use hewn::runtime::WasmGameApi;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub struct Game {
-    web_control: hewn::control::WebControl,
-}
-
-#[wasm_bindgen]
-impl Game {
-    pub fn new_asciijump() -> Game {
-        let game = default();
-
-        let asciijump_pointer = Box::new(game);
-        let web_control = hewn::control::WebControl::new(
-            asciijump_pointer,
-            hewn::display::BaseDisplay {
-                renderer: Box::new(hewn::display::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),
-                view_cursor: hewn::game_object::Coordinate { x: 0, y: 0 },
-                cursor_strategy: Box::new(hewn::display::cursor::FollowPlayerYCursorStrategy::new()),
-            },
-        );
-        Game { web_control }
-    }
-
-    pub fn start(&mut self) {
-        self.web_control.start();
-    }
-
-    pub fn set_player_control_key(&mut self, key: Option<WasmKey>) {
-        fn map_wasm_key(k: WasmKey) -> hewn::game::Key {
-            match k {
-                WasmKey::Left => hewn::game::Key::Left,
-                WasmKey::Right => hewn::game::Key::Right,
-                WasmKey::Up => hewn::game::Key::Up,
-                WasmKey::Down => hewn::game::Key::Down,
-                WasmKey::Space => hewn::game::Key::Space,
-                WasmKey::Escape => hewn::game::Key::Escape,
-            }
-        }
-        self.web_control
-            .set_player_control_key(key.map(map_wasm_key));
-    }
-
-    pub fn tick(&mut self) {
-        self.web_control.tick();
-    }
-
-    pub fn render(&mut self) -> String {
-        self.web_control.render()
-    }
+pub fn new_game_api() -> WasmGameApi {
+    let game = default_game();
+    let asciijump_pointer = Box::new(game);
+    let web_runtime = hewn::runtime::WebRuntime::new(
+        asciijump_pointer,
+        hewn::display::BaseDisplay {
+            renderer: Box::new(hewn::display::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),
+            view_cursor: hewn::game_object::Coordinate { x: 0, y: 0 },
+            cursor_strategy: Box::new(hewn::display::cursor::FollowPlayerYCursorStrategy::new()),
+        },
+    );
+    hewn::runtime::new_wasm_game_api(web_runtime)
 }

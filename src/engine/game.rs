@@ -1,14 +1,15 @@
-use super::game_object::GameObject;
+use crate::game_object::GameObject;
+use crate::runtime::Key;
 
 pub trait BaseGame {
+    // Game logic
     fn start_game(&mut self);
+    fn next(&mut self, key: Option<Key>);
 
-    fn set_player_control_key(&mut self, key: Option<Key>);
+    // Game state
+    fn entities(&self) -> &Entities;
 
-    fn next(&mut self);
-
-    fn game_objects(&self) -> &[Box<dyn GameObject>];
-
+    // render
     fn debug_str(&self) -> Option<String>;
 }
 
@@ -37,28 +38,5 @@ impl Entities {
                 std::cmp::Ordering::Less
             }
         });
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Key {
-    Left,
-    Right,
-    Up,
-    Down,
-    Space,
-    Escape,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn map_termion_key(key: termion::event::Key) -> Key {
-    match key {
-        termion::event::Key::Left => Key::Left,
-        termion::event::Key::Right => Key::Right,
-        termion::event::Key::Up => Key::Up,
-        termion::event::Key::Down => Key::Down,
-        termion::event::Key::Char(' ') => Key::Space,
-        termion::event::Key::Esc => Key::Escape,
-        _ => todo!(),
     }
 }

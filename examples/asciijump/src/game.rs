@@ -1,11 +1,12 @@
 use super::game_objects::platform::Platform;
 use super::game_objects::player_character::PlayerCharacter;
 use hewn::{
-    game::{BaseGame, Entities, Key},
+    game::{BaseGame, Entities},
     game_object::{
-        utils::{collision_pass, try_get_concrete_type, try_get_mut_concrete_type},
+        utils::{collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut},
         GameObject,
     },
+    runtime::Key,
 };
 
 pub const WIDTH: usize = 10;
@@ -13,7 +14,7 @@ pub const HEIGHT: usize = 500;
 pub const SCREEN_WIDTH: u16 = 10;
 pub const SCREEN_HEIGHT: u16 = 20;
 
-pub fn default() -> Game {
+pub fn default_game() -> Game {
     let mut game = Game::new(WIDTH, HEIGHT);
     let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
     game.set_player(PlayerCharacter::new());
@@ -37,7 +38,6 @@ pub struct Game {
     pub score: usize,
 
     pub entities: Entities,
-    player_control_key: Option<Key>,
 }
 
 impl Game {
@@ -48,16 +48,14 @@ impl Game {
             state: GameState::Menu,
             score: 0,
             entities: Entities::new(),
-            // game_objects: vec![],
-            player_control_key: None,
         };
         game.set_player(PlayerCharacter::new());
         game
     }
 
-    fn move_player(&mut self) {
+    fn move_player(&mut self, key: Option<Key>) {
         let width = self.width;
-        match self.player_control_key {
+        match key {
             Some(Key::Left) => {
                 if let Some(player) = self.get_mut_player_object() {
                     if player.coordinate.x > 0 {
@@ -80,14 +78,14 @@ impl Game {
     }
 
     pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-        take_player_object(self.game_objects())
+        take_player_object(&self.entities().game_objects)
     }
 
     pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
         self.entities
             .game_objects
             .iter_mut()
-            .filter_map(|o| try_get_mut_concrete_type::<PlayerCharacter>(&mut **o))
+            .filter_map(|o| maybe_get_concrete_type_mut::<PlayerCharacter>(&mut **o))
             .next()
     }
 
@@ -105,7 +103,7 @@ impl Game {
             .entities
             .game_objects
             .iter()
-            .position(|o| try_get_concrete_type::<PlayerCharacter>(&**o).is_some())
+            .position(|o| maybe_get_concrete_type::<PlayerCharacter>(&**o).is_some())
         {
             self.entities.game_objects.remove(index);
         }
@@ -114,8 +112,8 @@ impl Game {
 }
 
 impl BaseGame for Game {
-    fn set_player_control_key(&mut self, key: Option<Key>) {
-        self.player_control_key = key
+    fn entities(&self) -> &Entities {
+        &self.entities
     }
 
     fn start_game(&mut self) {
@@ -124,7 +122,7 @@ impl BaseGame for Game {
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self) {
+    fn next(&mut self, key: Option<Key>) {
         if self.state != GameState::InGame {
             return;
         }
@@ -142,7 +140,7 @@ impl BaseGame for Game {
         IDK maybe some research andd thinking to figure this one out!
         */
 
-        self.move_player();
+        self.move_player(key);
 
         // This and the collision pass are generic to all games, so I wonder if we can somehow refactor
         // this out - although I don't know if order matters in this case, or how opinionated to be,
@@ -171,10 +169,6 @@ impl BaseGame for Game {
             .max(self.get_player_object().unwrap().coordinate.y);
     }
 
-    fn game_objects(&self) -> &[Box<dyn GameObject>] {
-        &self.entities.game_objects
-    }
-
     fn debug_str(&self) -> Option<String> {
         if let Some(player) = self.get_player_object() {
             let a = format!(
@@ -192,7 +186,7 @@ impl BaseGame for Game {
 pub fn take_game_objects<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Vec<&T> {
     game_objects
         .iter()
-        .filter_map(|o| try_get_concrete_type::<T>(&**o))
+        .filter_map(|o| maybe_get_concrete_type::<T>(&**o))
         .collect::<Vec<&T>>()
 }
 
@@ -255,14 +249,14 @@ mod test {
 
         game.start_game();
 
-        game.next();
+        game.next(None);
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
         fast_forward(&mut game, 9);
         assert_eq!(game.get_player_object().unwrap().velocity, 5);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 8);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
     }
 
@@ -271,7 +265,7 @@ mod test {
         let mut game = Game::new(10, 10);
         game.set_platforms(Platform::from_tuples(&[(1, 8)]));
         game.start_game();
-        game.next();
+        game.next(None);
 
         {
             let player_object = game.get_player_object().unwrap();
@@ -324,7 +318,7 @@ mod test {
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
 
@@ -346,15 +340,15 @@ mod test {
 
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
 
-        game.next();
+        game.next(None);
         assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
         assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
         fast_forward(&mut game, 10);
@@ -363,7 +357,7 @@ mod test {
 
     fn fast_forward(game: &mut Game, n: u16) {
         for _ in 0..n {
-            game.next();
+            game.next(None);
         }
     }
 }
