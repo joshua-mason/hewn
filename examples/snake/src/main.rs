@@ -1,10 +1,10 @@
 mod game;
 use crate::game::default_game;
+#[cfg(not(target_arch = "wasm32"))]
+use hewn::display::{BaseDisplay, TerminalRenderer};
 use hewn::game_object::Coordinate;
 #[cfg(not(target_arch = "wasm32"))]
-use hewn::{
-    display::BaseDisplay, initialize_terminal_io, runtime::TerminalRuntime, TerminalRenderer,
-};
+use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
 
 const SCREEN_WIDTH: u16 = 30;
 const SCREEN_HEIGHT: u16 = 25;

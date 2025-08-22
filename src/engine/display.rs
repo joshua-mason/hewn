@@ -67,7 +67,7 @@ impl BaseDisplay {
 }
 
 pub mod cursor {
-    use crate::engine::{game_object::Coordinate, GameObject, Renderer};
+    use crate::{display::Renderer, game_object::Coordinate, game_object::GameObject};
 
     pub trait CursorStrategy {
         fn update(

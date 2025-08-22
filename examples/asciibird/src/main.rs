@@ -2,11 +2,12 @@ mod game;
 mod game_objects;
 
 use asciibird::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
-use hewn::cursor;
+use hewn::display::cursor;
 use hewn::game_object::Coordinate;
 #[cfg(not(target_arch = "wasm32"))]
 use hewn::{
-    display::BaseDisplay, initialize_terminal_io, runtime::TerminalRuntime, TerminalRenderer,
+    display::{BaseDisplay, TerminalRenderer},
+    runtime::{initialize_terminal_io, TerminalRuntime},
 };
 
 fn main() {
