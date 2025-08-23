@@ -6,113 +6,86 @@ use hewn::view::{TerminalRenderer, View};
 const SCREEN_HEIGHT: u16 = 20;
 const SCREEN_WIDTH: u16 = 50;
 
-mod game_objects {
-    use std::any::Any;
+#[derive(Debug)]
+pub struct Player {}
 
-    use hewn::game_object::{CollisionBox, Coordinate, GameObject};
-
-    #[derive(Debug)]
-    pub struct Player {
-        pub coords: Coordinate,
-    }
-
-    impl Player {
-        pub fn new(x: usize, y: usize) -> Player {
-            Player {
-                coords: Coordinate { x, y },
-            }
-        }
-
-        const WIDTH: usize = 1;
-    }
-
-    impl GameObject for Player {
-        fn as_any(&self) -> &dyn Any {
-            self
-        }
-
-        fn as_mut_any(&mut self) -> &mut dyn Any {
-            self
-        }
-
-        fn collide(&mut self, _other: &dyn GameObject) {}
-
-        fn display(&self) -> String {
-            "@".to_owned()
-        }
-
-        fn get_collision_box(&self) -> CollisionBox {
-            CollisionBox {
-                x: self.coords.x..(self.coords.x + self.width()),
-                y: self.coords.y..(self.coords.y + 1),
-            }
-        }
-
-        fn get_coords(&self) -> &Coordinate {
-            &self.coords
-        }
-
-        fn next_step(&mut self) {}
-
-        fn priority(&self) -> u8 {
-            1
-        }
-
-        fn width(&self) -> usize {
-            Self::WIDTH
-        }
-
-        fn is_player(&self) -> bool {
-            true
-        }
+impl Player {
+    pub fn new() -> Player {
+        Player {}
     }
 }
 
 mod game {
+
     use hewn::{
+        ecs::{self, Entity, EntityId, Position, Velocity},
         game::{Entities, GameLogic},
-        game_object::{utils, GameObject},
         runtime::Key,
     };
-
-    use crate::game_objects::Player;
 
     pub struct MinimalGame {
         entities: Entities,
         started: bool,
+        pub ecs: ecs::ECS,
+        pub player_entity_id: EntityId,
     }
 
     impl MinimalGame {
         pub fn new() -> MinimalGame {
             let mut entities = Entities::new();
-            let mut objects: Vec<Box<dyn GameObject>> = vec![Box::new(Player::new(5, 5))];
-            entities.add_game_objects(&mut objects);
+            let mut ecs = ecs::ECS::new();
+            let player_entity_id = EntityId(0);
+            let player_entity = Entity {
+                id: player_entity_id,
+                position_component: Some(Position { x: 5, y: 5 }),
+                velocity_component: Some(Velocity { x: 0, y: 0 }),
+            };
+            ecs.add_entity(player_entity);
+
             MinimalGame {
                 entities,
                 started: false,
+                ecs,
+                player_entity_id: player_entity_id,
             }
         }
 
-        fn move_player(&mut self, key: Key) {
-            if let Some(p) = utils::downcast_muts::<Player>(&mut self.entities.game_objects)
-                .into_iter()
-                .next()
-            {
-                match key {
-                    Key::Left => {
-                        p.coords.x = p.coords.x.saturating_sub(1);
-                    }
-                    Key::Right => {
-                        p.coords.x = p.coords.x.saturating_add(1);
-                    }
-                    Key::Up => {
-                        p.coords.y = p.coords.y.saturating_add(1);
-                    }
-                    Key::Down => {
-                        p.coords.y = p.coords.y.saturating_sub(1);
-                    }
-                    _ => {}
+        pub fn entities(&self) -> Vec<Entity> {
+            self.entities()
+        }
+
+        fn update_player_velocity(&mut self, key: Option<Key>) {
+            let player_entity = self.ecs.get_entity_by_id_mut(self.player_entity_id);
+            let Some(player_entity) = player_entity else {
+                return;
+            };
+            let Some(velocity) = &mut player_entity.velocity_component else {
+                return;
+            };
+            let Some(key) = &key else {
+                velocity.x = 0;
+                velocity.y = 0;
+                return;
+            };
+
+            match key {
+                Key::Left => {
+                    velocity.x = -1;
+                    velocity.y = 0;
                 }
+                Key::Right => {
+                    velocity.x = 1;
+                    velocity.y = 0;
+                }
+                Key::Up => {
+                    velocity.x = 0;
+                    velocity.y = 1;
+                }
+                Key::Down => {
+                    velocity.x = 0;
+                    velocity.y = -1;
+                }
+                _ => {}
             }
         }
     }
@@ -126,9 +99,8 @@ mod game {
             if !self.started {
                 return;
             }
-            if let Some(k) = key {
-                self.move_player(k);
-            }
+            self.update_player_velocity(key);
+            self.ecs.step();
         }
 
         fn entities(&self) -> &Entities {
@@ -136,14 +108,22 @@ mod game {
         }
 
         fn debug_str(&self) -> Option<String> {
-            let player = utils::take_game_object::<Player>(&self.entities.game_objects)?;
-            let c = player.get_coords();
+            let Some(player_entity) = self.ecs.get_entity_by_id(self.player_entity_id) else {
+                return None;
+            };
+            let Some(position_component) = &player_entity.position_component else {
+                return None;
+            };
+
             let start_game_str = if self.started {
                 "Started"
             } else {
                 "Hit Space to Start"
             };
-            Some(format!("Player @ ({}, {}) {}", c.x, c.y, start_game_str))
+            Some(format!(
+                "Player @ ({}, {}) {}",
+                position_component.x, position_component.y, start_game_str
+            ))
         }
     }
 }
@@ -160,4 +140,32 @@ fn main() {
     let mut game = game::MinimalGame::new();
     let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut view);
     runtime.start();
+}
+
+#[cfg(test)]
+mod test {
+    use hewn::{game::GameLogic, runtime::Key};
+
+    use crate::game;
+
+    #[test]
+    fn test_player_move() {
+        let mut game = game::MinimalGame::new();
+        let player = game.ecs.get_entity_by_id(game.player_entity_id);
+        assert!(player.is_some());
+
+        game.start_game();
+        game.next(Some(Key::Up));
+
+        let player = game.ecs.get_entity_by_id(game.player_entity_id);
+        assert!(player.is_some());
+        let Some(player_entity) = player else {
+            panic!("Player entity not set")
+        };
+        let Some(position_component) = &player_entity.position_component else {
+            panic!("Position component not set")
+        };
+        assert_eq!(position_component.x, 5);
+        assert_eq!(position_component.y, 6);
+    }
 }

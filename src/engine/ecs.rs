@@ -5,8 +5,8 @@ pub struct Entity {
     pub velocity_component: Option<Velocity>,
 }
 
-#[derive(PartialEq, Debug)]
-pub struct EntityId(u16);
+#[derive(PartialEq, Debug, Eq, Hash, Clone, Copy)]
+pub struct EntityId(pub u16);
 
 enum ComponentType {
     position,
@@ -17,16 +17,16 @@ trait Component {
     const TYPE: ComponentType;
 }
 pub struct Position {
-    x: u16,
-    y: u16,
+    pub x: u16,
+    pub y: u16,
 }
 impl Component for Position {
     const TYPE: ComponentType = ComponentType::position;
 }
 
 pub struct Velocity {
-    x: u16,
-    y: u16,
+    pub x: i16,
+    pub y: i16,
 }
 impl Component for Velocity {
     const TYPE: ComponentType = ComponentType::velocity;
@@ -38,13 +38,31 @@ pub struct ECS {
 
 impl ECS {
     pub fn step(&mut self) {
+        fn clamped_add(position: u16, delta: i16) -> u16 {
+            let sum = position as i32 + delta as i32;
+            if sum < 0 {
+                0
+            } else if sum > u16::MAX as i32 {
+                u16::MAX
+            } else {
+                sum as u16
+            }
+        }
         let velocity_components = self.get_entities_by_component_mut(ComponentType::velocity);
         for c in velocity_components {
-            if let Some(position_component) = &mut c.position_component {
-                if let Some(velocity_component) = &mut c.velocity_component {
-                    position_component.x += velocity_component.x;
-                    position_component.y += velocity_component.y;
-                }
+            let Some(position_component) = &mut c.position_component else {
+                continue;
+            };
+
+            let Some(velocity_component) = &mut c.velocity_component else {
+                continue;
+            };
+
+            if velocity_component.x != 0 {
+                position_component.x = clamped_add(position_component.x, velocity_component.x);
+            }
+            if velocity_component.y != 0 {
+                position_component.y = clamped_add(position_component.y, velocity_component.y);
             }
         }
     }
