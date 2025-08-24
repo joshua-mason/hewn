@@ -33,6 +33,29 @@ impl Entity {
             components: Components::new(),
         }
     }
+
+    pub fn from_tuples(
+        id: EntityId,
+        pos: (u16, u16),
+        vel: (i16, i16),
+        size: (u16, u16),
+        ascii_character: Option<char>,
+        track: bool,
+    ) -> Entity {
+        Entity {
+            id,
+            components: Components {
+                position_component: Some(PositionComponent { x: pos.0, y: pos.1 }),
+                velocity_component: Some(VelocityComponent { x: vel.0, y: vel.1 }),
+                size_component: Some(SizeComponent {
+                    x: size.0,
+                    y: size.1,
+                }),
+                render_component: ascii_character.map(|c| RenderComponent { ascii_character: c }),
+                track_component: if track { Some(TrackComponent {}) } else { None },
+            },
+        }
+    }
 }
 
 pub enum ComponentType {
@@ -152,31 +175,31 @@ impl ECS {
             .iter()
             .filter(|e| match component_type {
                 ComponentType::position => {
-                    if (e.components.position_component.is_some()) {
+                    if e.components.position_component.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::velocity => {
-                    if (e.components.velocity_component.is_some()) {
+                    if e.components.velocity_component.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::size => {
-                    if (e.components.size_component.is_some()) {
+                    if e.components.size_component.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::render => {
-                    if (e.components.render_component.is_some()) {
+                    if e.components.render_component.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::track => {
-                    if (e.components.render_component.is_some()) {
+                    if e.components.track_component.is_some() {
                         return true;
                     }
                     false
@@ -219,7 +242,7 @@ impl ECS {
                     false
                 }
                 ComponentType::track => {
-                    if (e.components.render_component.is_some()) {
+                    if e.components.render_component.is_some() {
                         return true;
                     }
                     false
@@ -230,6 +253,118 @@ impl ECS {
     }
 }
 
+pub mod collisions {
+    use crate::ecs::{Entity, EntityId};
+    use std::ops::Range;
+
+    // TODO: this seems to be affected by the order of the objects - probably related to the double dispatch problem?
+    pub fn collision_pass(objects: &mut [Entity]) -> Vec<[EntityId; 2]> {
+        let collisions = process_collisions(objects);
+        objects.reverse();
+
+        // TODO - do we need both checks?
+        // let mut reversed_collisions = process_collisions(objects);
+        // collisions.append(&mut reversed_collisions);
+        // objects.reverse();
+        collisions
+    }
+    #[derive(Debug)]
+    struct CollisionBox {
+        pub x: Range<u16>,
+        pub y: Range<u16>,
+    }
+
+    fn get_collision_box(entity: &Entity) -> Option<CollisionBox> {
+        let Some(position_component) = &entity.components.position_component else {
+            return None;
+        };
+
+        let Some(size_component) = &entity.components.size_component else {
+            return None;
+        };
+
+        let Some(velocity_component) = &entity.components.velocity_component else {
+            return None;
+        };
+
+        Some(CollisionBox {
+            x: position_component.x
+                ..(size_component.x as i16 + 1 as i16 + velocity_component.x) as u16,
+            y: position_component.y
+                ..(size_component.y as i16 + 1 as i16 + velocity_component.y) as u16,
+        })
+    }
+
+    fn detect_collision(a: &mut Entity, b: &mut Entity) -> bool {
+        let Some(a_collision_box) = get_collision_box(a) else {
+            return false;
+        };
+        let Some(b_collision_box) = get_collision_box(b) else {
+            return false;
+        };
+        fn overlapping_1d(a: Range<u16>, b: Range<u16>) -> bool {
+            a.end > b.start && b.end > a.start
+        }
+        overlapping_1d(a_collision_box.x, b_collision_box.x)
+            && overlapping_1d(a_collision_box.y, b_collision_box.y)
+    }
+
+    fn process_collisions(objects: &mut [Entity]) -> Vec<[EntityId; 2]> {
+        let mut collisions: Vec<[EntityId; 2]> = vec![];
+        for i in 0..objects.len() {
+            let (left, rest) = objects.split_at_mut(i + 1);
+
+            // A is &mut Box<dyn GameObject>
+            let a = &mut left[i];
+
+            for b in rest {
+                // Now upcast references: &mut dyn GameObject -> &mut dyn Collide
+                // let x = &mut **a;
+                // let y: &dyn Entity = &**b;
+                if detect_collision(a, b) {
+                    collisions.push([a.id, b.id]);
+                }
+            }
+        }
+        collisions
+    }
+
+    #[cfg(test)]
+    mod test {
+        use crate::ecs::{
+            collisions::collision_pass, Components, Entity, EntityId, PositionComponent,
+            SizeComponent, VelocityComponent,
+        };
+
+        #[test]
+        fn test_collision_pass_static_on_top() {
+            let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
+            let entity_2 = Entity::from_tuples(EntityId(1), (0, 0), (0, 0), (1, 1), None, false);
+
+            let entities = &mut [entity_1, entity_2];
+            let collisions = collision_pass(entities);
+            println!("{:?}", collisions);
+            assert_eq!(1, collisions.len());
+            assert_eq!(EntityId(0), collisions[0][0]);
+            assert_eq!(EntityId(1), collisions[0][1]);
+        }
+
+        #[test]
+        fn test_collision_pass_velocity() {
+            use crate::ecs::{Components, PositionComponent, SizeComponent, VelocityComponent};
+
+            let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (1, 1), (1, 1), None, false);
+            let entity_2 = Entity::from_tuples(EntityId(1), (1, 1), (0, 0), (1, 1), None, false);
+
+            let entities = &mut [entity_1, entity_2];
+            let collisions = collision_pass(entities);
+            println!("{:?}", collisions);
+            assert_eq!(1, collisions.len());
+            assert_eq!(EntityId(0), collisions[0][0]);
+            assert_eq!(EntityId(1), collisions[0][1]);
+        }
+    }
+}
 #[cfg(test)]
 mod test {
     use super::*;

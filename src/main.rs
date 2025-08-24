@@ -1,7 +1,6 @@
-use hewn::game_object::Coordinate;
 use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
 use hewn::view::cursor::StaticCursorStrategy;
-use hewn::view::{TerminalRenderer, View};
+use hewn::view::{Coordinate, TerminalRenderer, View};
 
 const SCREEN_HEIGHT: u16 = 20;
 const SCREEN_WIDTH: u16 = 50;
@@ -19,15 +18,14 @@ mod game {
 
     use hewn::{
         ecs::{
-            self, Components, Entity, EntityId, PositionComponent, RenderComponent, SizeComponent,
+            self, Components, EntityId, PositionComponent, RenderComponent, SizeComponent,
             TrackComponent, VelocityComponent, ECS,
         },
-        game::{Entities, GameLogic},
+        game::GameLogic,
         runtime::Key,
     };
 
     pub struct MinimalGame {
-        entities: Entities,
         started: bool,
         pub ecs: ecs::ECS,
         pub player_entity_id: EntityId,
@@ -35,7 +33,6 @@ mod game {
 
     impl MinimalGame {
         pub fn new() -> MinimalGame {
-            let entities = Entities::new();
             let mut ecs = ecs::ECS::new();
             let player_entity_id = ecs.add_entity_from_components(Components {
                 position_component: Some(PositionComponent { x: 5, y: 5 }),
@@ -48,7 +45,6 @@ mod game {
             });
 
             MinimalGame {
-                entities,
                 started: false,
                 ecs,
                 player_entity_id,
@@ -102,10 +98,6 @@ mod game {
             }
             self.update_player_velocity(key);
             self.ecs.step();
-        }
-
-        fn entities(&self) -> &Entities {
-            &self.entities
         }
 
         fn ecs(&self) -> &ECS {

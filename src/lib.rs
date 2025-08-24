@@ -13,6 +13,5 @@ mod engine;
 
 pub use engine::ecs;
 pub use engine::game;
-pub use engine::game_object;
 pub use engine::runtime;
 pub use engine::view;

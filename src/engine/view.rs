@@ -1,6 +1,5 @@
 //! View, cursor and renderer.
 
-use super::game_object::Coordinate;
 use crate::ecs::Entity;
 use crate::engine::view::cursor::CursorStrategy;
 use std::{
@@ -9,6 +8,13 @@ use std::{
 };
 #[cfg(not(target_arch = "wasm32"))]
 use termion::raw::RawTerminal;
+
+/// A coordinate in the game world.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Coordinate {
+    pub x: u16,
+    pub y: u16,
+}
 
 /// A view of the game world.
 pub struct View {
@@ -81,15 +87,10 @@ impl View {
 
 /// Player view cursor and strategies.
 pub mod cursor {
-    use crate::{game_object::Coordinate, game_object::GameObject, view::Renderer};
+    use crate::view::{Coordinate, Renderer};
 
     pub trait CursorStrategy {
-        fn update(
-            &mut self,
-            cursor: &mut Coordinate,
-            renderer: &dyn Renderer,
-            player_object: &dyn GameObject,
-        );
+        fn update(&mut self, cursor: &mut Coordinate, renderer: &dyn Renderer, coords: &Coordinate);
     }
 
     pub struct StaticCursorStrategy {}
@@ -101,7 +102,7 @@ pub mod cursor {
     }
 
     impl CursorStrategy for StaticCursorStrategy {
-        fn update(&mut self, _: &mut Coordinate, _: &dyn Renderer, _: &dyn GameObject) {}
+        fn update(&mut self, _: &mut Coordinate, _: &dyn Renderer, _: &Coordinate) {}
     }
 
     pub struct FollowPlayerYCursorStrategy {
@@ -119,9 +120,9 @@ pub mod cursor {
             &mut self,
             cursor: &mut Coordinate,
             renderer: &dyn Renderer,
-            player_object: &dyn GameObject,
+            coords: &Coordinate,
         ) {
-            let y = player_object.get_coords().y;
+            let y = coords.y;
             let abs_diff = y.abs_diff(cursor.y);
             if abs_diff > 1 && abs_diff < (renderer.screen_height() as u16 - 2_u16) {
                 return;
@@ -146,9 +147,9 @@ pub mod cursor {
             &mut self,
             cursor: &mut Coordinate,
             renderer: &dyn Renderer,
-            player_object: &dyn GameObject,
+            coords: &Coordinate,
         ) {
-            let x = player_object.get_coords().x;
+            let x = coords.x;
             let abs_diff = x.abs_diff(cursor.x);
             if abs_diff > 1 && abs_diff < (renderer.screen_height() - 2_u16) {
                 return;
