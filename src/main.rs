@@ -18,7 +18,10 @@ impl Player {
 mod game {
 
     use hewn::{
-        ecs::{self, Entity, EntityId, Position, Velocity},
+        ecs::{
+            self, Entity, EntityId, PositionComponent, RenderComponent, SizeComponent,
+            TrackComponent, VelocityComponent, ECS,
+        },
         game::{Entities, GameLogic},
         runtime::Key,
     };
@@ -32,13 +35,18 @@ mod game {
 
     impl MinimalGame {
         pub fn new() -> MinimalGame {
-            let mut entities = Entities::new();
+            let entities = Entities::new();
             let mut ecs = ecs::ECS::new();
             let player_entity_id = EntityId(0);
             let player_entity = Entity {
                 id: player_entity_id,
-                position_component: Some(Position { x: 5, y: 5 }),
-                velocity_component: Some(Velocity { x: 0, y: 0 }),
+                position_component: Some(PositionComponent { x: 5, y: 5 }),
+                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+                render_component: Some(RenderComponent {
+                    ascii_character: 'O',
+                }),
+                size_component: Some(SizeComponent { x: 2, y: 2 }),
+                track_component: Some(TrackComponent {}),
             };
             ecs.add_entity(player_entity);
 
@@ -48,10 +56,6 @@ mod game {
                 ecs,
                 player_entity_id: player_entity_id,
             }
-        }
-
-        pub fn entities(&self) -> Vec<Entity> {
-            self.entities()
         }
 
         fn update_player_velocity(&mut self, key: Option<Key>) {
@@ -105,6 +109,10 @@ mod game {
 
         fn entities(&self) -> &Entities {
             &self.entities
+        }
+
+        fn ecs(&self) -> &ECS {
+            &self.ecs
         }
 
         fn debug_str(&self) -> Option<String> {

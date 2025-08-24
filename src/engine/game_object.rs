@@ -19,15 +19,15 @@ pub trait GameObject: Debug + Any {
 /// A coordinate in the game world.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Coordinate {
-    pub x: usize,
-    pub y: usize,
+    pub x: u16,
+    pub y: u16,
 }
 
 /// A collision box for a game object.
 #[derive(Debug)]
 pub struct CollisionBox {
-    pub x: Range<usize>,
-    pub y: Range<usize>,
+    pub x: Range<u16>,
+    pub y: Range<u16>,
 }
 
 /// Utility functions for game objects.
@@ -38,7 +38,7 @@ pub mod utils {
     pub fn detect_collision(a: &dyn GameObject, b: &dyn GameObject) -> bool {
         let a_collision_box = a.get_collision_box();
         let b_collision_box = b.get_collision_box();
-        fn overlapping_1d(a: Range<usize>, b: Range<usize>) -> bool {
+        fn overlapping_1d(a: Range<u16>, b: Range<u16>) -> bool {
             a.end > b.start && b.end > a.start
         }
         overlapping_1d(a_collision_box.x, b_collision_box.x)
@@ -119,7 +119,7 @@ mod test {
     }
 
     impl TestGameObject {
-        pub fn from_tuple((x, y): (usize, usize)) -> TestGameObject {
+        pub fn from_tuple((x, y): (u16, u16)) -> TestGameObject {
             TestGameObject {
                 coords: Coordinate { x, y },
                 collisions: 0,

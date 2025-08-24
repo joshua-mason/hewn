@@ -1,8 +1,7 @@
 //! View, cursor and renderer.
 
 use super::game_object::Coordinate;
-use super::game_object::GameObject;
-use crate::engine::game_object::utils;
+use crate::ecs::Entity;
 use crate::engine::view::cursor::CursorStrategy;
 use std::{
     io::{Stdout, Write},
@@ -19,42 +18,54 @@ pub struct View {
 }
 
 impl View {
-    pub fn next(
-        &mut self,
-        game_objects: &[Box<dyn GameObject>],
-        debug_string: Option<String>,
-    ) -> String {
+    pub fn next(&mut self, entities: Vec<&Entity>, debug_string: Option<String>) -> String {
         let renderer = self.renderer.as_mut();
         let strategy = self.cursor_strategy.as_mut();
-        if let Some(player_object) = utils::take_player_object(game_objects) {
-            strategy.update(&mut self.view_cursor, &*renderer, player_object);
-        }
+        // TODO: update view, need to get the palyer... a component like "TrackView", or "Camera" or something??
+        // if let Some(player_object) = utils::take_player_object(game_objects) {
+        //     strategy.update(&mut self.view_cursor, &*renderer, player_object);
+        // }
 
         let mut level_strings: Vec<String> = vec![];
+
+        // TODO would it be much faster to just run through the entities and then render them at the relevant
+        // indexes in the level strings?
+
         for height in 0..renderer.screen_height() {
             let mut level: String = build_string('.', renderer.screen_width() as usize);
             let y_position = renderer.screen_height() + self.view_cursor.y as u16 - height;
             let cursor_x_position = self.view_cursor.x;
 
-            for game_object in game_objects {
-                let game_object_coords = game_object.get_coords();
-                let game_object_width = game_object.width();
-                let mut display_string: &str = &game_object.display();
-                if display_string.len() > game_object_width {
-                    display_string = display_string.split_at(game_object_width).0;
-                }
-                if game_object_coords.y == (y_position as usize)
-                    && game_object_coords.x >= cursor_x_position
-                    && game_object_coords.x + game_object_width - cursor_x_position <= level.len()
+            for game_object in &entities {
+                let Some(position_component) = &game_object.position_component else {
+                    continue;
+                };
+                let Some(render_component) = &game_object.render_component else {
+                    continue;
+                };
+                let Some(size_component) = &game_object.size_component else {
+                    continue;
+                };
+
+                let display_char = render_component.ascii_character;
+                if position_component.y == y_position
+                    && position_component.x >= cursor_x_position as u16
+                    && (position_component.x + size_component.x) - cursor_x_position as u16
+                        <= level.len() as u16
                 {
-                    let x_displacement = if cursor_x_position > game_object_coords.x {
+                    let x_displacement = if cursor_x_position as u16 > position_component.x {
                         0
                     } else {
-                        game_object_coords.x - cursor_x_position
+                        position_component.x - cursor_x_position as u16
                     };
                     let render_x_offset =
-                        game_object_coords.x + game_object_width - cursor_x_position;
-                    level.replace_range((x_displacement)..(render_x_offset), display_string)
+                        position_component.x + size_component.x - cursor_x_position as u16;
+                    level.replace_range(
+                        (x_displacement as usize)..(render_x_offset as usize),
+                        &display_char
+                            .encode_utf8(&mut [0; 4])
+                            .repeat(size_component.x as usize),
+                    )
                 }
             }
 
@@ -112,11 +123,11 @@ pub mod cursor {
         ) {
             let y = player_object.get_coords().y;
             let abs_diff = y.abs_diff(cursor.y);
-            if abs_diff > 1 && abs_diff < (renderer.screen_height() as usize - 2_usize) {
+            if abs_diff > 1 && abs_diff < (renderer.screen_height() as u16 - 2_u16) {
                 return;
             }
             cursor.y =
-                (y as i16 + self.offset as i16 - renderer.screen_height() as i16).max(0) as usize;
+                (y as i16 + self.offset as i16 - renderer.screen_height() as i16).max(0) as u16;
         }
     }
 
@@ -139,11 +150,11 @@ pub mod cursor {
         ) {
             let x = player_object.get_coords().x;
             let abs_diff = x.abs_diff(cursor.x);
-            if abs_diff > 1 && abs_diff < (renderer.screen_height() as usize - 2_usize) {
+            if abs_diff > 1 && abs_diff < (renderer.screen_height() - 2_u16) {
                 return;
             }
             cursor.x =
-                (x as i16 + self.offset as i16 - renderer.screen_width() as i16).max(0) as usize;
+                (x as i16 + self.offset as i16 - renderer.screen_width() as i16).max(0) as u16;
         }
     }
 }

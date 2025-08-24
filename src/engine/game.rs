@@ -1,5 +1,6 @@
 //! Game logic trait and entity handling.
 
+use crate::ecs::ECS;
 use crate::game_object::GameObject;
 use crate::runtime::Key;
 
@@ -14,6 +15,10 @@ pub trait GameLogic {
     // Game state
     /// Get the entities of the game.
     fn entities(&self) -> &Entities;
+
+    /// Game state
+    /// Get the Entity Component System
+    fn ecs(&self) -> &ECS;
 
     // Debug rendering
     /// Get a string for debugging.

@@ -1,35 +1,75 @@
 pub struct Entity {
     pub id: EntityId,
 
-    pub position_component: Option<Position>,
-    pub velocity_component: Option<Velocity>,
+    // wrap in components struct
+    pub position_component: Option<PositionComponent>,
+    pub velocity_component: Option<VelocityComponent>,
+    pub render_component: Option<RenderComponent>,
+    pub size_component: Option<SizeComponent>,
+    pub track_component: Option<TrackComponent>,
 }
 
 #[derive(PartialEq, Debug, Eq, Hash, Clone, Copy)]
 pub struct EntityId(pub u16);
 
-enum ComponentType {
+impl Entity {
+    pub fn new(id: EntityId) -> Entity {
+        Entity {
+            id: id,
+            position_component: None,
+            velocity_component: None,
+            render_component: None,
+            size_component: None,
+            track_component: None,
+        }
+    }
+}
+
+pub enum ComponentType {
     position,
     velocity,
+    render,
+    size,
+    track,
 }
 
 trait Component {
     const TYPE: ComponentType;
 }
-pub struct Position {
+pub struct PositionComponent {
     pub x: u16,
     pub y: u16,
 }
-impl Component for Position {
+impl Component for PositionComponent {
     const TYPE: ComponentType = ComponentType::position;
 }
 
-pub struct Velocity {
+pub struct VelocityComponent {
     pub x: i16,
     pub y: i16,
 }
-impl Component for Velocity {
+impl Component for VelocityComponent {
     const TYPE: ComponentType = ComponentType::velocity;
+}
+
+pub struct SizeComponent {
+    pub x: u16,
+    pub y: u16,
+}
+impl Component for SizeComponent {
+    const TYPE: ComponentType = ComponentType::size;
+}
+
+pub struct RenderComponent {
+    pub ascii_character: char,
+}
+impl Component for RenderComponent {
+    const TYPE: ComponentType = ComponentType::render;
+}
+
+pub struct TrackComponent {}
+impl Component for TrackComponent {
+    const TYPE: ComponentType = ComponentType::track;
 }
 
 pub struct ECS {
@@ -102,6 +142,24 @@ impl ECS {
                     }
                     false
                 }
+                ComponentType::size => {
+                    if (e.size_component.is_some()) {
+                        return true;
+                    }
+                    false
+                }
+                ComponentType::render => {
+                    if (e.render_component.is_some()) {
+                        return true;
+                    }
+                    false
+                }
+                ComponentType::track => {
+                    if (e.render_component.is_some()) {
+                        return true;
+                    }
+                    false
+                }
             })
             .collect::<Vec<&Entity>>();
         entities
@@ -116,13 +174,31 @@ impl ECS {
             .iter_mut()
             .filter(|e| match component_type {
                 ComponentType::position => {
-                    if (e.position_component.is_some()) {
+                    if e.position_component.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::velocity => {
-                    if (e.velocity_component.is_some()) {
+                    if e.velocity_component.is_some() {
+                        return true;
+                    }
+                    false
+                }
+                ComponentType::size => {
+                    if e.size_component.is_some() {
+                        return true;
+                    }
+                    false
+                }
+                ComponentType::render => {
+                    if e.render_component.is_some() {
+                        return true;
+                    }
+                    false
+                }
+                ComponentType::track => {
+                    if (e.render_component.is_some()) {
                         return true;
                     }
                     false
@@ -147,26 +223,16 @@ mod test {
     fn test_add_entity_with_no_components() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        let entity = Entity {
-            id: EntityId(0),
-            position_component: None,
-            velocity_component: None,
-        };
+        let entity = Entity::new(EntityId(0));
         ecs.add_entity(entity);
         assert_eq!(ecs.entities.len(), 1);
     }
 
     #[test]
     fn test_get_entity_by_id() {
-        let position_component = Position { x: 0, y: 0 };
-
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        let entity = Entity {
-            id: EntityId(0),
-            position_component: Some(position_component),
-            velocity_component: None,
-        };
+        let entity = Entity::new(EntityId(0));
         ecs.add_entity(entity);
         assert_eq!(ecs.entities.len(), 1);
 
@@ -178,14 +244,20 @@ mod test {
     fn test_get_entities_by_ids() {
         let entity_1 = Entity {
             id: EntityId(0),
-            position_component: Some(Position { x: 0, y: 0 }),
+            position_component: Some(PositionComponent { x: 0, y: 0 }),
             velocity_component: None,
+            render_component: None,
+            size_component: None,
+            track_component: None,
         };
 
         let entity_2 = Entity {
             id: EntityId(1),
-            position_component: Some(Position { x: 1, y: 1 }),
+            position_component: Some(PositionComponent { x: 1, y: 1 }),
             velocity_component: None,
+            render_component: None,
+            size_component: None,
+            track_component: None,
         };
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
@@ -218,14 +290,20 @@ mod test {
     fn test_ecs_step() {
         let entity_1 = Entity {
             id: EntityId(0),
-            position_component: Some(Position { x: 0, y: 0 }),
-            velocity_component: Some(Velocity { x: 0, y: 0 }),
+            position_component: Some(PositionComponent { x: 0, y: 0 }),
+            velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+            render_component: None,
+            size_component: None,
+            track_component: None,
         };
 
         let entity_2 = Entity {
             id: EntityId(1),
-            position_component: Some(Position { x: 1, y: 1 }),
-            velocity_component: Some(Velocity { x: 1, y: 1 }),
+            position_component: Some(PositionComponent { x: 1, y: 1 }),
+            velocity_component: Some(VelocityComponent { x: 1, y: 1 }),
+            render_component: None,
+            size_component: None,
+            track_component: None,
         };
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
