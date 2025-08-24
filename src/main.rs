@@ -40,8 +40,17 @@ mod game {
                 render_component: Some(RenderComponent {
                     ascii_character: 'O',
                 }),
-                size_component: Some(SizeComponent { x: 2, y: 2 }),
+                size_component: Some(SizeComponent { x: 2, y: 1 }),
                 track_component: Some(TrackComponent {}),
+            });
+            ecs.add_entity_from_components(Components {
+                position_component: Some(PositionComponent { x: 5, y: 6 }),
+                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+                render_component: Some(RenderComponent {
+                    ascii_character: '#',
+                }),
+                size_component: Some(SizeComponent { x: 2, y: 1 }),
+                track_component: None,
             });
 
             MinimalGame {
@@ -96,7 +105,16 @@ mod game {
             if !self.started {
                 return;
             }
+
             self.update_player_velocity(key);
+            let collisions = self.ecs.collision_pass();
+            if collisions
+                .iter()
+                .flatten()
+                .any(|entity_id| entity_id == &self.player_entity_id)
+            {
+                self.update_player_velocity(None);
+            }
             self.ecs.step();
         }
 
@@ -152,6 +170,27 @@ mod test {
         assert!(player.is_some());
 
         game.start_game();
+        game.next(Some(Key::Down));
+
+        let player = game.ecs.get_entity_by_id(game.player_entity_id);
+        assert!(player.is_some());
+        let Some(player_entity) = player else {
+            panic!("Player entity not set")
+        };
+        let Some(position_component) = &player_entity.components.position_component else {
+            panic!("Position component not set")
+        };
+        assert_eq!(position_component.x, 5);
+        assert_eq!(position_component.y, 4);
+    }
+
+    #[test]
+    fn test_player_hit_wall() {
+        let mut game = game::MinimalGame::new();
+        let player = game.ecs.get_entity_by_id(game.player_entity_id);
+        assert!(player.is_some());
+
+        game.start_game();
         game.next(Some(Key::Up));
 
         let player = game.ecs.get_entity_by_id(game.player_entity_id);
@@ -163,6 +202,6 @@ mod test {
             panic!("Position component not set")
         };
         assert_eq!(position_component.x, 5);
-        assert_eq!(position_component.y, 6);
+        assert_eq!(position_component.y, 5);
     }
 }

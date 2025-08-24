@@ -1,8 +1,10 @@
+#[derive(Debug)]
 pub struct Entity {
     pub id: EntityId,
     pub components: Components,
 }
 
+#[derive(Debug)]
 pub struct Components {
     pub position_component: Option<PositionComponent>,
     pub velocity_component: Option<VelocityComponent>,
@@ -69,6 +71,7 @@ pub enum ComponentType {
 trait Component {
     const TYPE: ComponentType;
 }
+#[derive(Debug)]
 pub struct PositionComponent {
     pub x: u16,
     pub y: u16,
@@ -77,6 +80,7 @@ impl Component for PositionComponent {
     const TYPE: ComponentType = ComponentType::position;
 }
 
+#[derive(Debug)]
 pub struct VelocityComponent {
     pub x: i16,
     pub y: i16,
@@ -85,6 +89,7 @@ impl Component for VelocityComponent {
     const TYPE: ComponentType = ComponentType::velocity;
 }
 
+#[derive(Debug)]
 pub struct SizeComponent {
     pub x: u16,
     pub y: u16,
@@ -93,6 +98,7 @@ impl Component for SizeComponent {
     const TYPE: ComponentType = ComponentType::size;
 }
 
+#[derive(Debug)]
 pub struct RenderComponent {
     pub ascii_character: char,
 }
@@ -100,6 +106,7 @@ impl Component for RenderComponent {
     const TYPE: ComponentType = ComponentType::render;
 }
 
+#[derive(Debug)]
 pub struct TrackComponent {}
 impl Component for TrackComponent {
     const TYPE: ComponentType = ComponentType::track;
@@ -139,6 +146,10 @@ impl ECS {
                 position_component.y = clamped_add(position_component.y, velocity_component.y);
             }
         }
+    }
+
+    pub fn collision_pass(&self) -> Vec<[EntityId; 2]> {
+        collisions::collision_pass(&self.entities)
     }
 }
 
@@ -258,68 +269,85 @@ pub mod collisions {
     use std::ops::Range;
 
     // TODO: this seems to be affected by the order of the objects - probably related to the double dispatch problem?
-    pub fn collision_pass(objects: &mut [Entity]) -> Vec<[EntityId; 2]> {
+    pub fn collision_pass(objects: &[Entity]) -> Vec<[EntityId; 2]> {
         let collisions = process_collisions(objects);
-        objects.reverse();
-
         // TODO - do we need both checks?
+        // objects.reverse();
         // let mut reversed_collisions = process_collisions(objects);
         // collisions.append(&mut reversed_collisions);
         // objects.reverse();
         collisions
     }
-    #[derive(Debug)]
+
+    #[derive(Debug, PartialEq)]
     struct CollisionBox {
         pub x: Range<u16>,
         pub y: Range<u16>,
     }
 
-    fn get_collision_box(entity: &Entity) -> Option<CollisionBox> {
-        let Some(position_component) = &entity.components.position_component else {
-            return None;
-        };
+    impl CollisionBox {
+        pub fn from_entity(entity: &Entity) -> Option<CollisionBox> {
+            let Some(position_component) = &entity.components.position_component else {
+                return None;
+            };
 
-        let Some(size_component) = &entity.components.size_component else {
-            return None;
-        };
+            let Some(size_component) = &entity.components.size_component else {
+                return None;
+            };
 
-        let Some(velocity_component) = &entity.components.velocity_component else {
-            return None;
-        };
+            let Some(velocity_component) = &entity.components.velocity_component else {
+                return None;
+            };
 
-        Some(CollisionBox {
-            x: position_component.x..(size_component.x as i16 as i16 + velocity_component.x) as u16,
-            y: position_component.y..(size_component.y as i16 as i16 + velocity_component.y) as u16,
-        })
+            Some(CollisionBox {
+                x: CollisionBox::range_from_physical_properties(
+                    position_component.x,
+                    size_component.x,
+                    velocity_component.x,
+                ),
+                y: CollisionBox::range_from_physical_properties(
+                    position_component.y,
+                    size_component.y,
+                    velocity_component.y,
+                ),
+            })
+        }
+
+        fn range_from_physical_properties(position: u16, size: u16, velocity: i16) -> Range<u16> {
+            if (velocity.is_positive()) {
+                return position..(position as i16 + size as i16 + velocity) as u16;
+            }
+            (position as i16 + velocity) as u16..position + size
+        }
     }
 
-    fn detect_collision(a: &mut Entity, b: &mut Entity) -> bool {
-        let Some(a_collision_box) = get_collision_box(a) else {
-            return false;
-        };
-        let Some(b_collision_box) = get_collision_box(b) else {
-            return false;
-        };
-        fn overlapping_1d(a: Range<u16>, b: Range<u16>) -> bool {
+    pub fn are_collision_boxes_overlapping(
+        a_collision_box: &CollisionBox,
+        b_collision_box: &CollisionBox,
+    ) -> bool {
+        fn overlapping_1d(a: &Range<u16>, b: &Range<u16>) -> bool {
             a.end > b.start && b.end > a.start
         }
-        overlapping_1d(a_collision_box.x, b_collision_box.x)
-            && overlapping_1d(a_collision_box.y, b_collision_box.y)
+        overlapping_1d(&a_collision_box.x, &b_collision_box.x)
+            && overlapping_1d(&a_collision_box.y, &b_collision_box.y)
     }
 
-    fn process_collisions(objects: &mut [Entity]) -> Vec<[EntityId; 2]> {
+    fn process_collisions(objects: &[Entity]) -> Vec<[EntityId; 2]> {
         let mut collisions: Vec<[EntityId; 2]> = vec![];
         for i in 0..objects.len() {
-            let (left, rest) = objects.split_at_mut(i + 1);
+            let (left, rest) = objects.split_at(i + 1);
 
-            // A is &mut Box<dyn GameObject>
-            let a = &mut left[i];
+            let a = &left[i];
 
             for b in rest {
-                // Now upcast references: &mut dyn GameObject -> &mut dyn Collide
-                // let x = &mut **a;
-                // let y: &dyn Entity = &**b;
-                if detect_collision(a, b) {
+                let Some(a_collision_box) = CollisionBox::from_entity(a) else {
+                    continue;
+                };
+                let Some(b_collision_box) = CollisionBox::from_entity(b) else {
+                    continue;
+                };
+
+                if are_collision_boxes_overlapping(&a_collision_box, &b_collision_box) {
                     collisions.push([a.id, b.id]);
                 }
             }
@@ -329,16 +357,18 @@ pub mod collisions {
 
     #[cfg(test)]
     mod test {
-        use crate::ecs::{collisions::collision_pass, Entity, EntityId};
+        use crate::ecs::{
+            collisions::{are_collision_boxes_overlapping, collision_pass, CollisionBox},
+            Entity, EntityId,
+        };
 
         #[test]
         fn test_collision_pass_static_same_place_entities() {
             let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
             let entity_2 = Entity::from_tuples(EntityId(1), (0, 0), (0, 0), (1, 1), None, false);
 
-            let entities = &mut [entity_1, entity_2];
+            let entities = &[entity_1, entity_2];
             let collisions = collision_pass(entities);
-            println!("{:?}", collisions);
             assert_eq!(1, collisions.len());
             assert_eq!(EntityId(0), collisions[0][0]);
             assert_eq!(EntityId(1), collisions[0][1]);
@@ -349,9 +379,8 @@ pub mod collisions {
             let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
             let entity_2 = Entity::from_tuples(EntityId(1), (2, 2), (0, 0), (1, 1), None, false);
 
-            let entities = &mut [entity_1, entity_2];
+            let entities = &[entity_1, entity_2];
             let collisions = collision_pass(entities);
-            println!("{:?}", collisions);
             assert_eq!(0, collisions.len());
         }
 
@@ -360,9 +389,8 @@ pub mod collisions {
             let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
             let entity_2 = Entity::from_tuples(EntityId(1), (1, 1), (0, 0), (1, 1), None, false);
 
-            let entities = &mut [entity_1, entity_2];
+            let entities = &[entity_1, entity_2];
             let collisions = collision_pass(entities);
-            println!("{:?}", collisions);
             assert_eq!(0, collisions.len());
         }
 
@@ -371,12 +399,70 @@ pub mod collisions {
             let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (1, 1), (1, 1), None, false);
             let entity_2 = Entity::from_tuples(EntityId(1), (1, 1), (0, 0), (1, 1), None, false);
 
-            let entities = &mut [entity_1, entity_2];
+            let entities = &[entity_1, entity_2];
             let collisions = collision_pass(entities);
-            println!("{:?}", collisions);
             assert_eq!(1, collisions.len());
             assert_eq!(EntityId(0), collisions[0][0]);
             assert_eq!(EntityId(1), collisions[0][1]);
+        }
+
+        #[test]
+        fn test_collision_pass_player_up_and_wall_should_collide() {
+            let entity_player =
+                Entity::from_tuples(EntityId(0), (5, 5), (0, 1), (2, 1), Some('O'), true);
+            let entity_wall =
+                Entity::from_tuples(EntityId(1), (5, 6), (0, 0), (2, 1), Some('#'), false);
+
+            let entities = &[entity_player, entity_wall];
+            let collisions = collision_pass(entities);
+            assert_eq!(
+                1,
+                collisions.len(),
+                "Expected a collision between player and wall"
+            );
+            let pair = collisions[0];
+            // The order of the pair may not be guaranteed, so check both possibilities
+            assert!(
+                (pair[0] == EntityId(0) && pair[1] == EntityId(1))
+                    || (pair[0] == EntityId(1) && pair[1] == EntityId(0)),
+                "Collision should be between EntityId(0) and EntityId(1), got: {:?}",
+                pair
+            );
+        }
+
+        #[test]
+        fn test_collision_pass_player_down_and_wall_should_collide() {
+            let entity_player =
+                Entity::from_tuples(EntityId(0), (5, 6), (0, -1), (2, 1), Some('O'), true);
+            let entity_wall =
+                Entity::from_tuples(EntityId(1), (5, 5), (0, 0), (2, 1), Some('#'), false);
+
+            let entities = &[entity_player, entity_wall];
+            let collisions = collision_pass(entities);
+            assert_eq!(
+                1,
+                collisions.len(),
+                "Expected a collision between player and wall"
+            );
+            let pair = collisions[0];
+            // The order of the pair may not be guaranteed, so check both possibilities
+            assert!(
+                (pair[0] == EntityId(0) && pair[1] == EntityId(1)), // || (pair[0] == EntityId(1) && pair[1] == EntityId(0))
+                "Collision should be between EntityId(0) and EntityId(1), got: {:?}",
+                pair
+            );
+        }
+
+        #[test]
+        fn test_entity_collision_box_moving() {
+            let entity_player =
+                Entity::from_tuples(EntityId(0), (5, 5), (0, -1), (2, 1), Some('O'), true);
+
+            let maybe_collision_box = CollisionBox::from_entity(&entity_player);
+
+            let collision_box = maybe_collision_box.expect("Collision box not created");
+
+            assert_eq!(collision_box, CollisionBox { x: 5..7, y: 4..6 })
         }
     }
 }
