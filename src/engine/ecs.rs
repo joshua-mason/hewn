@@ -11,6 +11,18 @@ pub struct Components {
     pub track_component: Option<TrackComponent>,
 }
 
+impl Components {
+    pub fn new() -> Components {
+        Components {
+            position_component: None,
+            velocity_component: None,
+            render_component: None,
+            size_component: None,
+            track_component: None,
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Eq, Hash, Clone, Copy)]
 pub struct EntityId(pub u16);
 
@@ -18,13 +30,7 @@ impl Entity {
     pub fn new(id: EntityId) -> Entity {
         Entity {
             id: id,
-            components: Components {
-                position_component: None,
-                velocity_component: None,
-                render_component: None,
-                size_component: None,
-                track_component: None,
-            },
+            components: Components::new(),
         }
     }
 }
@@ -77,6 +83,7 @@ impl Component for TrackComponent {
 }
 
 pub struct ECS {
+    next_entity_id: EntityId,
     entities: Vec<Entity>,
 }
 
@@ -114,11 +121,21 @@ impl ECS {
 
 impl ECS {
     pub fn new() -> ECS {
-        ECS { entities: vec![] }
+        ECS {
+            entities: vec![],
+            next_entity_id: EntityId(0),
+        }
     }
 
-    pub fn add_entity(&mut self, entity: Entity) {
+    pub fn add_entity_from_components(&mut self, components: Components) -> EntityId {
+        let new_entity_id = self.next_entity_id;
+        self.next_entity_id = EntityId(new_entity_id.0 + 1);
+        let entity = Entity {
+            id: new_entity_id,
+            components,
+        };
         self.entities.push(entity);
+        new_entity_id
     }
 
     pub fn get_entity_by_id(&self, id: EntityId) -> Option<&Entity> {
@@ -217,6 +234,16 @@ impl ECS {
 mod test {
     use super::*;
 
+    fn empty_components() -> Components {
+        Components {
+            position_component: None,
+            velocity_component: None,
+            render_component: None,
+            size_component: None,
+            track_component: None,
+        }
+    }
+
     #[test]
     fn test_initialise_empty_ecs() {
         let ecs = ECS::new();
@@ -227,8 +254,7 @@ mod test {
     fn test_add_entity_with_no_components() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        let entity = Entity::new(EntityId(0));
-        ecs.add_entity(entity);
+        ecs.add_entity_from_components(empty_components());
         assert_eq!(ecs.entities.len(), 1);
     }
 
@@ -236,8 +262,7 @@ mod test {
     fn test_get_entity_by_id() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        let entity = Entity::new(EntityId(0));
-        ecs.add_entity(entity);
+        ecs.add_entity_from_components(Components::new());
         assert_eq!(ecs.entities.len(), 1);
 
         let entity_from_ecs = ecs.get_entity_by_id(EntityId(0));
@@ -246,37 +271,27 @@ mod test {
 
     #[test]
     fn test_get_entities_by_ids() {
-        let entity_1 = Entity {
-            id: EntityId(0),
-            components: Components {
-                position_component: Some(PositionComponent { x: 0, y: 0 }),
-                velocity_component: None,
-                render_component: None,
-                size_component: None,
-                track_component: None,
-            },
-        };
-
-        let entity_2 = Entity {
-            id: EntityId(1),
-
-            components: Components {
-                position_component: Some(PositionComponent { x: 1, y: 1 }),
-                velocity_component: None,
-                render_component: None,
-                size_component: None,
-                track_component: None,
-            },
-        };
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        ecs.add_entity(entity_1);
-        ecs.add_entity(entity_2);
+        let entity_one_id = ecs.add_entity_from_components(Components {
+            position_component: Some(PositionComponent { x: 0, y: 0 }),
+            velocity_component: None,
+            render_component: None,
+            size_component: None,
+            track_component: None,
+        });
+        let entity_two_id = ecs.add_entity_from_components(Components {
+            position_component: Some(PositionComponent { x: 1, y: 1 }),
+            velocity_component: None,
+            render_component: None,
+            size_component: None,
+            track_component: None,
+        });
         assert_eq!(ecs.entities.len(), 2);
 
-        let entity_from_ecs = ecs.get_entity_by_id(EntityId(0));
-        assert_eq!(entity_from_ecs.unwrap().id, EntityId(0));
-        let entity_position = &entity_from_ecs
+        let entity_one_from_ecs = ecs.get_entity_by_id(entity_one_id);
+        assert_eq!(entity_one_from_ecs.unwrap().id, EntityId(0));
+        let entity_position = &entity_one_from_ecs
             .unwrap()
             .components
             .position_component
@@ -285,9 +300,9 @@ mod test {
         assert_eq!(entity_position.x, 0);
         assert_eq!(entity_position.y, 0);
 
-        let entity_from_ecs = ecs.get_entity_by_id(EntityId(1));
-        assert_eq!(entity_from_ecs.unwrap().id, EntityId(1));
-        let entity_position = &entity_from_ecs
+        let entity_two_from_ecs = ecs.get_entity_by_id(entity_two_id);
+        assert_eq!(entity_two_from_ecs.unwrap().id, EntityId(1));
+        let entity_position = &entity_two_from_ecs
             .unwrap()
             .components
             .position_component
@@ -299,35 +314,26 @@ mod test {
 
     #[test]
     fn test_ecs_step() {
-        let entity_1 = Entity {
-            id: EntityId(0),
-            components: Components {
-                position_component: Some(PositionComponent { x: 0, y: 0 }),
-                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                render_component: None,
-                size_component: None,
-                track_component: None,
-            },
-        };
-
-        let entity_2 = Entity {
-            id: EntityId(1),
-            components: Components {
-                position_component: Some(PositionComponent { x: 1, y: 1 }),
-                velocity_component: Some(VelocityComponent { x: 1, y: 1 }),
-                render_component: None,
-                size_component: None,
-                track_component: None,
-            },
-        };
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        ecs.add_entity(entity_1);
-        ecs.add_entity(entity_2);
+        let entity_one_id = ecs.add_entity_from_components(Components {
+            position_component: Some(PositionComponent { x: 0, y: 0 }),
+            velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+            render_component: None,
+            size_component: None,
+            track_component: None,
+        });
+        let entity_two_id = ecs.add_entity_from_components(Components {
+            position_component: Some(PositionComponent { x: 1, y: 1 }),
+            velocity_component: Some(VelocityComponent { x: 1, y: 1 }),
+            render_component: None,
+            size_component: None,
+            track_component: None,
+        });
         assert_eq!(ecs.entities.len(), 2);
 
-        let entity_from_ecs = ecs.get_entity_by_id(EntityId(0));
-        assert_eq!(entity_from_ecs.unwrap().id, EntityId(0));
+        let entity_from_ecs = ecs.get_entity_by_id(entity_one_id);
+        assert_eq!(entity_from_ecs.unwrap().id, entity_one_id);
         let entity_velocity = &entity_from_ecs
             .unwrap()
             .components
@@ -337,8 +343,8 @@ mod test {
         assert_eq!(entity_velocity.x, 0);
         assert_eq!(entity_velocity.y, 0);
 
-        let entity_from_ecs = ecs.get_entity_by_id(EntityId(1));
-        assert_eq!(entity_from_ecs.unwrap().id, EntityId(1));
+        let entity_from_ecs = ecs.get_entity_by_id(entity_two_id);
+        assert_eq!(entity_from_ecs.unwrap().id, entity_two_id);
         let entity_velocity = &entity_from_ecs
             .unwrap()
             .components
@@ -350,8 +356,8 @@ mod test {
 
         ecs.step();
 
-        let entity_from_ecs = ecs.get_entity_by_id(EntityId(0));
-        assert_eq!(entity_from_ecs.unwrap().id, EntityId(0));
+        let entity_from_ecs = ecs.get_entity_by_id(entity_one_id);
+        assert_eq!(entity_from_ecs.unwrap().id, entity_one_id);
         let entity_position = &entity_from_ecs
             .unwrap()
             .components
@@ -361,8 +367,8 @@ mod test {
         assert_eq!(entity_position.x, 0);
         assert_eq!(entity_position.y, 0);
 
-        let entity_from_ecs = ecs.get_entity_by_id(EntityId(1));
-        assert_eq!(entity_from_ecs.unwrap().id, EntityId(1));
+        let entity_from_ecs = ecs.get_entity_by_id(entity_two_id);
+        assert_eq!(entity_from_ecs.unwrap().id, entity_two_id);
         let entity_position = &entity_from_ecs
             .unwrap()
             .components

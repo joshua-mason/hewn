@@ -37,26 +37,21 @@ mod game {
         pub fn new() -> MinimalGame {
             let entities = Entities::new();
             let mut ecs = ecs::ECS::new();
-            let player_entity_id = EntityId(0);
-            let player_entity = Entity {
-                id: player_entity_id,
-                components: Components {
-                    position_component: Some(PositionComponent { x: 5, y: 5 }),
-                    velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                    render_component: Some(RenderComponent {
-                        ascii_character: 'O',
-                    }),
-                    size_component: Some(SizeComponent { x: 2, y: 2 }),
-                    track_component: Some(TrackComponent {}),
-                },
-            };
-            ecs.add_entity(player_entity);
+            let player_entity_id = ecs.add_entity_from_components(Components {
+                position_component: Some(PositionComponent { x: 5, y: 5 }),
+                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+                render_component: Some(RenderComponent {
+                    ascii_character: 'O',
+                }),
+                size_component: Some(SizeComponent { x: 2, y: 2 }),
+                track_component: Some(TrackComponent {}),
+            });
 
             MinimalGame {
                 entities,
                 started: false,
                 ecs,
-                player_entity_id: player_entity_id,
+                player_entity_id,
             }
         }
 
