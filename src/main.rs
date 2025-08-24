@@ -19,7 +19,7 @@ mod game {
 
     use hewn::{
         ecs::{
-            self, Entity, EntityId, PositionComponent, RenderComponent, SizeComponent,
+            self, Components, Entity, EntityId, PositionComponent, RenderComponent, SizeComponent,
             TrackComponent, VelocityComponent, ECS,
         },
         game::{Entities, GameLogic},
@@ -40,13 +40,15 @@ mod game {
             let player_entity_id = EntityId(0);
             let player_entity = Entity {
                 id: player_entity_id,
-                position_component: Some(PositionComponent { x: 5, y: 5 }),
-                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                render_component: Some(RenderComponent {
-                    ascii_character: 'O',
-                }),
-                size_component: Some(SizeComponent { x: 2, y: 2 }),
-                track_component: Some(TrackComponent {}),
+                components: Components {
+                    position_component: Some(PositionComponent { x: 5, y: 5 }),
+                    velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+                    render_component: Some(RenderComponent {
+                        ascii_character: 'O',
+                    }),
+                    size_component: Some(SizeComponent { x: 2, y: 2 }),
+                    track_component: Some(TrackComponent {}),
+                },
             };
             ecs.add_entity(player_entity);
 
@@ -63,7 +65,7 @@ mod game {
             let Some(player_entity) = player_entity else {
                 return;
             };
-            let Some(velocity) = &mut player_entity.velocity_component else {
+            let Some(velocity) = &mut player_entity.components.velocity_component else {
                 return;
             };
             let Some(key) = &key else {
@@ -119,7 +121,7 @@ mod game {
             let Some(player_entity) = self.ecs.get_entity_by_id(self.player_entity_id) else {
                 return None;
             };
-            let Some(position_component) = &player_entity.position_component else {
+            let Some(position_component) = &player_entity.components.position_component else {
                 return None;
             };
 
@@ -170,7 +172,7 @@ mod test {
         let Some(player_entity) = player else {
             panic!("Player entity not set")
         };
-        let Some(position_component) = &player_entity.position_component else {
+        let Some(position_component) = &player_entity.components.position_component else {
             panic!("Position component not set")
         };
         assert_eq!(position_component.x, 5);

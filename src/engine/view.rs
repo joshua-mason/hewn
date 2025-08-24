@@ -37,13 +37,13 @@ impl View {
             let cursor_x_position = self.view_cursor.x;
 
             for game_object in &entities {
-                let Some(position_component) = &game_object.position_component else {
+                let Some(position_component) = &game_object.components.position_component else {
                     continue;
                 };
-                let Some(render_component) = &game_object.render_component else {
+                let Some(render_component) = &game_object.components.render_component else {
                     continue;
                 };
-                let Some(size_component) = &game_object.size_component else {
+                let Some(size_component) = &game_object.components.size_component else {
                     continue;
                 };
 
