@@ -288,10 +288,8 @@ pub mod collisions {
         };
 
         Some(CollisionBox {
-            x: position_component.x
-                ..(size_component.x as i16 + 1 as i16 + velocity_component.x) as u16,
-            y: position_component.y
-                ..(size_component.y as i16 + 1 as i16 + velocity_component.y) as u16,
+            x: position_component.x..(size_component.x as i16 as i16 + velocity_component.x) as u16,
+            y: position_component.y..(size_component.y as i16 as i16 + velocity_component.y) as u16,
         })
     }
 
@@ -331,13 +329,10 @@ pub mod collisions {
 
     #[cfg(test)]
     mod test {
-        use crate::ecs::{
-            collisions::collision_pass, Components, Entity, EntityId, PositionComponent,
-            SizeComponent, VelocityComponent,
-        };
+        use crate::ecs::{collisions::collision_pass, Entity, EntityId};
 
         #[test]
-        fn test_collision_pass_static_on_top() {
+        fn test_collision_pass_static_same_place_entities() {
             let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
             let entity_2 = Entity::from_tuples(EntityId(1), (0, 0), (0, 0), (1, 1), None, false);
 
@@ -350,9 +345,29 @@ pub mod collisions {
         }
 
         #[test]
-        fn test_collision_pass_velocity() {
-            use crate::ecs::{Components, PositionComponent, SizeComponent, VelocityComponent};
+        fn test_collision_pass_static_one_tile_gap_entities() {
+            let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
+            let entity_2 = Entity::from_tuples(EntityId(1), (2, 2), (0, 0), (1, 1), None, false);
 
+            let entities = &mut [entity_1, entity_2];
+            let collisions = collision_pass(entities);
+            println!("{:?}", collisions);
+            assert_eq!(0, collisions.len());
+        }
+
+        #[test]
+        fn test_collision_pass_static_adjacent_entities() {
+            let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
+            let entity_2 = Entity::from_tuples(EntityId(1), (1, 1), (0, 0), (1, 1), None, false);
+
+            let entities = &mut [entity_1, entity_2];
+            let collisions = collision_pass(entities);
+            println!("{:?}", collisions);
+            assert_eq!(0, collisions.len());
+        }
+
+        #[test]
+        fn test_collision_pass_crashing_entities() {
             let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (1, 1), (1, 1), None, false);
             let entity_2 = Entity::from_tuples(EntityId(1), (1, 1), (0, 0), (1, 1), None, false);
 

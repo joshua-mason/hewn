@@ -1,6 +1,6 @@
 use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
-use hewn::view::cursor::StaticCursorStrategy;
-use hewn::view::{Coordinate, TerminalRenderer, View};
+use hewn::view::cursor::{FollowPlayerYCursorStrategy, StaticCursorStrategy};
+use hewn::view::{TerminalRenderer, View, ViewCoordinate};
 
 const SCREEN_HEIGHT: u16 = 20;
 const SCREEN_WIDTH: u16 = 50;
@@ -129,9 +129,9 @@ fn main() {
     let (stdout, stdin) = initialize_terminal_io();
 
     let mut view = View {
-        view_cursor: Coordinate { x: 0, y: 0 },
+        view_cursor: ViewCoordinate { x: 0, y: 0 },
         renderer: Box::new(TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH)),
-        cursor_strategy: Box::new(StaticCursorStrategy::new()),
+        cursor_strategy: Box::new(FollowPlayerYCursorStrategy::new()),
     };
 
     let mut game = game::MinimalGame::new();

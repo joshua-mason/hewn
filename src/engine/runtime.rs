@@ -99,8 +99,7 @@ impl TerminalRuntime<'_> {
                 }
             }
             let ecs = self.game.ecs();
-            let entities = ecs.get_entities_by_component(ComponentType::position);
-
+            let entities = ecs.get_entities_by_component(ComponentType::render);
             self.display.next(entities, self.game.debug_str());
         }
     }
@@ -145,7 +144,7 @@ impl WebRuntime {
     /// Render the game to a string.
     pub fn render(&mut self) -> String {
         let ecs = self.game.ecs();
-        let entities = ecs.get_entities_by_component(ComponentType::position);
+        let entities = ecs.get_entities_by_component(ComponentType::render);
         self.display.next(entities, self.game.debug_str())
     }
 }

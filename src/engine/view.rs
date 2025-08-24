@@ -1,6 +1,6 @@
 //! View, cursor and renderer.
 
-use crate::ecs::Entity;
+use crate::ecs::{Entity, PositionComponent};
 use crate::engine::view::cursor::CursorStrategy;
 use std::{
     io::{Stdout, Write},
@@ -11,14 +11,14 @@ use termion::raw::RawTerminal;
 
 /// A coordinate in the game world.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Coordinate {
+pub struct ViewCoordinate {
     pub x: u16,
     pub y: u16,
 }
 
 /// A view of the game world.
 pub struct View {
-    pub view_cursor: Coordinate,
+    pub view_cursor: ViewCoordinate,
     pub renderer: Box<dyn Renderer>,
     pub cursor_strategy: Box<dyn CursorStrategy>,
 }
@@ -28,9 +28,17 @@ impl View {
         let renderer = self.renderer.as_mut();
         let strategy = self.cursor_strategy.as_mut();
         // TODO: update view, need to get the palyer... a component like "TrackView", or "Camera" or something??
-        // if let Some(player_object) = utils::take_player_object(game_objects) {
-        //     strategy.update(&mut self.view_cursor, &*renderer, player_object);
-        // }
+        let maybe_trackable_entity = entities
+            .iter()
+            .find(|entity| entity.components.track_component.is_some());
+        if let Some(entity_to_track) = maybe_trackable_entity {
+            let position_component = &(*entity_to_track).components.position_component;
+            let pos = position_component
+                .as_ref()
+                .unwrap_or(&PositionComponent { x: 0, y: 0 });
+            let coord = ViewCoordinate { x: pos.x, y: pos.y };
+            strategy.update(&mut self.view_cursor, &*renderer, &coord);
+        }
 
         let mut level_strings: Vec<String> = vec![];
 
@@ -42,14 +50,14 @@ impl View {
             let y_position = renderer.screen_height() + self.view_cursor.y as u16 - height;
             let cursor_x_position = self.view_cursor.x;
 
-            for game_object in &entities {
-                let Some(position_component) = &game_object.components.position_component else {
+            for entity in &entities {
+                let Some(position_component) = &entity.components.position_component else {
                     continue;
                 };
-                let Some(render_component) = &game_object.components.render_component else {
+                let Some(render_component) = &entity.components.render_component else {
                     continue;
                 };
-                let Some(size_component) = &game_object.components.size_component else {
+                let Some(size_component) = &entity.components.size_component else {
                     continue;
                 };
 
@@ -87,10 +95,15 @@ impl View {
 
 /// Player view cursor and strategies.
 pub mod cursor {
-    use crate::view::{Coordinate, Renderer};
+    use crate::view::{Renderer, ViewCoordinate};
 
     pub trait CursorStrategy {
-        fn update(&mut self, cursor: &mut Coordinate, renderer: &dyn Renderer, coords: &Coordinate);
+        fn update(
+            &mut self,
+            cursor: &mut ViewCoordinate,
+            renderer: &dyn Renderer,
+            coords: &ViewCoordinate,
+        );
     }
 
     pub struct StaticCursorStrategy {}
@@ -102,7 +115,7 @@ pub mod cursor {
     }
 
     impl CursorStrategy for StaticCursorStrategy {
-        fn update(&mut self, _: &mut Coordinate, _: &dyn Renderer, _: &Coordinate) {}
+        fn update(&mut self, _: &mut ViewCoordinate, _: &dyn Renderer, _: &ViewCoordinate) {}
     }
 
     pub struct FollowPlayerYCursorStrategy {
@@ -118,9 +131,9 @@ pub mod cursor {
     impl CursorStrategy for FollowPlayerYCursorStrategy {
         fn update(
             &mut self,
-            cursor: &mut Coordinate,
+            cursor: &mut ViewCoordinate,
             renderer: &dyn Renderer,
-            coords: &Coordinate,
+            coords: &ViewCoordinate,
         ) {
             let y = coords.y;
             let abs_diff = y.abs_diff(cursor.y);
@@ -145,9 +158,9 @@ pub mod cursor {
     impl CursorStrategy for FollowPlayerXCursorStrategy {
         fn update(
             &mut self,
-            cursor: &mut Coordinate,
+            cursor: &mut ViewCoordinate,
             renderer: &dyn Renderer,
-            coords: &Coordinate,
+            coords: &ViewCoordinate,
         ) {
             let x = coords.x;
             let abs_diff = x.abs_diff(cursor.x);
