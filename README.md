@@ -38,25 +38,25 @@ mod game {
         pub fn new() -> MinimalGame {
             let mut ecs = ecs::ECS::new();
             // Add player object
-            let player_entity_id = ecs.add_entity_from_components(Components {
-                position_component: Some(PositionComponent { x: 5, y: 5 }),
-                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                render_component: Some(RenderComponent {
+            let player_entity_id = ecs.add_entity_froms(Components {
+                position: Some(PositionComponent { x: 5, y: 5 }),
+                velocity: Some(VelocityComponent { x: 0, y: 0 }),
+                render: Some(RenderComponent {
                     ascii_character: 'O',
                 }),
-                size_component: Some(SizeComponent { x: 2, y: 1 }),
-                track_component: Some(TrackComponent {}),
+                size: Some(SizeComponent { x: 2, y: 1 }),
+                track: Some(TrackComponent {}),
             });
 
             // Add another object as a wall
-            ecs.add_entity_from_components(Components {
-                position_component: Some(PositionComponent { x: 5, y: 6 }),
-                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                render_component: Some(RenderComponent {
+            ecs.add_entity_froms(Components {
+                position: Some(PositionComponent { x: 5, y: 6 }),
+                velocity: Some(VelocityComponent { x: 0, y: 0 }),
+                render: Some(RenderComponent {
                     ascii_character: '#',
                 }),
-                size_component: Some(SizeComponent { x: 2, y: 1 }),
-                track_component: None,
+                size: Some(SizeComponent { x: 2, y: 1 }),
+                track: None,
             });
 
             MinimalGame {
@@ -71,7 +71,7 @@ mod game {
             let Some(player_entity) = player_entity else {
                 return;
             };
-            let Some(velocity) = &mut player_entity.components.velocity_component else {
+            let Some(velocity) = &mut player_entity.components.velocity else {
                 return;
             };
             let Some(key) = &key else {
@@ -132,7 +132,7 @@ mod game {
             let Some(player_entity) = self.ecs.get_entity_by_id(self.player_entity_id) else {
                 return None;
             };
-            let Some(position_component) = &player_entity.components.position_component else {
+            let Some(position) = &player_entity.components.position else {
                 return None;
             };
 
@@ -143,7 +143,7 @@ mod game {
             };
             Some(format!(
                 "Player @ ({}, {}) {}",
-                position_component.x, position_component.y, start_game_str
+                position.x, position.y, start_game_str
             ))
         }
     }
@@ -182,11 +182,11 @@ mod test {
         let Some(player_entity) = player else {
             panic!("Player entity not set")
         };
-        let Some(position_component) = &player_entity.components.position_component else {
+        let Some(position) = &player_entity.components.position else {
             panic!("Position component not set")
         };
-        assert_eq!(position_component.x, 5);
-        assert_eq!(position_component.y, 4);
+        assert_eq!(position.x, 5);
+        assert_eq!(position.y, 4);
     }
 
     #[test]
@@ -203,11 +203,11 @@ mod test {
         let Some(player_entity) = player else {
             panic!("Player entity not set")
         };
-        let Some(position_component) = &player_entity.components.position_component else {
+        let Some(position) = &player_entity.components.position else {
             panic!("Position component not set")
         };
-        assert_eq!(position_component.x, 5);
-        assert_eq!(position_component.y, 5);
+        assert_eq!(position.x, 5);
+        assert_eq!(position.y, 5);
     }
 }
 ```

@@ -58,7 +58,7 @@ impl Game {
     fn move_player(&mut self, key: Option<Key>) {
         if let Some(Key::Up) = key {
             if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-                if let Some(vel) = &mut player.components.velocity_component {
+                if let Some(vel) = &mut player.components.velocity {
                     vel.y = 5;
                 }
             }
@@ -67,30 +67,30 @@ impl Game {
 
     pub fn initialise_player(&mut self) {
         let components = Components {
-            position_component: Some(PositionComponent { x: 1, y: 1 }),
-            velocity_component: Some(VelocityComponent { x: 1, y: 5 }),
-            size_component: Some(SizeComponent { x: 1, y: 1 }),
-            render_component: Some(RenderComponent {
+            position: Some(PositionComponent { x: 1, y: 1 }),
+            velocity: Some(VelocityComponent { x: 1, y: 5 }),
+            size: Some(SizeComponent { x: 1, y: 1 }),
+            render: Some(RenderComponent {
                 ascii_character: '#',
             }),
-            camera_follow_component: Some(CameraFollow {}),
+            camera_follow: Some(CameraFollow {}),
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.ecs.add_entity_froms(components);
         self.player_id = id;
     }
 
     pub fn add_walls_from_positions(&mut self, walls: Vec<(u16, u16)>) {
         for (x, y) in walls.into_iter() {
             let components = Components {
-                position_component: Some(PositionComponent { x, y }),
-                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                size_component: Some(SizeComponent { x: 1, y: 1 }),
-                render_component: Some(RenderComponent {
+                position: Some(PositionComponent { x, y }),
+                velocity: Some(VelocityComponent { x: 0, y: 0 }),
+                size: Some(SizeComponent { x: 1, y: 1 }),
+                render: Some(RenderComponent {
                     ascii_character: '\\',
                 }),
-                camera_follow_component: None,
+                camera_follow: None,
             };
-            let id = self.ecs.add_entity_from_components(components);
+            let id = self.ecs.add_entity_froms(components);
             self.wall_ids.insert(id);
         }
     }
@@ -131,11 +131,11 @@ impl GameLogic for Game {
     fn start_game(&mut self) {
         self.score = 0;
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-            if let Some(pos) = &mut player.components.position_component {
+            if let Some(pos) = &mut player.components.position {
                 pos.x = 1;
                 pos.y = 1;
             }
-            if let Some(vel) = &mut player.components.velocity_component {
+            if let Some(vel) = &mut player.components.velocity {
                 vel.x = 1;
                 vel.y = 5;
             }
@@ -153,7 +153,7 @@ impl GameLogic for Game {
         self.ecs.step();
 
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-            if let Some(vel) = &mut player.components.velocity_component {
+            if let Some(vel) = &mut player.components.velocity {
                 vel.y -= 1;
             }
         }
@@ -170,7 +170,7 @@ impl GameLogic for Game {
         }
 
         if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
-            if let Some(vel) = &player.components.velocity_component {
+            if let Some(vel) = &player.components.velocity {
                 if vel.y < -10 {
                     self.end_game();
                 }
@@ -178,7 +178,7 @@ impl GameLogic for Game {
         }
 
         if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
-            if let Some(pos) = &player.components.position_component {
+            if let Some(pos) = &player.components.position {
                 self.score = self.score.max(pos.x as u16);
             }
         }
@@ -190,8 +190,8 @@ impl GameLogic for Game {
 
     fn debug_str(&self) -> Option<String> {
         if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
-            let pos = player.components.position_component.as_ref()?;
-            let vel = player.components.velocity_component.as_ref()?;
+            let pos = player.components.position.as_ref()?;
+            let vel = player.components.velocity.as_ref()?;
             Some(format!("v = {:4}, x = {:3}, y = {:3}", vel.y, pos.x, pos.y))
         } else {
             None

@@ -6,21 +6,21 @@ pub struct Entity {
 
 #[derive(Debug)]
 pub struct Components {
-    pub position_component: Option<PositionComponent>,
-    pub velocity_component: Option<VelocityComponent>,
-    pub render_component: Option<RenderComponent>,
-    pub size_component: Option<SizeComponent>,
-    pub camera_follow_component: Option<CameraFollow>,
+    pub position: Option<PositionComponent>,
+    pub velocity: Option<VelocityComponent>,
+    pub render: Option<RenderComponent>,
+    pub size: Option<SizeComponent>,
+    pub camera_follow: Option<CameraFollow>,
 }
 
 impl Components {
     pub fn new() -> Components {
         Components {
-            position_component: None,
-            velocity_component: None,
-            render_component: None,
-            size_component: None,
-            camera_follow_component: None,
+            position: None,
+            velocity: None,
+            render: None,
+            size: None,
+            camera_follow: None,
         }
     }
 }
@@ -47,14 +47,14 @@ impl Entity {
         Entity {
             id,
             components: Components {
-                position_component: Some(PositionComponent { x: pos.0, y: pos.1 }),
-                velocity_component: Some(VelocityComponent { x: vel.0, y: vel.1 }),
-                size_component: Some(SizeComponent {
+                position: Some(PositionComponent { x: pos.0, y: pos.1 }),
+                velocity: Some(VelocityComponent { x: vel.0, y: vel.1 }),
+                size: Some(SizeComponent {
                     x: size.0,
                     y: size.1,
                 }),
-                render_component: ascii_character.map(|c| RenderComponent { ascii_character: c }),
-                camera_follow_component: if track { Some(CameraFollow {}) } else { None },
+                render: ascii_character.map(|c| RenderComponent { ascii_character: c }),
+                camera_follow: if track { Some(CameraFollow {}) } else { None },
             },
         }
     }
@@ -131,21 +131,21 @@ impl ECS {
                 sum as u16
             }
         }
-        let velocity_components = self.get_entities_by_component_mut(ComponentType::Velocity);
-        for c in velocity_components {
-            let Some(position_component) = &mut c.components.position_component else {
+        let velocitys = self.get_entities_by_mut(ComponentType::Velocity);
+        for c in velocitys {
+            let Some(position) = &mut c.components.position else {
                 continue;
             };
 
-            let Some(velocity_component) = &mut c.components.velocity_component else {
+            let Some(velocity) = &mut c.components.velocity else {
                 continue;
             };
 
-            if velocity_component.x != 0 {
-                position_component.x = clamped_add(position_component.x, velocity_component.x);
+            if velocity.x != 0 {
+                position.x = clamped_add(position.x, velocity.x);
             }
-            if velocity_component.y != 0 {
-                position_component.y = clamped_add(position_component.y, velocity_component.y);
+            if velocity.y != 0 {
+                position.y = clamped_add(position.y, velocity.y);
             }
         }
     }
@@ -163,7 +163,7 @@ impl ECS {
         }
     }
 
-    pub fn add_entity_from_components(&mut self, components: Components) -> EntityId {
+    pub fn add_entity_froms(&mut self, components: Components) -> EntityId {
         let new_entity_id = self.next_entity_id;
         self.next_entity_id = EntityId(new_entity_id.0 + 1);
         let entity = Entity {
@@ -182,37 +182,37 @@ impl ECS {
         self.entities.iter_mut().find(|e| e.id == id)
     }
 
-    pub fn get_entities_by_component(&self, component_type: ComponentType) -> Vec<&Entity> {
+    pub fn get_entities_by(&self, component_type: ComponentType) -> Vec<&Entity> {
         let entities = self
             .entities
             .iter()
             .filter(|e| match component_type {
                 ComponentType::Position => {
-                    if e.components.position_component.is_some() {
+                    if e.components.position.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::Velocity => {
-                    if e.components.velocity_component.is_some() {
+                    if e.components.velocity.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::Size => {
-                    if e.components.size_component.is_some() {
+                    if e.components.size.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::Render => {
-                    if e.components.render_component.is_some() {
+                    if e.components.render.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::CameraFollow => {
-                    if e.components.camera_follow_component.is_some() {
+                    if e.components.camera_follow.is_some() {
                         return true;
                     }
                     false
@@ -222,7 +222,7 @@ impl ECS {
         entities
     }
 
-    pub fn get_entities_by_component_mut(
+    pub fn get_entities_by_mut(
         &mut self,
         component_type: ComponentType,
     ) -> Vec<&mut Entity> {
@@ -231,31 +231,31 @@ impl ECS {
             .iter_mut()
             .filter(|e| match component_type {
                 ComponentType::Position => {
-                    if e.components.position_component.is_some() {
+                    if e.components.position.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::Velocity => {
-                    if e.components.velocity_component.is_some() {
+                    if e.components.velocity.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::Size => {
-                    if e.components.size_component.is_some() {
+                    if e.components.size.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::Render => {
-                    if e.components.render_component.is_some() {
+                    if e.components.render.is_some() {
                         return true;
                     }
                     false
                 }
                 ComponentType::CameraFollow => {
-                    if e.components.camera_follow_component.is_some() {
+                    if e.components.camera_follow.is_some() {
                         return true;
                     }
                     false
@@ -283,28 +283,28 @@ pub mod collisions {
 
     impl CollisionBox {
         pub fn from_entity(entity: &Entity) -> Option<CollisionBox> {
-            let Some(position_component) = &entity.components.position_component else {
+            let Some(position) = &entity.components.position else {
                 return None;
             };
 
-            let Some(size_component) = &entity.components.size_component else {
+            let Some(size) = &entity.components.size else {
                 return None;
             };
 
-            let Some(velocity_component) = &entity.components.velocity_component else {
+            let Some(velocity) = &entity.components.velocity else {
                 return None;
             };
 
             Some(CollisionBox {
                 x: CollisionBox::range_from_physical_properties(
-                    position_component.x,
-                    size_component.x,
-                    velocity_component.x,
+                    position.x,
+                    size.x,
+                    velocity.x,
                 ),
                 y: CollisionBox::range_from_physical_properties(
-                    position_component.y,
-                    size_component.y,
-                    velocity_component.y,
+                    position.y,
+                    size.y,
+                    velocity.y,
                 ),
             })
         }
@@ -465,13 +465,13 @@ pub mod collisions {
 mod test {
     use super::*;
 
-    fn empty_components() -> Components {
+    fn emptys() -> Components {
         Components {
-            position_component: None,
-            velocity_component: None,
-            render_component: None,
-            size_component: None,
-            camera_follow_component: None,
+            position: None,
+            velocity: None,
+            render: None,
+            size: None,
+            camera_follow: None,
         }
     }
 
@@ -482,10 +482,10 @@ mod test {
     }
 
     #[test]
-    fn test_add_entity_with_no_components() {
+    fn test_add_entity_with_nos() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        ecs.add_entity_from_components(empty_components());
+        ecs.add_entity_froms(emptys());
         assert_eq!(ecs.entities.len(), 1);
     }
 
@@ -493,7 +493,7 @@ mod test {
     fn test_get_entity_by_id() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        ecs.add_entity_from_components(Components::new());
+        ecs.add_entity_froms(Components::new());
         assert_eq!(ecs.entities.len(), 1);
 
         let entity_from_ecs = ecs.get_entity_by_id(EntityId(0));
@@ -504,19 +504,19 @@ mod test {
     fn test_get_entities_by_ids() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        let entity_one_id = ecs.add_entity_from_components(Components {
-            position_component: Some(PositionComponent { x: 0, y: 0 }),
-            velocity_component: None,
-            render_component: None,
-            size_component: None,
-            camera_follow_component: None,
+        let entity_one_id = ecs.add_entity_froms(Components {
+            position: Some(PositionComponent { x: 0, y: 0 }),
+            velocity: None,
+            render: None,
+            size: None,
+            camera_follow: None,
         });
-        let entity_two_id = ecs.add_entity_from_components(Components {
-            position_component: Some(PositionComponent { x: 1, y: 1 }),
-            velocity_component: None,
-            render_component: None,
-            size_component: None,
-            camera_follow_component: None,
+        let entity_two_id = ecs.add_entity_froms(Components {
+            position: Some(PositionComponent { x: 1, y: 1 }),
+            velocity: None,
+            render: None,
+            size: None,
+            camera_follow: None,
         });
         assert_eq!(ecs.entities.len(), 2);
 
@@ -525,7 +525,7 @@ mod test {
         let entity_position = &entity_one_from_ecs
             .unwrap()
             .components
-            .position_component
+            .position
             .as_ref()
             .unwrap();
         assert_eq!(entity_position.x, 0);
@@ -536,7 +536,7 @@ mod test {
         let entity_position = &entity_two_from_ecs
             .unwrap()
             .components
-            .position_component
+            .position
             .as_ref()
             .unwrap();
         assert_eq!(entity_position.x, 1);
@@ -547,19 +547,19 @@ mod test {
     fn test_ecs_step() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        let entity_one_id = ecs.add_entity_from_components(Components {
-            position_component: Some(PositionComponent { x: 0, y: 0 }),
-            velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-            render_component: None,
-            size_component: None,
-            camera_follow_component: None,
+        let entity_one_id = ecs.add_entity_froms(Components {
+            position: Some(PositionComponent { x: 0, y: 0 }),
+            velocity: Some(VelocityComponent { x: 0, y: 0 }),
+            render: None,
+            size: None,
+            camera_follow: None,
         });
-        let entity_two_id = ecs.add_entity_from_components(Components {
-            position_component: Some(PositionComponent { x: 1, y: 1 }),
-            velocity_component: Some(VelocityComponent { x: 1, y: 1 }),
-            render_component: None,
-            size_component: None,
-            camera_follow_component: None,
+        let entity_two_id = ecs.add_entity_froms(Components {
+            position: Some(PositionComponent { x: 1, y: 1 }),
+            velocity: Some(VelocityComponent { x: 1, y: 1 }),
+            render: None,
+            size: None,
+            camera_follow: None,
         });
         assert_eq!(ecs.entities.len(), 2);
 
@@ -568,7 +568,7 @@ mod test {
         let entity_velocity = &entity_from_ecs
             .unwrap()
             .components
-            .velocity_component
+            .velocity
             .as_ref()
             .unwrap();
         assert_eq!(entity_velocity.x, 0);
@@ -579,7 +579,7 @@ mod test {
         let entity_velocity = &entity_from_ecs
             .unwrap()
             .components
-            .velocity_component
+            .velocity
             .as_ref()
             .unwrap();
         assert_eq!(entity_velocity.x, 1);
@@ -592,7 +592,7 @@ mod test {
         let entity_position = &entity_from_ecs
             .unwrap()
             .components
-            .position_component
+            .position
             .as_ref()
             .unwrap();
         assert_eq!(entity_position.x, 0);
@@ -603,7 +603,7 @@ mod test {
         let entity_position = &entity_from_ecs
             .unwrap()
             .components
-            .position_component
+            .position
             .as_ref()
             .unwrap();
         assert_eq!(entity_position.x, 2);

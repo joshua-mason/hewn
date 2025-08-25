@@ -11,7 +11,9 @@ pub fn create_game(width: u16, height: u16, seed: Option<u64>) -> Game {
     let mut game = Game::new(width, height, seed);
     game.initialise_walls();
     game.initialise_player();
-    game.initialise_food();
+    game.initialise_food().expect(
+        "Map should contain empty tile on initialisation. Check width and height arguments.",
+    );
     game
 }
 
@@ -93,15 +95,15 @@ impl Game {
 
     pub fn initialise_player(&mut self) {
         let components = Components {
-            position_component: Some(PositionComponent { x: 1, y: 1 }),
-            velocity_component: Some(VelocityComponent { x: 0, y: 1 }),
-            size_component: Some(SizeComponent { x: 1, y: 1 }),
-            render_component: Some(RenderComponent {
+            position: Some(PositionComponent { x: 1, y: 1 }),
+            velocity: Some(VelocityComponent { x: 0, y: 1 }),
+            size: Some(SizeComponent { x: 1, y: 1 }),
+            render: Some(RenderComponent {
                 ascii_character: '0',
             }),
-            camera_follow_component: Some(CameraFollow {}),
+            camera_follow: Some(CameraFollow {}),
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.ecs.add_entity_froms(components);
         self.player_id = id;
         self.player_direction = Direction::Up;
     }
@@ -109,15 +111,15 @@ impl Game {
     pub fn add_walls_from_positions(&mut self, walls: Vec<(u16, u16)>) {
         for (x, y) in walls.into_iter() {
             let components = Components {
-                position_component: Some(PositionComponent { x, y }),
-                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                size_component: Some(SizeComponent { x: 1, y: 1 }),
-                render_component: Some(RenderComponent {
+                position: Some(PositionComponent { x, y }),
+                velocity: Some(VelocityComponent { x: 0, y: 0 }),
+                size: Some(SizeComponent { x: 1, y: 1 }),
+                render: Some(RenderComponent {
                     ascii_character: '#',
                 }),
-                camera_follow_component: None,
+                camera_follow: None,
             };
-            let id = self.ecs.add_entity_from_components(components);
+            let id = self.ecs.add_entity_froms(components);
             self.wall_ids.insert(id);
         }
     }
@@ -129,7 +131,7 @@ impl Game {
 
     fn set_head_velocity_from_direction(&mut self) {
         if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
-            if let Some(vel) = &mut head.components.velocity_component {
+            if let Some(vel) = &mut head.components.velocity {
                 match self.player_direction {
                     Direction::Left => {
                         vel.x = -1;
@@ -155,18 +157,18 @@ impl Game {
     pub fn initialise_food(&mut self) -> Result<(), &str> {
         let empty_tile = self.find_empty_tile().ok_or("No empty tile")?;
         let components = Components {
-            position_component: Some(PositionComponent {
+            position: Some(PositionComponent {
                 x: empty_tile.0,
                 y: empty_tile.1,
             }),
-            velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-            size_component: Some(SizeComponent { x: 1, y: 1 }),
-            render_component: Some(RenderComponent {
+            velocity: Some(VelocityComponent { x: 0, y: 0 }),
+            size: Some(SizeComponent { x: 1, y: 1 }),
+            render: Some(RenderComponent {
                 ascii_character: '+',
             }),
-            camera_follow_component: None,
+            camera_follow: None,
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.ecs.add_entity_froms(components);
         self.food_id = Some(id);
         Ok(())
     }
@@ -176,15 +178,15 @@ impl Game {
 
         if let (Some((x, y)), Some(fid)) = (target, self.food_id) {
             if let Some(food) = self.ecs.get_entity_by_id_mut(fid) {
-                if let Some(pos) = &mut food.components.position_component {
+                if let Some(pos) = &mut food.components.position {
                     pos.x = x;
                     pos.y = y;
                 }
-                if let Some(size) = &mut food.components.size_component {
+                if let Some(size) = &mut food.components.size {
                     size.x = 1;
                     size.y = 1;
                 }
-                if let Some(render) = &mut food.components.render_component {
+                if let Some(render) = &mut food.components.render {
                     render.ascii_character = '+';
                 }
             }
@@ -199,7 +201,7 @@ impl Game {
         }
         for w in self.wall_ids.iter() {
             if let Some(ent) = self.ecs.get_entity_by_id(*w) {
-                if let Some(pos) = &ent.components.position_component {
+                if let Some(pos) = &ent.components.position {
                     occupied.insert((pos.x, pos.y));
                 }
             }
@@ -221,24 +223,24 @@ impl Game {
 
     fn grow_body_by_one(&mut self, tail_target: (u16, u16)) {
         let components = Components {
-            position_component: Some(PositionComponent {
+            position: Some(PositionComponent {
                 x: tail_target.0,
                 y: tail_target.1,
             }),
-            velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-            size_component: Some(SizeComponent { x: 1, y: 1 }),
-            render_component: Some(RenderComponent {
+            velocity: Some(VelocityComponent { x: 0, y: 0 }),
+            size: Some(SizeComponent { x: 1, y: 1 }),
+            render: Some(RenderComponent {
                 ascii_character: 'o',
             }),
-            camera_follow_component: None,
+            camera_follow: None,
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.ecs.add_entity_froms(components);
         self.body_ids.push(id);
     }
 
     fn head_position(&self) -> (u16, u16) {
         let head = self.ecs.get_entity_by_id(self.player_id).unwrap();
-        let pos = head.components.position_component.as_ref().unwrap();
+        let pos = head.components.position.as_ref().unwrap();
         (pos.x, pos.y)
     }
 
@@ -246,14 +248,14 @@ impl Game {
         self.body_ids
             .iter()
             .filter_map(|id| self.ecs.get_entity_by_id(*id))
-            .filter_map(|e| e.components.position_component.as_ref())
+            .filter_map(|e| e.components.position.as_ref())
             .map(|p| (p.x, p.y))
             .collect()
     }
 
     fn set_entity_position(&mut self, id: EntityId, xy: (u16, u16)) {
         if let Some(ent) = self.ecs.get_entity_by_id_mut(id) {
-            if let Some(pos) = &mut ent.components.position_component {
+            if let Some(pos) = &mut ent.components.position {
                 pos.x = xy.0;
                 pos.y = xy.1;
             }
@@ -278,7 +280,7 @@ impl GameLogic for Game {
     fn start_game(&mut self) {
         self.score = 0;
         if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
-            if let Some(pos) = &mut head.components.position_component {
+            if let Some(pos) = &mut head.components.position {
                 pos.x = 1;
                 pos.y = 1;
             }
@@ -333,7 +335,7 @@ impl GameLogic for Game {
                 .body_ids
                 .last()
                 .and_then(|id| self.ecs.get_entity_by_id(*id))
-                .and_then(|e| e.components.position_component.as_ref().map(|p| (p.x, p.y)))
+                .and_then(|e| e.components.position.as_ref().map(|p| (p.x, p.y)))
                 .unwrap_or_else(|| self.head_position());
             self.grow_body_by_one(tail_target);
 
@@ -350,7 +352,7 @@ impl GameLogic for Game {
 
     fn debug_str(&self) -> Option<String> {
         if let Some(head) = self.ecs.get_entity_by_id(self.player_id) {
-            let pos = head.components.position_component.as_ref()?;
+            let pos = head.components.position.as_ref()?;
             Some(format!(
                 "len = {:3}, x = {:3}, y = {:3}, dir = {:?}",
                 1 + self.body_ids.len(),

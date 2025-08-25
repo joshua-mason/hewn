@@ -62,7 +62,7 @@ impl Game {
         match key {
             Some(Key::Left) => {
                 if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-                    if let Some(pos) = &mut player.components.position_component {
+                    if let Some(pos) = &mut player.components.position {
                         if pos.x > 0 {
                             pos.x -= 1;
                         }
@@ -71,7 +71,7 @@ impl Game {
             }
             Some(Key::Right) => {
                 if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-                    if let Some(pos) = &mut player.components.position_component {
+                    if let Some(pos) = &mut player.components.position {
                         if pos.x < self.width - 1 {
                             pos.x += 1;
                         }
@@ -88,30 +88,30 @@ impl Game {
 
     pub fn initialise_player(&mut self) {
         let components = Components {
-            position_component: Some(PositionComponent { x: 1, y: 1 }),
-            velocity_component: Some(VelocityComponent { x: 0, y: 5 }),
-            size_component: Some(SizeComponent { x: 1, y: 1 }),
-            render_component: Some(RenderComponent {
+            position: Some(PositionComponent { x: 1, y: 1 }),
+            velocity: Some(VelocityComponent { x: 0, y: 5 }),
+            size: Some(SizeComponent { x: 1, y: 1 }),
+            render: Some(RenderComponent {
                 ascii_character: '#',
             }),
-            camera_follow_component: Some(CameraFollow {}),
+            camera_follow: Some(CameraFollow {}),
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.ecs.add_entity_froms(components);
         self.player_id = id;
     }
 
     pub fn add_platforms_from_positions(&mut self, platforms: Vec<(u16, u16)>) {
         for (x, y) in platforms.into_iter() {
             let components = Components {
-                position_component: Some(PositionComponent { x, y }),
-                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                size_component: Some(SizeComponent { x: 3, y: 1 }),
-                render_component: Some(RenderComponent {
+                position: Some(PositionComponent { x, y }),
+                velocity: Some(VelocityComponent { x: 0, y: 0 }),
+                size: Some(SizeComponent { x: 3, y: 1 }),
+                render: Some(RenderComponent {
                     ascii_character: '=',
                 }),
-                camera_follow_component: None,
+                camera_follow: None,
             };
-            let id = self.ecs.add_entity_from_components(components);
+            let id = self.ecs.add_entity_froms(components);
             self.platform_ids.insert(id);
         }
     }
@@ -140,11 +140,11 @@ impl GameLogic for Game {
     fn start_game(&mut self) {
         self.score = 0;
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-            if let Some(pos) = &mut player.components.position_component {
+            if let Some(pos) = &mut player.components.position {
                 pos.x = 1;
                 pos.y = 1;
             }
-            if let Some(vel) = &mut player.components.velocity_component {
+            if let Some(vel) = &mut player.components.velocity {
                 vel.y = 5;
             }
         }
@@ -161,7 +161,7 @@ impl GameLogic for Game {
         self.ecs.step();
 
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-            if let Some(vel) = &mut player.components.velocity_component {
+            if let Some(vel) = &mut player.components.velocity {
                 vel.y -= 1;
             }
         }
@@ -179,17 +179,15 @@ impl GameLogic for Game {
                 let platform_y = self
                     .ecs
                     .get_entity_by_id(other)
-                    .and_then(|e| e.components.position_component.as_ref().map(|p| p.y));
+                    .and_then(|e| e.components.position.as_ref().map(|p| p.y));
 
                 if let Some(p) = self.ecs.get_entity_by_id_mut(player) {
-                    if let Some(vel) = &mut p.components.velocity_component {
+                    if let Some(vel) = &mut p.components.velocity {
                         if vel.y < 1 {
                             vel.y = 5;
                         }
                     }
-                    if let (Some(pos), Some(py)) =
-                        (&mut p.components.position_component, platform_y)
-                    {
+                    if let (Some(pos), Some(py)) = (&mut p.components.position, platform_y) {
                         pos.y = py;
                     }
                 }
@@ -199,12 +197,12 @@ impl GameLogic for Game {
         let mut should_end = false;
         let mut maybe_new_score: Option<u16> = None;
         if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
-            if let Some(vel) = &player.components.velocity_component {
+            if let Some(vel) = &player.components.velocity {
                 if vel.y < -6 {
                     should_end = true;
                 }
             }
-            if let Some(pos) = &player.components.position_component {
+            if let Some(pos) = &player.components.position {
                 if pos.y as u16 > self.height {
                     should_end = true;
                 }
@@ -225,36 +223,13 @@ impl GameLogic for Game {
 
     fn debug_str(&self) -> Option<String> {
         if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
-            let pos = player.components.position_component.as_ref()?;
-            let vel = player.components.velocity_component.as_ref()?;
+            let pos = player.components.position.as_ref()?;
+            let vel = player.components.velocity.as_ref()?;
             Some(format!("v = {:4}, x = {:3}, y = {:3}", vel.y, pos.x, pos.y))
         } else {
             None
         }
     }
-}
-
-fn generate_platform_positions(width: usize, height: usize) -> Vec<(u16, u16)> {
-    let mut platforms: Vec<(u16, u16)> = vec![];
-    let mut last_platform: usize = 0;
-    let mut rng = rand::thread_rng();
-
-    for index in 0..height {
-        if last_platform > 8 {
-            let x = rng.gen_range(0..(width - 3));
-            platforms.push((x as u16, index as u16));
-            last_platform = 0;
-        }
-
-        if rng.gen_range(0..10) == 0 {
-            let x = rng.gen_range(0..(width - 3));
-            platforms.push((x as u16, index as u16));
-            last_platform = 0;
-        }
-        last_platform += 1;
-    }
-
-    platforms
 }
 
 #[cfg(test)]
@@ -265,7 +240,7 @@ mod tests {
 
     fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
         let ecs = game.ecs();
-        let mut tracked = ecs.get_entities_by_component(ComponentType::CameraFollow);
+        let mut tracked = ecs.get_entities_by(ComponentType::CameraFollow);
         assert!(tracked.len() > 0, "player entity not found");
         tracked.remove(0)
     }
@@ -280,8 +255,8 @@ mod tests {
         game.next(None);
 
         let player = get_player_entity(&game);
-        let pos = player.components.position_component.as_ref().unwrap();
-        let vel = player.components.velocity_component.as_ref().unwrap();
+        let pos = player.components.position.as_ref().unwrap();
+        let vel = player.components.velocity.as_ref().unwrap();
 
         assert_eq!(
             pos.y, 6,
@@ -301,8 +276,8 @@ mod tests {
         for _ in 0..30 {
             game.next(None);
             let player = get_player_entity(&game);
-            let pos = player.components.position_component.as_ref().unwrap();
-            let vel = player.components.velocity_component.as_ref().unwrap();
+            let pos = player.components.position.as_ref().unwrap();
+            let vel = player.components.velocity.as_ref().unwrap();
             if pos.y == 5 && vel.y == 5 {
                 bounced = true;
                 break;

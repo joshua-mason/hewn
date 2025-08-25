@@ -29,10 +29,10 @@ impl View {
         let strategy = self.cursor_strategy.as_mut();
         let maybe_trackable_entity = entities
             .iter()
-            .find(|entity| entity.components.camera_follow_component.is_some());
+            .find(|entity| entity.components.camera_follow.is_some());
         if let Some(entity_to_track) = maybe_trackable_entity {
-            let position_component = &(*entity_to_track).components.position_component;
-            let pos = position_component
+            let position = &(*entity_to_track).components.position;
+            let pos = position
                 .as_ref()
                 .unwrap_or(&PositionComponent { x: 0, y: 0 });
             let coord = ViewCoordinate { x: pos.x, y: pos.y };
@@ -49,34 +49,34 @@ impl View {
             let cursor_x_position = self.view_cursor.x;
 
             for entity in &entities {
-                let Some(position_component) = &entity.components.position_component else {
+                let Some(position) = &entity.components.position else {
                     continue;
                 };
-                let Some(render_component) = &entity.components.render_component else {
+                let Some(render) = &entity.components.render else {
                     continue;
                 };
-                let Some(size_component) = &entity.components.size_component else {
+                let Some(size) = &entity.components.size else {
                     continue;
                 };
 
-                let display_char = render_component.ascii_character;
-                if position_component.y == y_position
-                    && position_component.x >= cursor_x_position as u16
-                    && (position_component.x + size_component.x) - cursor_x_position as u16
+                let display_char = render.ascii_character;
+                if position.y == y_position
+                    && position.x >= cursor_x_position as u16
+                    && (position.x + size.x) - cursor_x_position as u16
                         <= level.len() as u16
                 {
-                    let x_displacement = if cursor_x_position as u16 > position_component.x {
+                    let x_displacement = if cursor_x_position as u16 > position.x {
                         0
                     } else {
-                        position_component.x - cursor_x_position as u16
+                        position.x - cursor_x_position as u16
                     };
                     let render_x_offset =
-                        position_component.x + size_component.x - cursor_x_position as u16;
+                        position.x + size.x - cursor_x_position as u16;
                     level.replace_range(
                         (x_displacement as usize)..(render_x_offset as usize),
                         &display_char
                             .encode_utf8(&mut [0; 4])
-                            .repeat(size_component.x as usize),
+                            .repeat(size.x as usize),
                     )
                 }
             }
