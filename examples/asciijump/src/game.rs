@@ -1,24 +1,22 @@
-use super::game_objects::platform::Platform;
-use super::game_objects::player_character::PlayerCharacter;
-use hewn::{
-    game::{Entities, GameLogic},
-    game_object::{
-        utils::{collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut},
-        GameObject,
-    },
-    runtime::Key,
+use hewn::ecs::{
+    CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
+use hewn::ecs::{Components, ECS};
+use hewn::game::GameLogic;
+use hewn::runtime::Key;
+use rand::RngCore;
+use rand::{rngs::StdRng, Rng, SeedableRng};
+use std::collections::HashSet;
 
-pub const WIDTH: usize = 10;
-pub const HEIGHT: usize = 500;
+pub const WIDTH: u16 = 10;
+pub const HEIGHT: u16 = 500;
 pub const SCREEN_WIDTH: u16 = 10;
 pub const SCREEN_HEIGHT: u16 = 20;
 
-pub fn default_game() -> Game {
-    let mut game = Game::new(WIDTH, HEIGHT);
-    let platforms = Platform::generate_platforms(WIDTH, HEIGHT);
-    game.set_player(PlayerCharacter::new());
-    game.set_platforms(platforms);
+pub fn create_game(seed: Option<u64>) -> Game {
+    let mut game = Game::new(WIDTH, HEIGHT, seed);
+    game.initialise_player();
+    game.initialise_platforms();
     game
 }
 
@@ -26,99 +24,130 @@ pub fn default_game() -> Game {
 pub enum GameState {
     InGame,
     Menu,
-    Lost(usize),
+    Lost(u16),
 }
 
-#[derive(Debug)]
 pub struct Game {
-    pub width: usize,
-    pub height: usize,
-
+    pub width: u16,
+    pub height: u16,
     pub state: GameState,
-    pub score: usize,
+    pub score: u16,
 
-    pub entities: Entities,
+    rng: Box<dyn RngCore>,
+    ecs: ECS,
+    player_id: EntityId,
+    platform_ids: HashSet<EntityId>,
 }
 
 impl Game {
-    pub fn new(width: usize, height: usize) -> Game {
-        let mut game = Game {
+    pub fn new(width: u16, height: u16, seed: Option<u64>) -> Game {
+        let rng: Box<dyn rand::RngCore> = if let Some(s) = seed {
+            Box::new(StdRng::seed_from_u64(s))
+        } else {
+            Box::new(rand::thread_rng())
+        };
+        Game {
             width,
             height,
             state: GameState::Menu,
             score: 0,
-            entities: Entities::new(),
-        };
-        game.set_player(PlayerCharacter::new());
-        game
+            ecs: ECS::new(),
+            player_id: EntityId(0),
+            platform_ids: HashSet::new(),
+            rng,
+        }
     }
 
     fn move_player(&mut self, key: Option<Key>) {
-        let width = self.width;
         match key {
             Some(Key::Left) => {
-                if let Some(player) = self.get_mut_player_object() {
-                    if player.coordinate.x > 0 {
-                        player.move_left()
+                if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+                    if let Some(pos) = &mut player.components.position {
+                        if pos.x > 0 {
+                            pos.x -= 1;
+                        }
                     }
                 }
             }
             Some(Key::Right) => {
-                if let Some(player) = self.get_mut_player_object() {
-                    if player.coordinate.x < width - 1 {
-                        player.move_right()
+                if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+                    if let Some(pos) = &mut player.components.position {
+                        if pos.x < self.width - 1 {
+                            pos.x += 1;
+                        }
                     }
                 }
             }
             _ => {}
         }
     }
+
     pub fn end_game(&mut self) {
         self.state = GameState::Lost(self.score);
     }
 
-    pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-        take_player_object(&self.entities().game_objects)
+    pub fn initialise_player(&mut self) {
+        let components = Components {
+            position: Some(PositionComponent { x: 1, y: 1 }),
+            velocity: Some(VelocityComponent { x: 0, y: 5 }),
+            size: Some(SizeComponent { x: 1, y: 1 }),
+            render: Some(RenderComponent {
+                ascii_character: '#',
+            }),
+            camera_follow: Some(CameraFollow {}),
+        };
+        let id = self.ecs.add_entity_from_components(components);
+        self.player_id = id;
     }
 
-    pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
-        self.entities
-            .game_objects
-            .iter_mut()
-            .filter_map(|o| maybe_get_concrete_type_mut::<PlayerCharacter>(&mut **o))
-            .next()
-    }
-
-    pub fn set_platforms(&mut self, platforms: Vec<Platform>) {
-        let mut game_objects = platforms
-            .into_iter()
-            .map(|p| Box::new(p) as Box<dyn GameObject>)
-            .collect::<Vec<Box<dyn GameObject>>>();
-        self.entities.add_game_objects(&mut game_objects);
-    }
-
-    pub fn set_player(&mut self, player: PlayerCharacter) {
-        let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(player)];
-        if let Some(index) = self
-            .entities
-            .game_objects
-            .iter()
-            .position(|o| maybe_get_concrete_type::<PlayerCharacter>(&**o).is_some())
-        {
-            self.entities.game_objects.remove(index);
+    pub fn add_platforms_from_positions(&mut self, platforms: Vec<(u16, u16)>) {
+        for (x, y) in platforms.into_iter() {
+            let components = Components {
+                position: Some(PositionComponent { x, y }),
+                velocity: Some(VelocityComponent { x: 0, y: 0 }),
+                size: Some(SizeComponent { x: 3, y: 1 }),
+                render: Some(RenderComponent {
+                    ascii_character: '=',
+                }),
+                camera_follow: None,
+            };
+            let id = self.ecs.add_entity_from_components(components);
+            self.platform_ids.insert(id);
         }
-        self.entities.add_game_objects(&mut game_objects);
+    }
+
+    pub fn initialise_platforms(&mut self) {
+        let mut platforms: Vec<(u16, u16)> = vec![];
+        let mut last_platform: usize = 0;
+        for index in 0..self.height {
+            if last_platform > 8 {
+                let x = self.rng.gen_range(0..(self.width - 3));
+                platforms.push((x as u16, index as u16));
+                last_platform = 0;
+            }
+            if self.rng.gen_range(0..10) == 0 {
+                let x = self.rng.gen_range(0..(self.width - 3));
+                platforms.push((x as u16, index as u16));
+                last_platform = 0;
+            }
+            last_platform += 1;
+        }
+        self.add_platforms_from_positions(platforms);
     }
 }
 
 impl GameLogic for Game {
-    fn entities(&self) -> &Entities {
-        &self.entities
-    }
-
     fn start_game(&mut self) {
         self.score = 0;
-        self.get_mut_player_object().unwrap().reset();
+        if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+            if let Some(pos) = &mut player.components.position {
+                pos.x = 1;
+                pos.y = 1;
+            }
+            if let Some(vel) = &mut player.components.velocity {
+                vel.y = 5;
+            }
+        }
         self.state = GameState::InGame;
     }
 
@@ -127,237 +156,133 @@ impl GameLogic for Game {
             return;
         }
 
-        /*
-        So here we have a weird issue - we have collision detection happening after we move.
-        This means in a test where we start on a platform, we fall through the platform...
-        I think the core issue here is we haven't fully thought it through what we want to happen, so
-        there is some "undefined" behaviour persay for the game.
-
-        A manual version of this is to have a flag on the player object that we check if we collide, then don't
-        move if that happens.. A specific fix could be to set veolicity to 0 on collision and then on nexwt turn
-        set it to 5 as we are on top of it.. ?
-
-        IDK maybe some research andd thinking to figure this one out!
-        */
-
         self.move_player(key);
 
-        // This and the collision pass are generic to all games, so I wonder if we can somehow refactor
-        // this out - although I don't know if order matters in this case, or how opinionated to be,
-        // as I suppose you might want to not have this part of your logic? but then you set the game objects
-        // to not be able to collide I guess.
-        self.entities
-            .game_objects
-            .iter_mut()
-            .for_each(|o| o.next_step());
+        self.ecs.step();
 
-        collision_pass(&mut self.entities.game_objects);
-
-        // FIXME: can we improve the efficiency here? whole loop is not very good
-        // FIXME: when two platforms, we don't definitely hit the closest one
-
-        if self.get_player_object().unwrap().velocity < -6 {
-            self.end_game();
-        }
-        if self.get_player_object().unwrap().coordinate.y > self.height {
-            // TODO add win state
-            self.end_game();
+        if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+            if let Some(vel) = &mut player.components.velocity {
+                vel.y -= 1;
+            }
         }
 
-        self.score = self
-            .score
-            .max(self.get_player_object().unwrap().coordinate.y);
+        let collisions = self.ecs.collision_pass();
+        for [a, b] in collisions.into_iter() {
+            let (player, other) = if a == self.player_id {
+                (a, b)
+            } else if b == self.player_id {
+                (b, a)
+            } else {
+                continue;
+            };
+            if self.platform_ids.contains(&other) {
+                let platform_y = self
+                    .ecs
+                    .get_entity_by_id(other)
+                    .and_then(|e| e.components.position.as_ref().map(|p| p.y));
+
+                if let Some(p) = self.ecs.get_entity_by_id_mut(player) {
+                    if let Some(vel) = &mut p.components.velocity {
+                        if vel.y < 1 {
+                            vel.y = 5;
+                        }
+                    }
+                    if let (Some(pos), Some(py)) = (&mut p.components.position, platform_y) {
+                        pos.y = py;
+                    }
+                }
+            }
+        }
+
+        let mut should_end = false;
+        let mut maybe_new_score: Option<u16> = None;
+        if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
+            if let Some(vel) = &player.components.velocity {
+                if vel.y < -6 {
+                    should_end = true;
+                }
+            }
+            if let Some(pos) = &player.components.position {
+                if pos.y as u16 > self.height {
+                    should_end = true;
+                }
+                maybe_new_score = Some(pos.y);
+            }
+        }
+        if should_end {
+            self.end_game();
+        }
+        if let Some(s) = maybe_new_score {
+            self.score = self.score.max(s);
+        }
+    }
+
+    fn ecs(&self) -> &ECS {
+        &self.ecs
     }
 
     fn debug_str(&self) -> Option<String> {
-        if let Some(player) = self.get_player_object() {
-            let a = format!(
-                "v = {:4}, x = {:3}, y = {:3}",
-                player.velocity, player.coordinate.x, player.coordinate.y
-            );
-            Some(a)
+        if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
+            let pos = player.components.position.as_ref()?;
+            let vel = player.components.velocity.as_ref()?;
+            Some(format!("v = {:4}, x = {:3}, y = {:3}", vel.y, pos.x, pos.y))
         } else {
             None
         }
     }
 }
 
-// TODO: move to engine and split into take game object and take game objects
-pub fn take_game_objects<T: GameObject>(game_objects: &[Box<dyn GameObject>]) -> Vec<&T> {
-    game_objects
-        .iter()
-        .filter_map(|o| maybe_get_concrete_type::<T>(&**o))
-        .collect::<Vec<&T>>()
-}
-
-pub fn take_player_object(game_objects: &[Box<dyn GameObject>]) -> Option<&PlayerCharacter> {
-    take_game_objects::<PlayerCharacter>(game_objects)
-        .into_iter()
-        .next()
-}
-
 #[cfg(test)]
-mod test {
-    use crate::game_objects::{platform::Platform, player_character::PlayerCharacter};
-    use hewn::{game::GameLogic, game_object::GameObject};
+mod tests {
+    use super::*;
+    use hewn::ecs::ComponentType;
+    use hewn::game::GameLogic;
 
-    use super::Game;
-    #[test]
-    fn test_jump() {
-        let mut game = Game::new(10, 10);
-        game.start_game();
-        fast_forward(&mut game, 1);
-        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
-
-        fast_forward(&mut game, 6);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 15);
-
-        fast_forward(&mut game, 4);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
+    fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
+        let ecs = game.ecs();
+        let mut tracked = ecs.get_entities_by(ComponentType::CameraFollow);
+        assert!(tracked.len() > 0, "player entity not found");
+        tracked.remove(0)
     }
 
     #[test]
-    fn test_start_on_platform() {
-        let mut game = Game::new(10, 10);
-        let platforms = Platform::from_tuples(&[(2, 2)]);
-        game.set_platforms(platforms);
-        let player = PlayerCharacter::from_tuple((2, 3, -5));
-        println!("on creation: {:?}", player);
-        println!("added to game: {:?}", game.get_player_object());
-        game.start_game();
-        println!("Before player replacement: {:?}", game);
-        game.set_player(player);
-        println!("After player replacement: {:?}", game);
-        println!("set player: {:?}", game.get_player_object());
-
-        fast_forward(&mut game, 1);
-        println!("{:?}", game);
-        assert_eq!(game.get_player_object().unwrap().coordinate.x, 2);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 2);
-        assert_eq!(game.get_player_object().unwrap().velocity, 5);
-
-        fast_forward(&mut game, 1);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 7);
-        assert_eq!(game.get_player_object().unwrap().velocity, 4);
-    }
-
-    #[test]
-    fn test_hit_platform() {
-        let mut game = Game::new(10, 10);
-        game.set_platforms(Platform::from_tuples(&[(1, 8)]));
-
+    fn ignore_collision_when_moving_up() {
+        let mut game = Game::new(10, 10, Some(42));
+        game.initialise_player();
+        game.add_platforms_from_positions(vec![(1, 3)]);
         game.start_game();
 
         game.next(None);
 
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
-        fast_forward(&mut game, 9);
-        assert_eq!(game.get_player_object().unwrap().velocity, 5);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 8);
+        let player = get_player_entity(&game);
+        let pos = player.components.position.as_ref().unwrap();
+        let vel = player.components.velocity.as_ref().unwrap();
 
-        game.next(None);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
+        assert_eq!(
+            pos.y, 6,
+            "position should not snap to platform while moving up"
+        );
+        assert_eq!(vel.y, 4, "velocity should decrease by gravity only");
     }
 
     #[test]
-    fn test_player_game_object_hit_platform() {
-        let mut game = Game::new(10, 10);
-        game.set_platforms(Platform::from_tuples(&[(1, 8)]));
-        game.start_game();
-        game.next(None);
-
-        {
-            let player_object = game.get_player_object().unwrap();
-
-            println!("asdas:{:?}", player_object);
-            assert_eq!(player_object.get_coords().y, 6);
-        }
-        fast_forward(&mut game, 1);
-        {
-            let player_object = game.get_player_object().unwrap();
-
-            println!("asdas:{:?}", player_object);
-            assert_eq!(player_object.get_coords().y, 10);
-        }
-        fast_forward(&mut game, 7);
-        {
-            let player_object = game.get_player_object().unwrap();
-
-            println!("asdas:{:?}", player_object);
-            assert_eq!(player_object.get_coords().y, 8);
-        }
-        println!("244");
-        fast_forward(&mut game, 1);
-
-        {
-            let player_object = game.get_player_object().unwrap();
-
-            println!("asdas:{:?}", player_object);
-            assert_eq!(player_object.get_coords().y, 13);
-        }
-        // assert_eq!(game.get_player_object().unwrap().coordinate.y, 13);
-    }
-
-    #[test]
-    fn test_miss_platform() {
-        let mut game = Game::new(10, 10);
-        game.set_platforms(Platform::from_tuples(&[(3, 15)]));
+    fn bounce_when_falling_onto_platform() {
+        let mut game = Game::new(10, 20, Some(42));
+        game.initialise_player();
+        game.add_platforms_from_positions(vec![(1, 5)]);
         game.start_game();
 
-        fast_forward(&mut game, 11);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
-    }
-
-    #[test]
-    fn test_start_jump() {
-        let mut game = Game::new(10, 20);
-        let platforms = Platform::from_tuples(&[(1, 1)]);
-        game.set_platforms(platforms);
-        game.start_game();
-
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
-
-        game.next(None);
-        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 6);
-
-        fast_forward(&mut game, 10);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
-        assert_eq!(game.get_player_object().unwrap().velocity, 5);
-
-        fast_forward(&mut game, 5);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 16);
-    }
-
-    #[test]
-    fn test_fell_to_bottom_under_platform() {
-        let mut game = Game::new(10, 20);
-        let platforms = Platform::from_tuples(&[(1, 3)]);
-        game.set_platforms(platforms);
-        game.start_game();
-        game.get_mut_player_object().unwrap().velocity = 0;
-
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
-
-        game.next(None);
-        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 1);
-
-        game.next(None);
-        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
-
-        game.next(None);
-        assert_eq!(game.get_player_object().unwrap().coordinate.x, 1);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
-        fast_forward(&mut game, 10);
-        assert_eq!(game.get_player_object().unwrap().coordinate.y, 0);
-    }
-
-    fn fast_forward(game: &mut Game, n: u16) {
-        for _ in 0..n {
+        let mut bounced = false;
+        for _ in 0..30 {
             game.next(None);
+            let player = get_player_entity(&game);
+            let pos = player.components.position.as_ref().unwrap();
+            let vel = player.components.velocity.as_ref().unwrap();
+            if pos.y == 5 && vel.y == 5 {
+                bounced = true;
+                break;
+            }
         }
+        assert!(bounced, "expected to bounce on the platform when falling");
     }
 }

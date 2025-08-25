@@ -1,16 +1,14 @@
 use asciijump::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
-use hewn::view::cursor;
-use hewn::game_object::Coordinate;
+use hewn::view::{cursor, ScreenDimensions};
 #[cfg(not(target_arch = "wasm32"))]
 use hewn::{
-    view::{View, TerminalRenderer},
     runtime::{initialize_terminal_io, TerminalRuntime},
+    view::{TerminalRenderer, View},
 };
 
-use crate::game::default_game;
+use crate::game::create_game;
 
 pub mod game;
-pub mod game_objects;
 
 fn main() {
     play_asciijump_in_terminal();
@@ -19,13 +17,19 @@ fn main() {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn play_asciijump_in_terminal() {
     let (stdout, stdin) = initialize_terminal_io();
-    let mut game = default_game();
+    let mut game = create_game(None);
     // TODO where we input height and width as args, can we make it a struct so labelled instead of just
     // guessing?
-    let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
+    let renderer = TerminalRenderer::new(
+        stdout,
+        ScreenDimensions {
+            x: SCREEN_WIDTH,
+            y: SCREEN_HEIGHT,
+        },
+    );
     let mut display = View {
         renderer: Box::new(renderer),
-        view_cursor: Coordinate { x: 0, y: 0 },
+        view_cursor: hewn::view::ViewCoordinate { x: 0, y: 0 },
         cursor_strategy: Box::new(cursor::FollowPlayerYCursorStrategy::new()),
     };
     let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut display);

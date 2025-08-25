@@ -1,8 +1,6 @@
 //! View, cursor and renderer.
 
-use super::game_object::Coordinate;
-use super::game_object::GameObject;
-use crate::engine::game_object::utils;
+use crate::ecs::{Entity, PositionComponent};
 use crate::engine::view::cursor::CursorStrategy;
 use std::{
     io::{Stdout, Write},
@@ -11,50 +9,78 @@ use std::{
 #[cfg(not(target_arch = "wasm32"))]
 use termion::raw::RawTerminal;
 
+/// A coordinate in the game world.
+#[derive(Debug, PartialEq, Clone)]
+pub struct ViewCoordinate {
+    pub x: u16,
+    pub y: u16,
+}
+
+pub struct ScreenDimensions {
+    pub x: u16,
+    pub y: u16,
+}
+
 /// A view of the game world.
 pub struct View {
-    pub view_cursor: Coordinate,
+    pub view_cursor: ViewCoordinate,
     pub renderer: Box<dyn Renderer>,
     pub cursor_strategy: Box<dyn CursorStrategy>,
 }
 
 impl View {
-    pub fn next(
-        &mut self,
-        game_objects: &[Box<dyn GameObject>],
-        debug_string: Option<String>,
-    ) -> String {
+    pub fn next(&mut self, entities: Vec<&Entity>, debug_string: Option<String>) -> String {
         let renderer = self.renderer.as_mut();
         let strategy = self.cursor_strategy.as_mut();
-        if let Some(player_object) = utils::take_player_object(game_objects) {
-            strategy.update(&mut self.view_cursor, &*renderer, player_object);
+        let maybe_trackable_entity = entities
+            .iter()
+            .find(|entity| entity.components.camera_follow.is_some());
+        if let Some(entity_to_track) = maybe_trackable_entity {
+            let position = &(*entity_to_track).components.position;
+            let pos = position
+                .as_ref()
+                .unwrap_or(&PositionComponent { x: 0, y: 0 });
+            let coord = ViewCoordinate { x: pos.x, y: pos.y };
+            strategy.update(&mut self.view_cursor, &*renderer, &coord);
         }
 
         let mut level_strings: Vec<String> = vec![];
+
+        // TODO would it be much faster to just run through the entities and then render them at the relevant
+        // indexes in the level strings?
         for height in 0..renderer.screen_height() {
             let mut level: String = build_string('.', renderer.screen_width() as usize);
             let y_position = renderer.screen_height() + self.view_cursor.y as u16 - height;
             let cursor_x_position = self.view_cursor.x;
 
-            for game_object in game_objects {
-                let game_object_coords = game_object.get_coords();
-                let game_object_width = game_object.width();
-                let mut display_string: &str = &game_object.display();
-                if display_string.len() > game_object_width {
-                    display_string = display_string.split_at(game_object_width).0;
-                }
-                if game_object_coords.y == (y_position as usize)
-                    && game_object_coords.x >= cursor_x_position
-                    && game_object_coords.x + game_object_width - cursor_x_position <= level.len()
+            for entity in &entities {
+                let Some(position) = &entity.components.position else {
+                    continue;
+                };
+                let Some(render) = &entity.components.render else {
+                    continue;
+                };
+                let Some(size) = &entity.components.size else {
+                    continue;
+                };
+
+                let display_char = render.ascii_character;
+                if position.y == y_position
+                    && position.x >= cursor_x_position as u16
+                    && (position.x + size.x) - cursor_x_position as u16 <= level.len() as u16
                 {
-                    let x_displacement = if cursor_x_position > game_object_coords.x {
+                    let x_displacement = if cursor_x_position as u16 > position.x {
                         0
                     } else {
-                        game_object_coords.x - cursor_x_position
+                        position.x - cursor_x_position as u16
                     };
-                    let render_x_offset =
-                        game_object_coords.x + game_object_width - cursor_x_position;
-                    level.replace_range((x_displacement)..(render_x_offset), display_string)
+                    let render_x_offset = position.x + size.x - cursor_x_position as u16;
+                    level.replace_range(
+                        (x_displacement as usize)..(render_x_offset as usize),
+                        &display_char
+                            .encode_utf8(&mut [0; 4])
+                            .repeat(size.x as usize),
+                    )
                 }
             }
 
@@ -62,7 +88,6 @@ impl View {
         }
 
         let h: u16 = renderer.screen_height();
-        // in the renderer should we just combine the two methods below?
         let view = renderer.player_view(level_strings);
         renderer.render(debug_string, view, h)
     }
@@ -70,14 +95,14 @@ impl View {
 
 /// Player view cursor and strategies.
 pub mod cursor {
-    use crate::{game_object::Coordinate, game_object::GameObject, view::Renderer};
+    use crate::view::{Renderer, ViewCoordinate};
 
     pub trait CursorStrategy {
         fn update(
             &mut self,
-            cursor: &mut Coordinate,
+            cursor: &mut ViewCoordinate,
             renderer: &dyn Renderer,
-            player_object: &dyn GameObject,
+            coords: &ViewCoordinate,
         );
     }
 
@@ -90,7 +115,7 @@ pub mod cursor {
     }
 
     impl CursorStrategy for StaticCursorStrategy {
-        fn update(&mut self, _: &mut Coordinate, _: &dyn Renderer, _: &dyn GameObject) {}
+        fn update(&mut self, _: &mut ViewCoordinate, _: &dyn Renderer, _: &ViewCoordinate) {}
     }
 
     pub struct FollowPlayerYCursorStrategy {
@@ -106,17 +131,17 @@ pub mod cursor {
     impl CursorStrategy for FollowPlayerYCursorStrategy {
         fn update(
             &mut self,
-            cursor: &mut Coordinate,
+            cursor: &mut ViewCoordinate,
             renderer: &dyn Renderer,
-            player_object: &dyn GameObject,
+            coords: &ViewCoordinate,
         ) {
-            let y = player_object.get_coords().y;
+            let y = coords.y;
             let abs_diff = y.abs_diff(cursor.y);
-            if abs_diff > 1 && abs_diff < (renderer.screen_height() as usize - 2_usize) {
+            if abs_diff > 1 && abs_diff < (renderer.screen_height() as u16 - 2_u16) {
                 return;
             }
             cursor.y =
-                (y as i16 + self.offset as i16 - renderer.screen_height() as i16).max(0) as usize;
+                (y as i16 + self.offset as i16 - renderer.screen_height() as i16).max(0) as u16;
         }
     }
 
@@ -133,17 +158,17 @@ pub mod cursor {
     impl CursorStrategy for FollowPlayerXCursorStrategy {
         fn update(
             &mut self,
-            cursor: &mut Coordinate,
+            cursor: &mut ViewCoordinate,
             renderer: &dyn Renderer,
-            player_object: &dyn GameObject,
+            coords: &ViewCoordinate,
         ) {
-            let x = player_object.get_coords().x;
+            let x = coords.x;
             let abs_diff = x.abs_diff(cursor.x);
-            if abs_diff > 1 && abs_diff < (renderer.screen_height() as usize - 2_usize) {
+            if abs_diff > 1 && abs_diff < (renderer.screen_width() - 2_u16) {
                 return;
             }
             cursor.x =
-                (x as i16 + self.offset as i16 - renderer.screen_width() as i16).max(0) as usize;
+                (x as i16 + self.offset as i16 - renderer.screen_width() as i16).max(0) as u16;
         }
     }
 }
@@ -160,21 +185,18 @@ pub trait Renderer {
 #[cfg(not(target_arch = "wasm32"))]
 pub struct TerminalRenderer {
     stdout: RawTerminal<Stdout>,
-    screen_height: u16,
-    screen_width: u16,
+    screen_dimensions: ScreenDimensions,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl TerminalRenderer {
     pub fn new(
         stdout: RawTerminal<Stdout>,
-        screen_height: u16,
-        screen_width: u16,
+        screen_dimensions: ScreenDimensions,
     ) -> TerminalRenderer {
         TerminalRenderer {
             stdout,
-            screen_height,
-            screen_width,
+            screen_dimensions,
         }
     }
 
@@ -198,54 +220,57 @@ impl Renderer for TerminalRenderer {
         .unwrap();
         self.stdout().lock().flush().unwrap();
         // TODO unused return value as we flush to the stdout in terminal renderer
+        // different use case of terminal vs web, but align to the same trait - worth
+        // looking at
         view
     }
 
     fn player_view(&mut self, levels: Vec<String>) -> String {
-        let gotos =
-            (0..self.screen_height()).map(|height| termion::cursor::Goto(1, height).to_string());
-        zip(levels, gotos).fold(String::new(), |mut acc, (level, goto)| {
+        let cursor_y_offset = 2; // termion is (1,1)-based
+        let terminal_top_index = cursor_y_offset;
+        let terminal_bottom_index = self.screen_height() + cursor_y_offset;
+        let terminal_goto_commands = (terminal_top_index..terminal_bottom_index).map(|row_idx| {
+            let y_position = row_idx;
+            termion::cursor::Goto(1, y_position).to_string()
+        });
+        zip(levels, terminal_goto_commands).fold(String::new(), |mut acc, (level, goto)| {
             acc.push_str(&level);
             acc.push_str(&goto);
             acc
         })
     }
 
-    fn screen_height(&self) -> u16 {
-        self.screen_height
+    fn screen_width(&self) -> u16 {
+        self.screen_dimensions.x
     }
 
-    fn screen_width(&self) -> u16 {
-        self.screen_width
+    fn screen_height(&self) -> u16 {
+        self.screen_dimensions.y
     }
 }
 
 /// A renderer for the web.
 pub struct WebRenderer {
-    screen_height: u16,
-    screen_width: u16,
+    screen_dimensions: ScreenDimensions,
 }
 
 impl WebRenderer {
-    pub fn new(screen_height: u16, screen_width: u16) -> WebRenderer {
-        WebRenderer {
-            screen_height,
-            screen_width,
-        }
+    pub fn new(screen_dimensions: ScreenDimensions) -> WebRenderer {
+        WebRenderer { screen_dimensions }
     }
 }
 
 impl Renderer for WebRenderer {
-    fn render(&mut self, debug_string: Option<String>, view: String, h: u16) -> String {
+    fn render(&mut self, _debug_string: Option<String>, view: String, _h: u16) -> String {
         // TODO unused return value as we just pass through the view
         view
     }
 
     fn player_view(&mut self, levels: Vec<String>) -> String {
-        // this is a hack to conform to the terminal renderer interface
-        // TODO: possible to output this as a different type? e.g. just arrays... or better
-        // to keep consistent output and handle the string interpretation in client
-        // as a quasi custom data structure ? Not in long run but maybe right now.
+        // In order to conform to the same interface as the terminal, we return a String - and we therefore
+        // are currently using a divider to indicate the divide. We should just be splitting by the width
+        // on the string in the web, rather than using this implementation. However we are also planning on
+        // simply outputting the entities to draw.
         let separator = (0..self.screen_height()).map(|_| "|");
         zip(levels, separator).fold(String::new(), |mut acc, (level, goto)| {
             acc.push_str(&level);
@@ -254,12 +279,12 @@ impl Renderer for WebRenderer {
         })
     }
 
-    fn screen_height(&self) -> u16 {
-        self.screen_height
+    fn screen_width(&self) -> u16 {
+        self.screen_dimensions.x
     }
 
-    fn screen_width(&self) -> u16 {
-        self.screen_width
+    fn screen_height(&self) -> u16 {
+        self.screen_dimensions.y
     }
 }
 

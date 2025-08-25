@@ -1,5 +1,7 @@
 //! Wasm and terminal game runtimes.
 
+use crate::ecs::ComponentType;
+
 use super::{game::GameLogic, view::View};
 #[cfg(not(target_arch = "wasm32"))]
 use std::io::{self, Stdout};
@@ -67,6 +69,8 @@ impl TerminalRuntime<'_> {
     /// Start the game loop listening for player input and rendering the game.
     pub fn start(&mut self) {
         loop {
+            use crate::ecs::ComponentType;
+
             let input = self.stdin.next();
 
             if let Some(Ok(key)) = input {
@@ -94,8 +98,9 @@ impl TerminalRuntime<'_> {
                     self.player_control_key = None;
                 }
             }
-            self.display
-                .next(&self.game.entities().game_objects, self.game.debug_str());
+            let ecs = self.game.ecs();
+            let entities = ecs.get_entities_by(ComponentType::Render);
+            self.display.next(entities, self.game.debug_str());
         }
     }
 }
@@ -138,8 +143,9 @@ impl WebRuntime {
 
     /// Render the game to a string.
     pub fn render(&mut self) -> String {
-        self.display
-            .next(&self.game.entities().game_objects, self.game.debug_str())
+        let ecs = self.game.ecs();
+        let entities = ecs.get_entities_by(ComponentType::Render);
+        self.display.next(entities, self.game.debug_str())
     }
 }
 

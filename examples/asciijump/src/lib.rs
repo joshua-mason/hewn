@@ -1,18 +1,22 @@
 pub mod game;
-pub mod game_objects;
-use crate::game::{default_game, SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::game::create_game;
+use crate::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use hewn::runtime::WasmGameApi;
+use hewn::view::ScreenDimensions;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub fn new_game_api() -> WasmGameApi {
-    let game = default_game();
+pub fn new_game_api(seed: Option<u64>) -> WasmGameApi {
+    let game = create_game(seed);
     let asciijump_pointer = Box::new(game);
     let web_runtime = hewn::runtime::WebRuntime::new(
         asciijump_pointer,
         hewn::view::View {
-            renderer: Box::new(hewn::view::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),
-            view_cursor: hewn::game_object::Coordinate { x: 0, y: 0 },
+            renderer: Box::new(hewn::view::WebRenderer::new(ScreenDimensions {
+                x: SCREEN_WIDTH,
+                y: SCREEN_HEIGHT,
+            })),
+            view_cursor: hewn::view::ViewCoordinate { x: 0, y: 0 },
             cursor_strategy: Box::new(hewn::view::cursor::FollowPlayerYCursorStrategy::new()),
         },
     );
