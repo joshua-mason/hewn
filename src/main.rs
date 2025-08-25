@@ -137,6 +137,7 @@ mod game {
 }
 
 fn main() {
+    hewn::render::run().unwrap();
     let (stdout, stdin) = initialize_terminal_io();
 
     let mut view = View {

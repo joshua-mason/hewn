@@ -219,7 +219,8 @@ mod test {
 cargo run -p asciijump
 
 # Web (serve locally)
-# Install wasm-pack if you haven't already
+# Install wasm-pack (this helps install the correct version of wasm-bindgen 
+# for the project and build for different web targets)
 # https://drager.github.io/wasm-pack/installer/
 cd examples/asciijump
 wasm-pack build --release --target web
