@@ -163,7 +163,7 @@ impl ECS {
         }
     }
 
-    pub fn add_entity_froms(&mut self, components: Components) -> EntityId {
+    pub fn add_entity_from_components(&mut self, components: Components) -> EntityId {
         let new_entity_id = self.next_entity_id;
         self.next_entity_id = EntityId(new_entity_id.0 + 1);
         let entity = Entity {
@@ -222,10 +222,7 @@ impl ECS {
         entities
     }
 
-    pub fn get_entities_by_mut(
-        &mut self,
-        component_type: ComponentType,
-    ) -> Vec<&mut Entity> {
+    pub fn get_entities_by_mut(&mut self, component_type: ComponentType) -> Vec<&mut Entity> {
         let entities = self
             .entities
             .iter_mut()
@@ -296,16 +293,8 @@ pub mod collisions {
             };
 
             Some(CollisionBox {
-                x: CollisionBox::range_from_physical_properties(
-                    position.x,
-                    size.x,
-                    velocity.x,
-                ),
-                y: CollisionBox::range_from_physical_properties(
-                    position.y,
-                    size.y,
-                    velocity.y,
-                ),
+                x: CollisionBox::range_from_physical_properties(position.x, size.x, velocity.x),
+                y: CollisionBox::range_from_physical_properties(position.y, size.y, velocity.y),
             })
         }
 
@@ -485,7 +474,7 @@ mod test {
     fn test_add_entity_with_nos() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        ecs.add_entity_froms(emptys());
+        ecs.add_entity_from_components(emptys());
         assert_eq!(ecs.entities.len(), 1);
     }
 
@@ -493,7 +482,7 @@ mod test {
     fn test_get_entity_by_id() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        ecs.add_entity_froms(Components::new());
+        ecs.add_entity_from_components(Components::new());
         assert_eq!(ecs.entities.len(), 1);
 
         let entity_from_ecs = ecs.get_entity_by_id(EntityId(0));
@@ -504,14 +493,14 @@ mod test {
     fn test_get_entities_by_ids() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        let entity_one_id = ecs.add_entity_froms(Components {
+        let entity_one_id = ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 0, y: 0 }),
             velocity: None,
             render: None,
             size: None,
             camera_follow: None,
         });
-        let entity_two_id = ecs.add_entity_froms(Components {
+        let entity_two_id = ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 1, y: 1 }),
             velocity: None,
             render: None,
@@ -547,14 +536,14 @@ mod test {
     fn test_ecs_step() {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
-        let entity_one_id = ecs.add_entity_froms(Components {
+        let entity_one_id = ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 0, y: 0 }),
             velocity: Some(VelocityComponent { x: 0, y: 0 }),
             render: None,
             size: None,
             camera_follow: None,
         });
-        let entity_two_id = ecs.add_entity_froms(Components {
+        let entity_two_id = ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 1, y: 1 }),
             velocity: Some(VelocityComponent { x: 1, y: 1 }),
             render: None,
