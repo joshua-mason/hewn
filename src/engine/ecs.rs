@@ -61,13 +61,14 @@ impl Entity {
 }
 
 pub enum ComponentType {
-    position,
-    velocity,
-    render,
-    size,
-    track,
+    Position,
+    Velocity,
+    Render,
+    Size,
+    Track,
 }
 
+#[allow(dead_code)]
 trait Component {
     const TYPE: ComponentType;
 }
@@ -77,7 +78,7 @@ pub struct PositionComponent {
     pub y: u16,
 }
 impl Component for PositionComponent {
-    const TYPE: ComponentType = ComponentType::position;
+    const TYPE: ComponentType = ComponentType::Position;
 }
 
 #[derive(Debug)]
@@ -86,7 +87,7 @@ pub struct VelocityComponent {
     pub y: i16,
 }
 impl Component for VelocityComponent {
-    const TYPE: ComponentType = ComponentType::velocity;
+    const TYPE: ComponentType = ComponentType::Velocity;
 }
 
 #[derive(Debug)]
@@ -95,7 +96,7 @@ pub struct SizeComponent {
     pub y: u16,
 }
 impl Component for SizeComponent {
-    const TYPE: ComponentType = ComponentType::size;
+    const TYPE: ComponentType = ComponentType::Size;
 }
 
 #[derive(Debug)]
@@ -103,13 +104,13 @@ pub struct RenderComponent {
     pub ascii_character: char,
 }
 impl Component for RenderComponent {
-    const TYPE: ComponentType = ComponentType::render;
+    const TYPE: ComponentType = ComponentType::Render;
 }
 
 #[derive(Debug)]
 pub struct TrackComponent {}
 impl Component for TrackComponent {
-    const TYPE: ComponentType = ComponentType::track;
+    const TYPE: ComponentType = ComponentType::Track;
 }
 
 pub struct ECS {
@@ -129,7 +130,7 @@ impl ECS {
                 sum as u16
             }
         }
-        let velocity_components = self.get_entities_by_component_mut(ComponentType::velocity);
+        let velocity_components = self.get_entities_by_component_mut(ComponentType::Velocity);
         for c in velocity_components {
             let Some(position_component) = &mut c.components.position_component else {
                 continue;
@@ -185,31 +186,31 @@ impl ECS {
             .entities
             .iter()
             .filter(|e| match component_type {
-                ComponentType::position => {
+                ComponentType::Position => {
                     if e.components.position_component.is_some() {
                         return true;
                     }
                     false
                 }
-                ComponentType::velocity => {
+                ComponentType::Velocity => {
                     if e.components.velocity_component.is_some() {
                         return true;
                     }
                     false
                 }
-                ComponentType::size => {
+                ComponentType::Size => {
                     if e.components.size_component.is_some() {
                         return true;
                     }
                     false
                 }
-                ComponentType::render => {
+                ComponentType::Render => {
                     if e.components.render_component.is_some() {
                         return true;
                     }
                     false
                 }
-                ComponentType::track => {
+                ComponentType::Track => {
                     if e.components.track_component.is_some() {
                         return true;
                     }
@@ -228,32 +229,32 @@ impl ECS {
             .entities
             .iter_mut()
             .filter(|e| match component_type {
-                ComponentType::position => {
+                ComponentType::Position => {
                     if e.components.position_component.is_some() {
                         return true;
                     }
                     false
                 }
-                ComponentType::velocity => {
+                ComponentType::Velocity => {
                     if e.components.velocity_component.is_some() {
                         return true;
                     }
                     false
                 }
-                ComponentType::size => {
+                ComponentType::Size => {
                     if e.components.size_component.is_some() {
                         return true;
                     }
                     false
                 }
-                ComponentType::render => {
+                ComponentType::Render => {
                     if e.components.render_component.is_some() {
                         return true;
                     }
                     false
                 }
-                ComponentType::track => {
-                    if e.components.render_component.is_some() {
+                ComponentType::Track => {
+                    if e.components.track_component.is_some() {
                         return true;
                     }
                     false
@@ -314,14 +315,14 @@ pub mod collisions {
         }
 
         fn range_from_physical_properties(position: u16, size: u16, velocity: i16) -> Range<u16> {
-            if (velocity.is_positive()) {
+            if velocity.is_positive() {
                 return position..(position as i16 + size as i16 + velocity) as u16;
             }
             (position as i16 + velocity) as u16..position + size
         }
     }
 
-    pub fn are_collision_boxes_overlapping(
+    fn are_collision_boxes_overlapping(
         a_collision_box: &CollisionBox,
         b_collision_box: &CollisionBox,
     ) -> bool {

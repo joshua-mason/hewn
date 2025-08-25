@@ -266,7 +266,7 @@ impl WebRenderer {
 }
 
 impl Renderer for WebRenderer {
-    fn render(&mut self, debug_string: Option<String>, view: String, h: u16) -> String {
+    fn render(&mut self, _debug_string: Option<String>, view: String, _h: u16) -> String {
         // TODO unused return value as we just pass through the view
         view
     }

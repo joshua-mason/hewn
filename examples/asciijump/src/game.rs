@@ -243,7 +243,7 @@ mod tests {
 
     fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
         let ecs = game.ecs();
-        let mut tracked = ecs.get_entities_by_component(ComponentType::track);
+        let mut tracked = ecs.get_entities_by_component(ComponentType::Track);
         assert!(tracked.len() > 0, "player entity not found");
         tracked.remove(0)
     }
