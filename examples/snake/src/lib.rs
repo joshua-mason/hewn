@@ -1,7 +1,7 @@
 pub mod game;
 
 use crate::game::create_game;
-use hewn::runtime::WasmGameApi;
+use hewn::{runtime::WasmGameApi, view::ScreenDimensions};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -11,7 +11,10 @@ pub fn new_game_api(width: u16, height: u16, seed: Option<u64>) -> WasmGameApi {
     let web_runtime = hewn::runtime::WebRuntime::new(
         snake_pointer,
         hewn::view::View {
-            renderer: Box::new(hewn::view::WebRenderer::new(height, width)),
+            renderer: Box::new(hewn::view::WebRenderer::new(ScreenDimensions {
+                x: width,
+                y: height,
+            })),
             // Perhaps both or one of view cursor + strategy should be contained in the camera component
             view_cursor: hewn::view::ViewCoordinate { x: 0, y: 0 },
             cursor_strategy: Box::new(hewn::view::cursor::StaticCursorStrategy::new()),

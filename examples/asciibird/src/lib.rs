@@ -1,6 +1,6 @@
 pub mod game;
 use crate::game::create_game;
-use hewn::runtime::WasmGameApi;
+use hewn::{runtime::WasmGameApi, view::ScreenDimensions};
 use wasm_bindgen::prelude::*;
 
 pub const SCREEN_WIDTH: u16 = 50;
@@ -13,7 +13,10 @@ pub fn new_game_api(seed: Option<u64>) -> WasmGameApi {
     let web_runtime = hewn::runtime::WebRuntime::new(
         asciibird_pointer,
         hewn::view::View {
-            renderer: Box::new(hewn::view::WebRenderer::new(SCREEN_HEIGHT, SCREEN_WIDTH)),
+            renderer: Box::new(hewn::view::WebRenderer::new(ScreenDimensions {
+                x: SCREEN_WIDTH,
+                y: SCREEN_HEIGHT,
+            })),
             view_cursor: hewn::view::ViewCoordinate { x: 0, y: 0 },
             cursor_strategy: Box::new(hewn::view::cursor::FollowPlayerXCursorStrategy::new()),
         },

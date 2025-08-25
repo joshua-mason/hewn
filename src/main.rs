@@ -1,6 +1,6 @@
 use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
 use hewn::view::cursor::FollowPlayerYCursorStrategy;
-use hewn::view::{TerminalRenderer, View, ViewCoordinate};
+use hewn::view::{ScreenDimensions, TerminalRenderer, View, ViewCoordinate};
 
 const SCREEN_HEIGHT: u16 = 20;
 const SCREEN_WIDTH: u16 = 50;
@@ -26,7 +26,7 @@ mod game {
         pub fn new() -> MinimalGame {
             let mut ecs = ecs::ECS::new();
             // Add player object
-            let player_entity_id = ecs.add_entity_froms(Components {
+            let player_entity_id = ecs.add_entity_from_components(Components {
                 position: Some(PositionComponent { x: 5, y: 5 }),
                 velocity: Some(VelocityComponent { x: 0, y: 0 }),
                 render: Some(RenderComponent {
@@ -36,7 +36,7 @@ mod game {
                 camera_follow: Some(CameraFollow {}),
             });
             // Add another object as a wall
-            ecs.add_entity_froms(Components {
+            ecs.add_entity_from_components(Components {
                 position: Some(PositionComponent { x: 5, y: 6 }),
                 velocity: Some(VelocityComponent { x: 0, y: 0 }),
                 render: Some(RenderComponent {
@@ -141,7 +141,13 @@ fn main() {
 
     let mut view = View {
         view_cursor: ViewCoordinate { x: 0, y: 0 },
-        renderer: Box::new(TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH)),
+        renderer: Box::new(TerminalRenderer::new(
+            stdout,
+            ScreenDimensions {
+                x: SCREEN_WIDTH,
+                y: SCREEN_HEIGHT,
+            },
+        )),
         cursor_strategy: Box::new(FollowPlayerYCursorStrategy::new()),
     };
 

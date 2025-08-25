@@ -16,6 +16,11 @@ pub struct ViewCoordinate {
     pub y: u16,
 }
 
+pub struct ScreenDimensions {
+    pub x: u16,
+    pub y: u16,
+}
+
 /// A view of the game world.
 pub struct View {
     pub view_cursor: ViewCoordinate,
@@ -62,16 +67,14 @@ impl View {
                 let display_char = render.ascii_character;
                 if position.y == y_position
                     && position.x >= cursor_x_position as u16
-                    && (position.x + size.x) - cursor_x_position as u16
-                        <= level.len() as u16
+                    && (position.x + size.x) - cursor_x_position as u16 <= level.len() as u16
                 {
                     let x_displacement = if cursor_x_position as u16 > position.x {
                         0
                     } else {
                         position.x - cursor_x_position as u16
                     };
-                    let render_x_offset =
-                        position.x + size.x - cursor_x_position as u16;
+                    let render_x_offset = position.x + size.x - cursor_x_position as u16;
                     level.replace_range(
                         (x_displacement as usize)..(render_x_offset as usize),
                         &display_char
@@ -182,21 +185,18 @@ pub trait Renderer {
 #[cfg(not(target_arch = "wasm32"))]
 pub struct TerminalRenderer {
     stdout: RawTerminal<Stdout>,
-    screen_height: u16,
-    screen_width: u16,
+    screen_dimensions: ScreenDimensions,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl TerminalRenderer {
     pub fn new(
         stdout: RawTerminal<Stdout>,
-        screen_height: u16,
-        screen_width: u16,
+        screen_dimensions: ScreenDimensions,
     ) -> TerminalRenderer {
         TerminalRenderer {
             stdout,
-            screen_height,
-            screen_width,
+            screen_dimensions,
         }
     }
 
@@ -240,27 +240,23 @@ impl Renderer for TerminalRenderer {
         })
     }
 
-    fn screen_height(&self) -> u16 {
-        self.screen_height
+    fn screen_width(&self) -> u16 {
+        self.screen_dimensions.x
     }
 
-    fn screen_width(&self) -> u16 {
-        self.screen_width
+    fn screen_height(&self) -> u16 {
+        self.screen_dimensions.y
     }
 }
 
 /// A renderer for the web.
 pub struct WebRenderer {
-    screen_height: u16,
-    screen_width: u16,
+    screen_dimensions: ScreenDimensions,
 }
 
 impl WebRenderer {
-    pub fn new(screen_height: u16, screen_width: u16) -> WebRenderer {
-        WebRenderer {
-            screen_height,
-            screen_width,
-        }
+    pub fn new(screen_dimensions: ScreenDimensions) -> WebRenderer {
+        WebRenderer { screen_dimensions }
     }
 }
 
@@ -283,12 +279,12 @@ impl Renderer for WebRenderer {
         })
     }
 
-    fn screen_height(&self) -> u16 {
-        self.screen_height
+    fn screen_width(&self) -> u16 {
+        self.screen_dimensions.x
     }
 
-    fn screen_width(&self) -> u16 {
-        self.screen_width
+    fn screen_height(&self) -> u16 {
+        self.screen_dimensions.y
     }
 }
 
