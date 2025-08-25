@@ -1,6 +1,5 @@
 use asciijump::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use hewn::view::cursor;
-use hewn::game_object::Coordinate;
 #[cfg(not(target_arch = "wasm32"))]
 use hewn::{
     view::{View, TerminalRenderer},
@@ -10,7 +9,6 @@ use hewn::{
 use crate::game::default_game;
 
 pub mod game;
-pub mod game_objects;
 
 fn main() {
     play_asciijump_in_terminal();
@@ -25,7 +23,7 @@ pub fn play_asciijump_in_terminal() {
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = View {
         renderer: Box::new(renderer),
-        view_cursor: Coordinate { x: 0, y: 0 },
+        view_cursor: hewn::view::ViewCoordinate { x: 0, y: 0 },
         cursor_strategy: Box::new(cursor::FollowPlayerYCursorStrategy::new()),
     };
     let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut display);
