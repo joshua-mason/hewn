@@ -103,7 +103,7 @@ impl Game {
             }),
             camera_follow: Some(CameraFollow {}),
         };
-        let id = self.ecs.add_entity_froms(components);
+        let id = self.ecs.add_entity_from_components(components);
         self.player_id = id;
         self.player_direction = Direction::Up;
     }
@@ -119,7 +119,7 @@ impl Game {
                 }),
                 camera_follow: None,
             };
-            let id = self.ecs.add_entity_froms(components);
+            let id = self.ecs.add_entity_from_components(components);
             self.wall_ids.insert(id);
         }
     }
@@ -168,7 +168,7 @@ impl Game {
             }),
             camera_follow: None,
         };
-        let id = self.ecs.add_entity_froms(components);
+        let id = self.ecs.add_entity_from_components(components);
         self.food_id = Some(id);
         Ok(())
     }
@@ -234,7 +234,7 @@ impl Game {
             }),
             camera_follow: None,
         };
-        let id = self.ecs.add_entity_froms(components);
+        let id = self.ecs.add_entity_from_components(components);
         self.body_ids.push(id);
     }
 

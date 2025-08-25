@@ -75,7 +75,7 @@ impl Game {
             }),
             camera_follow: Some(CameraFollow {}),
         };
-        let id = self.ecs.add_entity_froms(components);
+        let id = self.ecs.add_entity_from_components(components);
         self.player_id = id;
     }
 
@@ -90,7 +90,7 @@ impl Game {
                 }),
                 camera_follow: None,
             };
-            let id = self.ecs.add_entity_froms(components);
+            let id = self.ecs.add_entity_from_components(components);
             self.wall_ids.insert(id);
         }
     }
