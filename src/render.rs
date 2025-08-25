@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use winit::{
     application::ApplicationHandler,
+    dpi::PhysicalPosition,
     event::*,
     event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
@@ -19,6 +20,8 @@ pub struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     is_surface_configured: bool,
+
+    mouse_position: PhysicalPosition<f64>,
 }
 
 impl State {
@@ -93,6 +96,7 @@ impl State {
             config,
             is_surface_configured: false,
             window,
+            mouse_position: PhysicalPosition::new(0.1, 0.2),
         })
     }
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -122,8 +126,8 @@ impl State {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
+                            r: self.mouse_position.x,
+                            g: self.mouse_position.y,
                             b: 0.3,
                             a: 1.0,
                         }),
@@ -147,6 +151,7 @@ impl State {
         if width > 0 && height > 0 {
             self.config.width = width;
             self.config.height = height;
+            log::info!("Resizing to {:?}", self.config);
             self.surface.configure(&self.device, &self.config);
             self.is_surface_configured = true;
         }
@@ -157,6 +162,13 @@ impl State {
             (KeyCode::Escape, true) => event_loop.exit(),
             _ => {}
         }
+    }
+
+    fn handle_mouse(&mut self, _device_id: DeviceId, position: PhysicalPosition<f64>) {
+        self.mouse_position = PhysicalPosition::new(
+            position.x / self.window.inner_size().width as f64,
+            position.y / self.window.inner_size().height as f64,
+        );
     }
 }
 
@@ -251,7 +263,15 @@ impl ApplicationHandler<State> for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
-
+            WindowEvent::CursorMoved {
+                position,
+                device_id,
+                ..
+            } => {
+                log::info!("Cursor moved to {:?}", position);
+                log::info!("Window size: {:?}", state.window.inner_size());
+                state.handle_mouse(device_id, position);
+            }
             WindowEvent::RedrawRequested => {
                 // state.update();
                 match state.render() {
