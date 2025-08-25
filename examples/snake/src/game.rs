@@ -1,667 +1,381 @@
-use crate::game::game_objects::{player_character::PlayerCharacter, wall::Wall};
+use hewn::ecs::{Components, ECS};
+use hewn::ecs::{
+    EntityId, PositionComponent, RenderComponent, SizeComponent, TrackComponent, VelocityComponent,
+};
+use hewn::game::GameLogic;
+use hewn::runtime::Key;
+use rand::Rng;
+use std::collections::HashSet;
 
-pub fn default_game(width: u16, height: u16) -> snake::Game {
-    let mut game = snake::Game::new(width, height);
-    let walls = Wall::generate_walls(width, height);
-    game.set_player(PlayerCharacter::new());
-    game.set_walls(walls);
-    game.generate_food();
+pub fn create_game(width: u16, height: u16) -> Game {
+    let mut game = Game::new(width, height);
+    let walls = generate_walls(width, height);
+    game.add_player_from_position((1, 1));
+    game.add_walls_from_positions(walls);
+    game.spawn_food();
     game
 }
 
-pub mod game_objects {
-    pub mod player_character {
-        use hewn::game_object::utils::maybe_get_concrete_type;
-        use hewn::game_object::{
-            GameObject, {CollisionBox, Coordinate},
-        };
-        use hewn::view::build_string;
-        use std::any::Any;
-
-        use super::{food::Food, snake_body::SnakeBody, wall::Wall};
-
-        #[derive(Debug, PartialEq, Clone)]
-        pub enum Direction {
-            Left,
-            Up,
-            Right,
-            Down,
-        }
-
-        #[derive(Debug, PartialEq, Clone)]
-        pub struct PlayerCharacter {
-            pub coordinate: Coordinate,
-            pub direction: Direction,
-            pub size: u16,
-            pub hit_wall: bool,
-        }
-
-        impl PlayerCharacter {
-            pub fn new() -> PlayerCharacter {
-                PlayerCharacter {
-                    coordinate: Coordinate { x: 1, y: 1 },
-                    direction: Direction::Up,
-                    size: 1,
-                    hit_wall: false,
-                }
-            }
-
-            #[cfg(test)]
-            pub fn from_tuple(tuple: (usize, usize)) -> PlayerCharacter {
-                PlayerCharacter {
-                    coordinate: Coordinate {
-                        x: tuple.0,
-                        y: tuple.1,
-                    },
-                    ..Default::default()
-                }
-            }
-
-            pub fn turn(&mut self, direction: Direction) {
-                if direction == self.direction {
-                    return;
-                }
-                let is_u_turn = match direction {
-                    Direction::Left => self.direction == Direction::Right,
-                    Direction::Up => self.direction == Direction::Down,
-                    Direction::Right => self.direction == Direction::Left,
-                    Direction::Down => self.direction == Direction::Up,
-                };
-                if is_u_turn {
-                    return;
-                }
-                self.direction = direction;
-            }
-
-            pub fn reset(&mut self) {
-                self.coordinate.x = 1;
-                self.coordinate.y = 1;
-                self.direction = Direction::Up
-            }
-        }
-
-        impl Default for PlayerCharacter {
-            fn default() -> Self {
-                Self::new()
-            }
-        }
-
-        impl GameObject for PlayerCharacter {
-            fn get_collision_box(&self) -> CollisionBox {
-                let coords = self.get_coords();
-                let next_coords = match self.direction {
-                    Direction::Down => (self.coordinate.x, self.coordinate.y - 1),
-                    Direction::Left => (self.coordinate.x - 1, self.coordinate.y),
-                    Direction::Up => (self.coordinate.x, self.coordinate.y + 1),
-                    Direction::Right => (self.coordinate.x + 1, self.coordinate.y),
-                };
-
-                CollisionBox {
-                    x: coords.x..(coords.x + 1),
-                    y: coords.y..(coords.y + 1),
-                }
-            }
-
-            fn collide(&mut self, other: &dyn GameObject) {
-                if let Some(_food) = maybe_get_concrete_type::<Food>(other) {
-                    self.size += 1;
-                }
-                if let Some(_wall) = maybe_get_concrete_type::<Wall>(other) {
-                    self.hit_wall = true;
-                }
-                if let Some(_wall) = maybe_get_concrete_type::<SnakeBody>(other) {
-                    self.hit_wall = true;
-                }
-            }
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-            fn as_mut_any(&mut self) -> &mut dyn Any {
-                self
-            }
-            fn display(&self) -> String {
-                build_string('0', 1)
-            }
-            fn width(&self) -> usize {
-                1
-            }
-            fn priority(&self) -> u8 {
-                0
-            }
-            fn next_step(&mut self) {
-                // TODO refactor to function. is this the same for the other objects? should it be required in the engine?
-                let next_coords = match self.direction {
-                    Direction::Down => (self.coordinate.x, self.coordinate.y - 1),
-                    Direction::Left => (self.coordinate.x - 1, self.coordinate.y),
-                    Direction::Up => (self.coordinate.x, self.coordinate.y + 1),
-                    Direction::Right => (self.coordinate.x + 1, self.coordinate.y),
-                };
-                self.coordinate.x = next_coords.0;
-                self.coordinate.y = next_coords.1;
-            }
-
-            fn get_coords(&self) -> &Coordinate {
-                &self.coordinate
-            }
-            fn is_player(&self) -> bool {
-                true
-            }
-        }
-    }
-
-    pub mod food {
-
-        use hewn::{
-            game_object::{CollisionBox, Coordinate, GameObject},
-            view::build_string,
-        };
-        use std::any::Any;
-
-        #[derive(Debug, PartialEq, Clone)]
-        pub struct Food {
-            pub coordinate: Coordinate,
-            pub eaten: bool,
-        }
-
-        impl Food {
-            const PRIORITY: u8 = 0;
-            const WIDTH: usize = 1;
-
-            pub fn new() -> Food {
-                Food {
-                    coordinate: Coordinate { x: 3, y: 3 },
-                    eaten: false,
-                }
-            }
-
-            #[cfg(test)]
-            pub fn from_tuple(tuple: (usize, usize)) -> Food {
-                Food {
-                    coordinate: Coordinate {
-                        x: tuple.0,
-                        y: tuple.1,
-                    },
-                    ..Default::default()
-                }
-            }
-        }
-
-        impl Default for Food {
-            fn default() -> Self {
-                Self::new()
-            }
-        }
-
-        impl GameObject for Food {
-            // TODO This seems confusing to understand without looking at examples (e.g. what if it is just the one spot?)
-            // is there a way to make this easier? or is there a way to provide default implementations?
-            fn get_collision_box(&self) -> CollisionBox {
-                let coords = self.get_coords();
-
-                if self.eaten {
-                    return CollisionBox {
-                        x: coords.x..(coords.x),
-                        y: coords.y..(coords.y),
-                    };
-                }
-
-                CollisionBox {
-                    x: coords.x..(coords.x + 1),
-                    y: coords.y..(coords.y + 1),
-                }
-            }
-
-            fn collide(&mut self, _other: &dyn GameObject) {
-                // TODO: destroy? let's mark as eaten: true, and clean up in game
-                // but it is another place where creation/deletion of game objects
-                // has been considered inside a gameobject.
-                // only if it is the snake head?
-                self.eaten = true;
-            }
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-            fn as_mut_any(&mut self) -> &mut dyn Any {
-                self
-            }
-            fn display(&self) -> String {
-                if self.eaten {
-                    return build_string('.', 1);
-                }
-                build_string('+', 1)
-            }
-            fn width(&self) -> usize {
-                Self::WIDTH
-            }
-            fn priority(&self) -> u8 {
-                Self::PRIORITY
-            }
-            fn next_step(&mut self) {}
-
-            fn get_coords(&self) -> &Coordinate {
-                &self.coordinate
-            }
-            fn is_player(&self) -> bool {
-                false
-            }
-        }
-    }
-
-    pub mod snake_body {
-        use std::any::Any;
-
-        use hewn::{
-            game_object::{CollisionBox, Coordinate, GameObject},
-            view::build_string,
-        };
-
-        #[derive(Debug)]
-        pub struct SnakeBody {
-            coordinate: Coordinate,
-        }
-
-        impl SnakeBody {
-            const WIDTH: usize = 1;
-            const PRIORITY: u8 = 0;
-            pub fn new(coord: Coordinate) -> SnakeBody {
-                SnakeBody { coordinate: coord }
-            }
-            pub fn set_coordinate(&mut self, coord: Coordinate) {
-                self.coordinate = coord;
-            }
-        }
-
-        impl GameObject for SnakeBody {
-            // TODO This seems confusing to understand without looking at examples (e.g. what if it is just the one spot?)
-            // is there a way to make this easier? or is there a way to provide default implementations?
-            fn get_collision_box(&self) -> CollisionBox {
-                let coords = self.get_coords();
-
-                CollisionBox {
-                    x: coords.x..(coords.x + 1),
-                    y: coords.y..(coords.y + 1),
-                }
-            }
-
-            fn collide(&mut self, _other: &dyn GameObject) {}
-
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-            fn as_mut_any(&mut self) -> &mut dyn Any {
-                self
-            }
-            fn display(&self) -> String {
-                build_string('o', 1)
-            }
-            fn width(&self) -> usize {
-                Self::WIDTH
-            }
-            fn priority(&self) -> u8 {
-                Self::PRIORITY
-            }
-            fn next_step(&mut self) {}
-
-            fn get_coords(&self) -> &Coordinate {
-                &self.coordinate
-            }
-            fn is_player(&self) -> bool {
-                false
-            }
-        }
-    }
-
-    pub mod wall {
-        use hewn::{
-            game_object::{CollisionBox, Coordinate, GameObject},
-            view::build_string,
-        };
-        use std::any::Any;
-
-        #[derive(Debug, PartialEq, Clone)]
-        pub struct Wall {
-            pub coordinate: Coordinate,
-        }
-
-        impl Wall {
-            pub fn from_tuple(coords: (u16, u16)) -> Wall {
-                Wall {
-                    coordinate: Coordinate {
-                        x: coords.0 as usize,
-                        y: coords.1 as usize,
-                    },
-                }
-            }
-
-            #[cfg(test)]
-            pub fn from_tuples(tuples: &[(u16, u16)]) -> Vec<Wall> {
-                tuples
-                    .iter()
-                    .map(|tuple| Wall::from_tuple(*tuple))
-                    .collect::<Vec<_>>()
-            }
-
-            pub fn generate_walls(width: u16, height: u16) -> Vec<Wall> {
-                let mut walls: Vec<Wall> = vec![];
-                for x_index in 0..width {
-                    walls.push(Wall::from_tuple((x_index, 1)));
-                    walls.push(Wall::from_tuple((x_index, height - 2)));
-                }
-                for y_index in 0..height {
-                    walls.push(Wall::from_tuple((0, y_index)));
-                    walls.push(Wall::from_tuple((width - 1, y_index)));
-                }
-
-                walls
-            }
-        }
-
-        // TODO should we offer this as part of the engine? since it is such an obvious use case
-        impl GameObject for Wall {
-            fn get_collision_box(&self) -> CollisionBox {
-                let coords = self.get_coords();
-
-                CollisionBox {
-                    x: coords.x..(coords.x + 1),
-                    y: coords.y..(coords.y + 1),
-                }
-            }
-
-            fn collide(&mut self, _: &dyn GameObject) {}
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-
-            fn as_mut_any(&mut self) -> &mut dyn Any {
-                self
-            }
-            fn display(&self) -> String {
-                build_string('#', 3)
-            }
-            fn width(&self) -> usize {
-                1
-            }
-            fn priority(&self) -> u8 {
-                1
-            }
-            fn next_step(&mut self) {}
-            fn get_coords(&self) -> &Coordinate {
-                &self.coordinate
-            }
-            fn is_player(&self) -> bool {
-                false
-            }
-        }
-    }
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Direction {
+    Left,
+    Up,
+    Right,
+    Down,
 }
 
-pub mod snake {
-    use super::game_objects::{
-        food::Food,
-        player_character::{Direction, PlayerCharacter},
-        snake_body::SnakeBody,
-        wall::Wall,
-    };
-    use hewn::game::{Entities, GameLogic};
-    use hewn::game_object::utils::{
-        collision_pass, maybe_get_concrete_type, maybe_get_concrete_type_mut, take_game_object,
-    };
-    use hewn::game_object::{Coordinate, GameObject};
-    use hewn::runtime::Key;
-    use rand::Rng;
+#[derive(Debug, PartialEq, Eq)]
+pub enum GameState {
+    InGame,
+    Menu,
+    Lost(u16),
+}
 
-    #[derive(Debug, PartialEq, Eq)]
-    pub enum GameState {
-        InGame,
-        Menu,
-        Lost(usize),
+pub struct Game {
+    pub width: u16,
+    pub height: u16,
+    pub score: u16,
+
+    state: GameState,
+    ecs: ECS,
+    player_id: EntityId,
+    player_direction: Direction,
+    body_ids: Vec<EntityId>,
+    wall_ids: HashSet<EntityId>,
+    food_id: Option<EntityId>,
+}
+
+impl Game {
+    pub fn new(width: u16, height: u16) -> Game {
+        Game {
+            width,
+            height,
+            state: GameState::Menu,
+            score: 0,
+            ecs: ECS::new(),
+            player_id: EntityId(0),
+            player_direction: Direction::Up,
+            body_ids: vec![],
+            wall_ids: HashSet::new(),
+            food_id: None,
+        }
     }
 
-    #[derive(Debug)]
-    pub struct Game {
-        pub width: u16,
-        pub height: u16,
-        pub score: usize,
-
-        state: GameState,
-        entities: Entities,
+    pub fn add_player_from_position(&mut self, start: (u16, u16)) {
+        let components = Components {
+            position_component: Some(PositionComponent {
+                x: start.0,
+                y: start.1,
+            }),
+            velocity_component: Some(VelocityComponent { x: 0, y: 1 }),
+            size_component: Some(SizeComponent { x: 1, y: 1 }),
+            render_component: Some(RenderComponent {
+                ascii_character: '0',
+            }),
+            track_component: Some(TrackComponent {}),
+        };
+        let id = self.ecs.add_entity_from_components(components);
+        self.player_id = id;
+        self.player_direction = Direction::Up;
     }
 
-    impl Game {
-        pub fn new(width: u16, height: u16) -> Game {
-            let mut game = Game {
-                width,
-                height,
-                state: GameState::Menu,
-                score: 0,
-                entities: Entities::new(),
+    pub fn add_walls_from_positions(&mut self, walls: Vec<(u16, u16)>) {
+        for (x, y) in walls.into_iter() {
+            let components = Components {
+                position_component: Some(PositionComponent { x, y }),
+                velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+                size_component: Some(SizeComponent { x: 1, y: 1 }),
+                render_component: Some(RenderComponent {
+                    ascii_character: '#',
+                }),
+                track_component: None,
             };
-            game.set_player(PlayerCharacter::new());
-            game
+            let id = self.ecs.add_entity_from_components(components);
+            self.wall_ids.insert(id);
         }
+    }
 
-        fn move_player(&mut self, key: Option<Key>) {
-            // TODO this is very verbose... I wonder if there is something we can do to help simplify what's going on here
-            // can't get_mut_player_object earlier because then we can't access self.player_control_key
-            match key {
-                Some(Key::Left) => {
-                    if let Some(player) = self.get_mut_player_object() {
-                        player.turn(Direction::Left);
-                    }
-                }
-                Some(Key::Right) => {
-                    if let Some(player) = self.get_mut_player_object() {
-                        player.turn(Direction::Right);
-                    }
-                }
-                Some(Key::Up) => {
-                    if let Some(player) = self.get_mut_player_object() {
-                        player.turn(Direction::Up);
-                    }
-                }
-                Some(Key::Down) => {
-                    if let Some(player) = self.get_mut_player_object() {
-                        player.turn(Direction::Down);
-                    }
-                }
-                _ => {}
+    fn move_direction(&mut self, key: Option<Key>) {
+        if key.is_none() {
+            return;
+        }
+        let key = key.unwrap();
+        let new_direction = match key {
+            Key::Left => Some(Direction::Left),
+            Key::Right => Some(Direction::Right),
+            Key::Up => Some(Direction::Up),
+            Key::Down => Some(Direction::Down),
+            _ => None,
+        };
+        if let Some(dir) = new_direction {
+            let is_uturn = matches!(
+                (self.player_direction, dir),
+                (Direction::Left, Direction::Right)
+                    | (Direction::Right, Direction::Left)
+                    | (Direction::Up, Direction::Down)
+                    | (Direction::Down, Direction::Up)
+            );
+            if !is_uturn {
+                self.player_direction = dir;
             }
         }
+    }
 
-        pub fn end_game(&mut self) {
-            self.state = GameState::Lost(self.score);
-        }
-
-        pub fn get_player_object(&self) -> Option<&PlayerCharacter> {
-            take_game_object::<PlayerCharacter>(&self.entities().game_objects)
-        }
-
-        pub fn get_mut_player_object(&mut self) -> Option<&mut PlayerCharacter> {
-            self.entities
-                .game_objects
-                .iter_mut()
-                .filter_map(|o| maybe_get_concrete_type_mut::<PlayerCharacter>(&mut **o))
-                .next()
-        }
-
-        pub fn get_food_object(&self) -> Option<&Food> {
-            take_game_object::<Food>(&self.entities().game_objects)
-        }
-
-        pub fn remove_food_object(&mut self) {
-            if let Some(index) = self
-                .entities
-                .game_objects
-                .iter()
-                .position(|o| maybe_get_concrete_type::<Food>(&**o).is_some())
-            {
-                self.entities.game_objects.remove(index);
-            }
-        }
-
-        pub fn add_body_segment(&mut self) {
-            let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(SnakeBody::new(
-                self.get_player_object().unwrap().coordinate.clone(),
-            ))];
-            self.entities.add_game_objects(&mut game_objects);
-        }
-
-        pub fn check_food_state(&mut self) {
-            if let Some(food) = self.get_food_object() {
-                if food.eaten {
-                    self.add_body_segment();
-                    self.remove_food_object();
-                    self.generate_food();
+    fn set_head_velocity_from_direction(&mut self) {
+        if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
+            if let Some(vel) = &mut head.components.velocity_component {
+                match self.player_direction {
+                    Direction::Left => {
+                        vel.x = -1;
+                        vel.y = 0;
+                    }
+                    Direction::Right => {
+                        vel.x = 1;
+                        vel.y = 0;
+                    }
+                    Direction::Up => {
+                        vel.x = 0;
+                        vel.y = 1;
+                    }
+                    Direction::Down => {
+                        vel.x = 0;
+                        vel.y = -1;
+                    }
                 }
             }
         }
+    }
 
-        pub fn set_player(&mut self, player: PlayerCharacter) {
-            let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(player)];
-            if let Some(index) = self
-                .entities
-                .game_objects
-                .iter()
-                .position(|o| maybe_get_concrete_type::<PlayerCharacter>(&**o).is_some())
-            {
-                self.entities.game_objects.remove(index);
+    fn clear_head_velocity(&mut self) {
+        if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
+            if let Some(vel) = &mut head.components.velocity_component {
+                vel.x = 0;
+                vel.y = 0;
             }
-            self.entities.add_game_objects(&mut game_objects);
+        }
+    }
+
+    pub fn spawn_food(&mut self) {
+        let mut occupied: std::collections::HashSet<(u16, u16)> = std::collections::HashSet::new();
+        occupied.insert(self.head_position());
+        for (x, y) in self.body_positions() {
+            occupied.insert((x, y));
+        }
+        for w in self.wall_ids.iter() {
+            if let Some(ent) = self.ecs.get_entity_by_id(*w) {
+                if let Some(pos) = &ent.components.position_component {
+                    occupied.insert((pos.x, pos.y));
+                }
+            }
         }
 
-        pub fn set_food(&mut self, food: Food) {
-            let mut game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(food)];
-
-            self.entities.add_game_objects(&mut game_objects);
-        }
-
-        pub fn set_walls(&mut self, walls: Vec<Wall>) {
-            let mut game_objects = walls
-                .into_iter()
-                .map(|p| Box::new(p) as Box<dyn GameObject>)
-                .collect::<Vec<Box<dyn GameObject>>>();
-            self.entities.add_game_objects(&mut game_objects);
-        }
-
-        pub fn generate_food(&mut self) {
-            let mut rng = rand::thread_rng();
+        let mut rng = rand::thread_rng();
+        let mut target: Option<(u16, u16)> = None;
+        let max_tries = (self.width as u32 * self.height as u32).max(100);
+        for _ in 0..max_tries {
             let x = rng.gen_range(1..(self.width - 1));
             let y = rng.gen_range(1..(self.height - 1));
-
-            // TODO we need to avoid generating on the snakes body/head
-            self.set_food(Food {
-                coordinate: Coordinate {
-                    x: x as usize,
-                    y: y as usize,
-                },
-                eaten: false,
-            });
+            if !occupied.contains(&(x, y)) {
+                target = Some((x, y));
+                break;
+            }
         }
 
-        pub fn update_body_segments(&mut self, first_coordinate: Coordinate) {
-            let mut next_coordinate: Coordinate = first_coordinate;
-            for body in self.entities.game_objects.iter_mut() {
-                if let Some(snake_body) = maybe_get_concrete_type_mut::<SnakeBody>(&mut **body) {
-                    let current_coordinate = snake_body.get_coords().clone();
-                    snake_body.set_coordinate(next_coordinate.clone());
-                    next_coordinate = current_coordinate;
+        if let Some((x, y)) = target {
+            if let Some(fid) = self.food_id {
+                if let Some(food) = self.ecs.get_entity_by_id_mut(fid) {
+                    if let Some(pos) = &mut food.components.position_component {
+                        pos.x = x;
+                        pos.y = y;
+                    }
+                    if let Some(size) = &mut food.components.size_component {
+                        size.x = 1;
+                        size.y = 1;
+                    }
+                    if let Some(render) = &mut food.components.render_component {
+                        render.ascii_character = '+';
+                    }
+                }
+            } else {
+                let components = Components {
+                    position_component: Some(PositionComponent { x, y }),
+                    velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+                    size_component: Some(SizeComponent { x: 1, y: 1 }),
+                    render_component: Some(RenderComponent {
+                        ascii_character: '+',
+                    }),
+                    track_component: None,
+                };
+                let id = self.ecs.add_entity_from_components(components);
+                self.food_id = Some(id);
+            }
+        }
+    }
+
+    fn grow_body_by_one(&mut self, tail_target: (u16, u16)) {
+        let components = Components {
+            position_component: Some(PositionComponent {
+                x: tail_target.0,
+                y: tail_target.1,
+            }),
+            velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+            size_component: Some(SizeComponent { x: 1, y: 1 }),
+            render_component: Some(RenderComponent {
+                ascii_character: 'o',
+            }),
+            track_component: None,
+        };
+        let id = self.ecs.add_entity_from_components(components);
+        self.body_ids.push(id);
+    }
+
+    fn head_position(&self) -> (u16, u16) {
+        let head = self.ecs.get_entity_by_id(self.player_id).unwrap();
+        let pos = head.components.position_component.as_ref().unwrap();
+        (pos.x, pos.y)
+    }
+
+    fn body_positions(&self) -> Vec<(u16, u16)> {
+        self.body_ids
+            .iter()
+            .filter_map(|id| self.ecs.get_entity_by_id(*id))
+            .filter_map(|e| e.components.position_component.as_ref())
+            .map(|p| (p.x, p.y))
+            .collect()
+    }
+
+    fn set_entity_position(&mut self, id: EntityId, xy: (u16, u16)) {
+        if let Some(ent) = self.ecs.get_entity_by_id_mut(id) {
+            if let Some(pos) = &mut ent.components.position_component {
+                pos.x = xy.0;
+                pos.y = xy.1;
+            }
+        }
+    }
+
+    fn update_body_segments(&mut self, prev_positions: Vec<(u16, u16)>) {
+        let ids = self.body_ids.clone();
+        for (i, id) in ids.iter().enumerate() {
+            if i < prev_positions.len() {
+                self.set_entity_position(*id, prev_positions[i]);
+            }
+        }
+    }
+
+    pub fn end_game(&mut self) {
+        self.state = GameState::Lost(self.score);
+    }
+}
+
+impl GameLogic for Game {
+    fn start_game(&mut self) {
+        self.score = 0;
+        if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
+            if let Some(pos) = &mut head.components.position_component {
+                pos.x = 1;
+                pos.y = 1;
+            }
+        }
+        self.player_direction = Direction::Up;
+        self.state = GameState::InGame;
+    }
+
+    fn next(&mut self, key: Option<Key>) {
+        if self.state != GameState::InGame {
+            return;
+        }
+
+        let mut prev_positions: Vec<(u16, u16)> = Vec::with_capacity(self.body_ids.len() + 1);
+        prev_positions.push(self.head_position());
+        prev_positions.extend(self.body_positions());
+
+        self.move_direction(key);
+        self.set_head_velocity_from_direction();
+
+        self.ecs.step();
+        self.clear_head_velocity();
+
+        let collisions = self.ecs.collision_pass();
+        let mut ate_food = false;
+        for [a, b] in collisions.into_iter() {
+            let (_player, other) = if a == self.player_id {
+                (a, b)
+            } else if b == self.player_id {
+                (b, a)
+            } else {
+                continue;
+            };
+
+            if self.wall_ids.contains(&other) || self.body_ids.contains(&other) {
+                self.end_game();
+                return;
+            }
+
+            if let Some(fid) = self.food_id {
+                if other == fid {
+                    ate_food = true;
                 }
             }
         }
+
+        self.update_body_segments(prev_positions);
+
+        if ate_food {
+            let tail_target = self
+                .body_ids
+                .last()
+                .and_then(|id| self.ecs.get_entity_by_id(*id))
+                .and_then(|e| e.components.position_component.as_ref().map(|p| (p.x, p.y)))
+                .unwrap_or_else(|| self.head_position());
+            self.grow_body_by_one(tail_target);
+
+            if let Some(fid) = self.food_id {
+                if let Some(food) = self.ecs.get_entity_by_id_mut(fid) {
+                    if let Some(size) = &mut food.components.size_component {
+                        size.x = 0;
+                        size.y = 0;
+                    }
+                    if let Some(render) = &mut food.components.render_component {
+                        render.ascii_character = '.';
+                    }
+                }
+            }
+            self.spawn_food();
+        }
+
+        let length = 1 + self.body_ids.len() as u16;
+        self.score = self.score.max(length);
     }
 
-    impl GameLogic for Game {
-        // duplication across games - consider options to refactor out?
-        fn start_game(&mut self) {
-            self.score = 0;
-            self.get_mut_player_object().unwrap().reset();
-            self.state = GameState::InGame;
-        }
-
-        // duplication across games - consider options to refactor out?
-        fn entities(&self) -> &Entities {
-            &self.entities
-        }
-
-        fn next(&mut self, key: Option<Key>) {
-            if self.state != GameState::InGame {
-                return;
-            }
-            let start_player_coordinate = self.get_player_object().unwrap().coordinate.clone();
-            self.move_player(key);
-            self.entities
-                .game_objects
-                .iter_mut()
-                .for_each(|o| o.next_step());
-
-            collision_pass(&mut self.entities.game_objects);
-
-            if self.get_player_object().unwrap().hit_wall {
-                self.end_game();
-            }
-
-            self.check_food_state();
-            self.update_body_segments(start_player_coordinate);
-            self.score = self
-                .score
-                .max(self.get_player_object().unwrap().size as usize);
-        }
-
-        fn debug_str(&self) -> Option<String> {
-            if let Some(player) = self.get_player_object() {
-                let a = format!(
-                    "s = {:4}, x = {:3}, y = {:3}, d = {:?}, hit_wall = {:?}",
-                    player.size,
-                    player.coordinate.x,
-                    player.coordinate.y,
-                    player.direction,
-                    player.hit_wall
-                );
-                Some(a)
-            } else {
-                None
-            }
-        }
+    fn ecs(&self) -> &ECS {
+        &self.ecs
     }
 
-    #[cfg(test)]
-    impl Game {
-        pub fn entities_for_test(&self) -> &Entities {
-            &self.entities
+    fn debug_str(&self) -> Option<String> {
+        if let Some(head) = self.ecs.get_entity_by_id(self.player_id) {
+            let pos = head.components.position_component.as_ref()?;
+            Some(format!(
+                "len = {:3}, x = {:3}, y = {:3}, dir = {:?}",
+                1 + self.body_ids.len(),
+                pos.x,
+                pos.y,
+                self.player_direction
+            ))
+        } else {
+            None
         }
     }
 }
 
-#[cfg(test)]
-mod test {
-    use hewn::{
-        game::GameLogic,
-        game_object::utils::{detect_collision, take_game_object},
-    };
-
-    use super::game_objects::player_character::PlayerCharacter;
-    use super::{game_objects::food::Food, *};
-
-    #[test]
-    fn test_eat_food() {
-        let mut game = crate::game::snake::Game::new(30, 25);
-        game.set_player(PlayerCharacter::new());
-        game.set_food(Food::from_tuple((1, 2)));
-
-        let food = take_game_object::<Food>(&game.entities_for_test().game_objects);
-        let player = take_game_object::<PlayerCharacter>(&game.entities_for_test().game_objects);
-        assert!(detect_collision(food.unwrap(), player.unwrap()));
-        println!("Next");
-        game.start_game();
-        game.next(None);
-        println!("Done {:?}", game.entities_for_test().game_objects);
-
-        let food = take_game_object::<Food>(&game.entities_for_test().game_objects);
-        let player = take_game_object::<PlayerCharacter>(&game.entities_for_test().game_objects);
-
-        assert!(food.unwrap().eaten);
-        assert!(!detect_collision(food.unwrap(), player.unwrap()));
-        assert_eq!(game.score, 1);
-        assert_eq!(player.unwrap().size, 2);
+fn generate_walls(width: u16, height: u16) -> Vec<(u16, u16)> {
+    let mut walls: Vec<(u16, u16)> = vec![];
+    for x_index in 0..width {
+        walls.push((x_index, 1));
+        walls.push((x_index, height - 2));
     }
+    for y_index in 0..height {
+        walls.push((0, y_index));
+        walls.push((width - 1, y_index));
+    }
+    walls
 }
