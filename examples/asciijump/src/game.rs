@@ -1,10 +1,11 @@
-use hewn::ecs::{Components, ECS};
 use hewn::ecs::{
-    EntityId, PositionComponent, RenderComponent, SizeComponent, TrackComponent, VelocityComponent,
+    CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
+use hewn::ecs::{Components, ECS};
 use hewn::game::GameLogic;
 use hewn::runtime::Key;
-use rand::Rng;
+use rand::RngCore;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::collections::HashSet;
 
 pub const WIDTH: u16 = 10;
@@ -12,11 +13,10 @@ pub const HEIGHT: u16 = 500;
 pub const SCREEN_WIDTH: u16 = 10;
 pub const SCREEN_HEIGHT: u16 = 20;
 
-pub fn create_game() -> Game {
-    let mut game = Game::new(WIDTH, HEIGHT);
-    let platforms = generate_platform_positions(WIDTH as usize, HEIGHT as usize);
-    game.add_player_from_position((1, 1));
-    game.add_platforms_from_positions(platforms);
+pub fn create_game(seed: Option<u64>) -> Game {
+    let mut game = Game::new(WIDTH, HEIGHT, seed);
+    game.initialise_player();
+    game.initialise_platforms();
     game
 }
 
@@ -30,17 +30,22 @@ pub enum GameState {
 pub struct Game {
     pub width: u16,
     pub height: u16,
-
     pub state: GameState,
     pub score: u16,
 
+    rng: Box<dyn RngCore>,
     ecs: ECS,
     player_id: EntityId,
     platform_ids: HashSet<EntityId>,
 }
 
 impl Game {
-    pub fn new(width: u16, height: u16) -> Game {
+    pub fn new(width: u16, height: u16, seed: Option<u64>) -> Game {
+        let rng: Box<dyn rand::RngCore> = if let Some(s) = seed {
+            Box::new(StdRng::seed_from_u64(s))
+        } else {
+            Box::new(rand::thread_rng())
+        };
         Game {
             width,
             height,
@@ -49,6 +54,7 @@ impl Game {
             ecs: ECS::new(),
             player_id: EntityId(0),
             platform_ids: HashSet::new(),
+            rng,
         }
     }
 
@@ -80,18 +86,15 @@ impl Game {
         self.state = GameState::Lost(self.score);
     }
 
-    pub fn add_player_from_position(&mut self, start: (u16, u16)) {
+    pub fn initialise_player(&mut self) {
         let components = Components {
-            position_component: Some(PositionComponent {
-                x: start.0,
-                y: start.1,
-            }),
+            position_component: Some(PositionComponent { x: 1, y: 1 }),
             velocity_component: Some(VelocityComponent { x: 0, y: 5 }),
             size_component: Some(SizeComponent { x: 1, y: 1 }),
             render_component: Some(RenderComponent {
                 ascii_character: '#',
             }),
-            track_component: Some(TrackComponent {}),
+            camera_follow_component: Some(CameraFollow {}),
         };
         let id = self.ecs.add_entity_from_components(components);
         self.player_id = id;
@@ -106,11 +109,30 @@ impl Game {
                 render_component: Some(RenderComponent {
                     ascii_character: '=',
                 }),
-                track_component: None,
+                camera_follow_component: None,
             };
             let id = self.ecs.add_entity_from_components(components);
             self.platform_ids.insert(id);
         }
+    }
+
+    pub fn initialise_platforms(&mut self) {
+        let mut platforms: Vec<(u16, u16)> = vec![];
+        let mut last_platform: usize = 0;
+        for index in 0..self.height {
+            if last_platform > 8 {
+                let x = self.rng.gen_range(0..(self.width - 3));
+                platforms.push((x as u16, index as u16));
+                last_platform = 0;
+            }
+            if self.rng.gen_range(0..10) == 0 {
+                let x = self.rng.gen_range(0..(self.width - 3));
+                platforms.push((x as u16, index as u16));
+                last_platform = 0;
+            }
+            last_platform += 1;
+        }
+        self.add_platforms_from_positions(platforms);
     }
 }
 
@@ -243,15 +265,15 @@ mod tests {
 
     fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
         let ecs = game.ecs();
-        let mut tracked = ecs.get_entities_by_component(ComponentType::Track);
+        let mut tracked = ecs.get_entities_by_component(ComponentType::CameraFollow);
         assert!(tracked.len() > 0, "player entity not found");
         tracked.remove(0)
     }
 
     #[test]
     fn ignore_collision_when_moving_up() {
-        let mut game = Game::new(10, 10);
-        game.add_player_from_position((1, 1));
+        let mut game = Game::new(10, 10, Some(42));
+        game.initialise_player();
         game.add_platforms_from_positions(vec![(1, 3)]);
         game.start_game();
 
@@ -270,8 +292,8 @@ mod tests {
 
     #[test]
     fn bounce_when_falling_onto_platform() {
-        let mut game = Game::new(10, 20);
-        game.add_player_from_position((1, 1));
+        let mut game = Game::new(10, 20, Some(42));
+        game.initialise_player();
         game.add_platforms_from_positions(vec![(1, 5)]);
         game.start_game();
 

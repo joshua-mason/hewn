@@ -10,7 +10,7 @@ const SCREEN_HEIGHT: u16 = 10;
 
 fn main() {
     let (stdout, stdin) = initialize_terminal_io();
-    let mut game = create_game(SCREEN_WIDTH, SCREEN_HEIGHT);
+    let mut game = create_game(SCREEN_WIDTH, SCREEN_HEIGHT, None);
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = View {
         renderer: Box::new(renderer),

@@ -7,8 +7,8 @@ pub const SCREEN_WIDTH: u16 = 50;
 pub const SCREEN_HEIGHT: u16 = 30;
 
 #[wasm_bindgen]
-pub fn new_game_api() -> WasmGameApi {
-    let game = create_game();
+pub fn new_game_api(seed: Option<u64>) -> WasmGameApi {
+    let game = create_game(seed);
     let asciibird_pointer = Box::new(game);
     let web_runtime = hewn::runtime::WebRuntime::new(
         asciibird_pointer,

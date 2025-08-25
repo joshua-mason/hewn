@@ -27,10 +27,9 @@ impl View {
     pub fn next(&mut self, entities: Vec<&Entity>, debug_string: Option<String>) -> String {
         let renderer = self.renderer.as_mut();
         let strategy = self.cursor_strategy.as_mut();
-        // TODO: update view, need to get the palyer... a component like "TrackView", or "Camera" or something??
         let maybe_trackable_entity = entities
             .iter()
-            .find(|entity| entity.components.track_component.is_some());
+            .find(|entity| entity.components.camera_follow_component.is_some());
         if let Some(entity_to_track) = maybe_trackable_entity {
             let position_component = &(*entity_to_track).components.position_component;
             let pos = position_component
@@ -44,7 +43,6 @@ impl View {
 
         // TODO would it be much faster to just run through the entities and then render them at the relevant
         // indexes in the level strings?
-
         for height in 0..renderer.screen_height() {
             let mut level: String = build_string('.', renderer.screen_width() as usize);
             let y_position = renderer.screen_height() + self.view_cursor.y as u16 - height;
@@ -87,7 +85,6 @@ impl View {
         }
 
         let h: u16 = renderer.screen_height();
-        // in the renderer should we just combine the two methods below?
         let view = renderer.player_view(level_strings);
         renderer.render(debug_string, view, h)
     }
@@ -223,15 +220,17 @@ impl Renderer for TerminalRenderer {
         .unwrap();
         self.stdout().lock().flush().unwrap();
         // TODO unused return value as we flush to the stdout in terminal renderer
+        // different use case of terminal vs web, but align to the same trait - worth
+        // looking at
         view
     }
 
     fn player_view(&mut self, levels: Vec<String>) -> String {
-        let cursor_y_offset = 2;
+        let cursor_y_offset = 2; // termion is (1,1)-based
         let terminal_top_index = cursor_y_offset;
         let terminal_bottom_index = self.screen_height() + cursor_y_offset;
         let terminal_goto_commands = (terminal_top_index..terminal_bottom_index).map(|row_idx| {
-            let y_position = row_idx; // (1,1)-based
+            let y_position = row_idx;
             termion::cursor::Goto(1, y_position).to_string()
         });
         zip(levels, terminal_goto_commands).fold(String::new(), |mut acc, (level, goto)| {
@@ -272,10 +271,10 @@ impl Renderer for WebRenderer {
     }
 
     fn player_view(&mut self, levels: Vec<String>) -> String {
-        // this is a hack to conform to the terminal renderer interface
-        // TODO: possible to output this as a different type? e.g. just arrays... or better
-        // to keep consistent output and handle the string interpretation in client
-        // as a quasi custom data structure ? Not in long run but maybe right now.
+        // In order to conform to the same interface as the terminal, we return a String - and we therefore
+        // are currently using a divider to indicate the divide. We should just be splitting by the width
+        // on the string in the web, rather than using this implementation. However we are also planning on
+        // simply outputting the entities to draw.
         let separator = (0..self.screen_height()).map(|_| "|");
         zip(levels, separator).fold(String::new(), |mut acc, (level, goto)| {
             acc.push_str(&level);

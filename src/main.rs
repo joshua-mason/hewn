@@ -5,21 +5,12 @@ use hewn::view::{TerminalRenderer, View, ViewCoordinate};
 const SCREEN_HEIGHT: u16 = 20;
 const SCREEN_WIDTH: u16 = 50;
 
-#[derive(Debug)]
-pub struct Player {}
-
-impl Player {
-    pub fn new() -> Player {
-        Player {}
-    }
-}
-
 mod game {
 
     use hewn::{
         ecs::{
-            self, Components, EntityId, PositionComponent, RenderComponent, SizeComponent,
-            TrackComponent, VelocityComponent, ECS,
+            self, CameraFollow, Components, EntityId, PositionComponent, RenderComponent,
+            SizeComponent, VelocityComponent, ECS,
         },
         game::GameLogic,
         runtime::Key,
@@ -34,6 +25,7 @@ mod game {
     impl MinimalGame {
         pub fn new() -> MinimalGame {
             let mut ecs = ecs::ECS::new();
+            // Add player object
             let player_entity_id = ecs.add_entity_from_components(Components {
                 position_component: Some(PositionComponent { x: 5, y: 5 }),
                 velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
@@ -41,8 +33,9 @@ mod game {
                     ascii_character: 'O',
                 }),
                 size_component: Some(SizeComponent { x: 2, y: 1 }),
-                track_component: Some(TrackComponent {}),
+                camera_follow_component: Some(CameraFollow {}),
             });
+            // Add another object as a wall
             ecs.add_entity_from_components(Components {
                 position_component: Some(PositionComponent { x: 5, y: 6 }),
                 velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
@@ -50,7 +43,7 @@ mod game {
                     ascii_character: '#',
                 }),
                 size_component: Some(SizeComponent { x: 2, y: 1 }),
-                track_component: None,
+                camera_follow_component: None,
             });
 
             MinimalGame {
@@ -159,9 +152,8 @@ fn main() {
 
 #[cfg(test)]
 mod test {
-    use hewn::{game::GameLogic, runtime::Key};
-
     use crate::game;
+    use hewn::{game::GameLogic, runtime::Key};
 
     #[test]
     fn test_player_move() {

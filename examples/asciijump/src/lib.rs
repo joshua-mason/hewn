@@ -5,8 +5,8 @@ use hewn::runtime::WasmGameApi;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub fn new_game_api() -> WasmGameApi {
-    let game = create_game();
+pub fn new_game_api(seed: Option<u64>) -> WasmGameApi {
+    let game = create_game(seed);
     let asciijump_pointer = Box::new(game);
     let web_runtime = hewn::runtime::WebRuntime::new(
         asciijump_pointer,

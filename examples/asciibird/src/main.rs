@@ -19,7 +19,7 @@ fn main() {
 fn play_asciibird_in_terminal() {
     let (stdout, stdin) = initialize_terminal_io();
 
-    let mut game = create_game();
+    let mut game = create_game(None);
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);
     let mut display = View {
         renderer: Box::new(renderer),

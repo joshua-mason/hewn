@@ -17,7 +17,7 @@ fn main() {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn play_asciijump_in_terminal() {
     let (stdout, stdin) = initialize_terminal_io();
-    let mut game = create_game();
+    let mut game = create_game(None);
     // TODO where we input height and width as args, can we make it a struct so labelled instead of just
     // guessing?
     let renderer = TerminalRenderer::new(stdout, SCREEN_HEIGHT, SCREEN_WIDTH);

@@ -1,18 +1,17 @@
-use hewn::ecs::{Components, ECS};
 use hewn::ecs::{
-    EntityId, PositionComponent, RenderComponent, SizeComponent, TrackComponent, VelocityComponent,
+    CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
+use hewn::ecs::{Components, ECS};
 use hewn::game::GameLogic;
 use hewn::runtime::Key;
-use rand::Rng;
+use rand::{rngs::StdRng, Rng, RngCore, SeedableRng};
 use std::collections::HashSet;
 
-pub fn create_game(width: u16, height: u16) -> Game {
-    let mut game = Game::new(width, height);
-    let walls_positions = generate_walls_positions(width, height);
-    game.add_player_from_position((1, 1));
-    game.add_walls_from_positions(walls_positions);
-    game.spawn_food();
+pub fn create_game(width: u16, height: u16, seed: Option<u64>) -> Game {
+    let mut game = Game::new(width, height, seed);
+    game.initialise_walls();
+    game.initialise_player();
+    game.initialise_food();
     game
 }
 
@@ -43,6 +42,7 @@ pub struct Game {
     body_ids: Vec<EntityId>,
     wall_ids: HashSet<EntityId>,
     food_id: Option<EntityId>,
+    rng: Box<dyn RngCore>,
 }
 
 impl Game {
@@ -70,7 +70,12 @@ impl Game {
         current
     }
 
-    pub fn new(width: u16, height: u16) -> Game {
+    pub fn new(width: u16, height: u16, seed: Option<u64>) -> Game {
+        let rng: Box<dyn RngCore> = if let Some(s) = seed {
+            Box::new(StdRng::seed_from_u64(s))
+        } else {
+            Box::new(rand::thread_rng())
+        };
         Game {
             width,
             height,
@@ -82,21 +87,19 @@ impl Game {
             body_ids: vec![],
             wall_ids: HashSet::new(),
             food_id: None,
+            rng,
         }
     }
 
-    pub fn add_player_from_position(&mut self, start: (u16, u16)) {
+    pub fn initialise_player(&mut self) {
         let components = Components {
-            position_component: Some(PositionComponent {
-                x: start.0,
-                y: start.1,
-            }),
+            position_component: Some(PositionComponent { x: 1, y: 1 }),
             velocity_component: Some(VelocityComponent { x: 0, y: 1 }),
             size_component: Some(SizeComponent { x: 1, y: 1 }),
             render_component: Some(RenderComponent {
                 ascii_character: '0',
             }),
-            track_component: Some(TrackComponent {}),
+            camera_follow_component: Some(CameraFollow {}),
         };
         let id = self.ecs.add_entity_from_components(components);
         self.player_id = id;
@@ -112,11 +115,16 @@ impl Game {
                 render_component: Some(RenderComponent {
                     ascii_character: '#',
                 }),
-                track_component: None,
+                camera_follow_component: None,
             };
             let id = self.ecs.add_entity_from_components(components);
             self.wall_ids.insert(id);
         }
+    }
+
+    pub fn initialise_walls(&mut self) {
+        let walls_positions = generate_walls_positions(self.width, self.height);
+        self.add_walls_from_positions(walls_positions);
     }
 
     fn set_head_velocity_from_direction(&mut self) {
@@ -144,7 +152,46 @@ impl Game {
         }
     }
 
+    pub fn initialise_food(&mut self) -> Result<(), &str> {
+        let empty_tile = self.find_empty_tile().ok_or("No empty tile")?;
+        let components = Components {
+            position_component: Some(PositionComponent {
+                x: empty_tile.0,
+                y: empty_tile.1,
+            }),
+            velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
+            size_component: Some(SizeComponent { x: 1, y: 1 }),
+            render_component: Some(RenderComponent {
+                ascii_character: '+',
+            }),
+            camera_follow_component: None,
+        };
+        let id = self.ecs.add_entity_from_components(components);
+        self.food_id = Some(id);
+        Ok(())
+    }
+
     pub fn spawn_food(&mut self) {
+        let target = self.find_empty_tile();
+
+        if let (Some((x, y)), Some(fid)) = (target, self.food_id) {
+            if let Some(food) = self.ecs.get_entity_by_id_mut(fid) {
+                if let Some(pos) = &mut food.components.position_component {
+                    pos.x = x;
+                    pos.y = y;
+                }
+                if let Some(size) = &mut food.components.size_component {
+                    size.x = 1;
+                    size.y = 1;
+                }
+                if let Some(render) = &mut food.components.render_component {
+                    render.ascii_character = '+';
+                }
+            }
+        }
+    }
+
+    fn find_empty_tile(&mut self) -> Option<(u16, u16)> {
         let mut occupied: std::collections::HashSet<(u16, u16)> = std::collections::HashSet::new();
         occupied.insert(self.head_position());
         for (x, y) in self.body_positions() {
@@ -158,7 +205,7 @@ impl Game {
             }
         }
 
-        let mut rng = rand::thread_rng();
+        let rng = &mut self.rng;
         let mut target: Option<(u16, u16)> = None;
         let max_tries = (self.width as u32 * self.height as u32).max(100);
         for _ in 0..max_tries {
@@ -169,36 +216,7 @@ impl Game {
                 break;
             }
         }
-
-        if let Some((x, y)) = target {
-            if let Some(fid) = self.food_id {
-                if let Some(food) = self.ecs.get_entity_by_id_mut(fid) {
-                    if let Some(pos) = &mut food.components.position_component {
-                        pos.x = x;
-                        pos.y = y;
-                    }
-                    if let Some(size) = &mut food.components.size_component {
-                        size.x = 1;
-                        size.y = 1;
-                    }
-                    if let Some(render) = &mut food.components.render_component {
-                        render.ascii_character = '+';
-                    }
-                }
-            } else {
-                let components = Components {
-                    position_component: Some(PositionComponent { x, y }),
-                    velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
-                    size_component: Some(SizeComponent { x: 1, y: 1 }),
-                    render_component: Some(RenderComponent {
-                        ascii_character: '+',
-                    }),
-                    track_component: None,
-                };
-                let id = self.ecs.add_entity_from_components(components);
-                self.food_id = Some(id);
-            }
-        }
+        target
     }
 
     fn grow_body_by_one(&mut self, tail_target: (u16, u16)) {
@@ -212,7 +230,7 @@ impl Game {
             render_component: Some(RenderComponent {
                 ascii_character: 'o',
             }),
-            track_component: None,
+            camera_follow_component: None,
         };
         let id = self.ecs.add_entity_from_components(components);
         self.body_ids.push(id);

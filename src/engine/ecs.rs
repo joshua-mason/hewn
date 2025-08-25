@@ -10,7 +10,7 @@ pub struct Components {
     pub velocity_component: Option<VelocityComponent>,
     pub render_component: Option<RenderComponent>,
     pub size_component: Option<SizeComponent>,
-    pub track_component: Option<TrackComponent>,
+    pub camera_follow_component: Option<CameraFollow>,
 }
 
 impl Components {
@@ -20,7 +20,7 @@ impl Components {
             velocity_component: None,
             render_component: None,
             size_component: None,
-            track_component: None,
+            camera_follow_component: None,
         }
     }
 }
@@ -54,7 +54,7 @@ impl Entity {
                     y: size.1,
                 }),
                 render_component: ascii_character.map(|c| RenderComponent { ascii_character: c }),
-                track_component: if track { Some(TrackComponent {}) } else { None },
+                camera_follow_component: if track { Some(CameraFollow {}) } else { None },
             },
         }
     }
@@ -65,7 +65,7 @@ pub enum ComponentType {
     Velocity,
     Render,
     Size,
-    Track,
+    CameraFollow,
 }
 
 #[allow(dead_code)]
@@ -108,9 +108,9 @@ impl Component for RenderComponent {
 }
 
 #[derive(Debug)]
-pub struct TrackComponent {}
-impl Component for TrackComponent {
-    const TYPE: ComponentType = ComponentType::Track;
+pub struct CameraFollow {}
+impl Component for CameraFollow {
+    const TYPE: ComponentType = ComponentType::CameraFollow;
 }
 
 pub struct ECS {
@@ -120,6 +120,7 @@ pub struct ECS {
 
 impl ECS {
     pub fn step(&mut self) {
+        // Consider splitting systems e.g. if we are handling gravity in the future
         fn clamped_add(position: u16, delta: i16) -> u16 {
             let sum = position as i32 + delta as i32;
             if sum < 0 {
@@ -210,8 +211,8 @@ impl ECS {
                     }
                     false
                 }
-                ComponentType::Track => {
-                    if e.components.track_component.is_some() {
+                ComponentType::CameraFollow => {
+                    if e.components.camera_follow_component.is_some() {
                         return true;
                     }
                     false
@@ -253,8 +254,8 @@ impl ECS {
                     }
                     false
                 }
-                ComponentType::Track => {
-                    if e.components.track_component.is_some() {
+                ComponentType::CameraFollow => {
+                    if e.components.camera_follow_component.is_some() {
                         return true;
                     }
                     false
@@ -269,14 +270,8 @@ pub mod collisions {
     use crate::ecs::{Entity, EntityId};
     use std::ops::Range;
 
-    // TODO: this seems to be affected by the order of the objects - probably related to the double dispatch problem?
     pub fn collision_pass(objects: &[Entity]) -> Vec<[EntityId; 2]> {
         let collisions = process_collisions(objects);
-        // TODO - do we need both checks?
-        // objects.reverse();
-        // let mut reversed_collisions = process_collisions(objects);
-        // collisions.append(&mut reversed_collisions);
-        // objects.reverse();
         collisions
     }
 
@@ -334,6 +329,7 @@ pub mod collisions {
     }
 
     fn process_collisions(objects: &[Entity]) -> Vec<[EntityId; 2]> {
+        // TODO: Collision is O(n^2) - worth looking at better approaches in future
         let mut collisions: Vec<[EntityId; 2]> = vec![];
         for i in 0..objects.len() {
             let (left, rest) = objects.split_at(i + 1);
@@ -359,7 +355,7 @@ pub mod collisions {
     #[cfg(test)]
     mod test {
         use crate::ecs::{
-            collisions::{are_collision_boxes_overlapping, collision_pass, CollisionBox},
+            collisions::{collision_pass, CollisionBox},
             Entity, EntityId,
         };
 
@@ -422,10 +418,8 @@ pub mod collisions {
                 "Expected a collision between player and wall"
             );
             let pair = collisions[0];
-            // The order of the pair may not be guaranteed, so check both possibilities
             assert!(
-                (pair[0] == EntityId(0) && pair[1] == EntityId(1))
-                    || (pair[0] == EntityId(1) && pair[1] == EntityId(0)),
+                (pair[0] == EntityId(0) && pair[1] == EntityId(1)),
                 "Collision should be between EntityId(0) and EntityId(1), got: {:?}",
                 pair
             );
@@ -448,7 +442,7 @@ pub mod collisions {
             let pair = collisions[0];
             // The order of the pair may not be guaranteed, so check both possibilities
             assert!(
-                (pair[0] == EntityId(0) && pair[1] == EntityId(1)), // || (pair[0] == EntityId(1) && pair[1] == EntityId(0))
+                (pair[0] == EntityId(0) && pair[1] == EntityId(1)),
                 "Collision should be between EntityId(0) and EntityId(1), got: {:?}",
                 pair
             );
@@ -477,7 +471,7 @@ mod test {
             velocity_component: None,
             render_component: None,
             size_component: None,
-            track_component: None,
+            camera_follow_component: None,
         }
     }
 
@@ -515,14 +509,14 @@ mod test {
             velocity_component: None,
             render_component: None,
             size_component: None,
-            track_component: None,
+            camera_follow_component: None,
         });
         let entity_two_id = ecs.add_entity_from_components(Components {
             position_component: Some(PositionComponent { x: 1, y: 1 }),
             velocity_component: None,
             render_component: None,
             size_component: None,
-            track_component: None,
+            camera_follow_component: None,
         });
         assert_eq!(ecs.entities.len(), 2);
 
@@ -558,14 +552,14 @@ mod test {
             velocity_component: Some(VelocityComponent { x: 0, y: 0 }),
             render_component: None,
             size_component: None,
-            track_component: None,
+            camera_follow_component: None,
         });
         let entity_two_id = ecs.add_entity_from_components(Components {
             position_component: Some(PositionComponent { x: 1, y: 1 }),
             velocity_component: Some(VelocityComponent { x: 1, y: 1 }),
             render_component: None,
             size_component: None,
-            track_component: None,
+            camera_follow_component: None,
         });
         assert_eq!(ecs.entities.len(), 2);
 
