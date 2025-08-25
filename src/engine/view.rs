@@ -164,7 +164,7 @@ pub mod cursor {
         ) {
             let x = coords.x;
             let abs_diff = x.abs_diff(cursor.x);
-            if abs_diff > 1 && abs_diff < (renderer.screen_height() - 2_u16) {
+            if abs_diff > 1 && abs_diff < (renderer.screen_width() - 2_u16) {
                 return;
             }
             cursor.x =
@@ -227,9 +227,14 @@ impl Renderer for TerminalRenderer {
     }
 
     fn player_view(&mut self, levels: Vec<String>) -> String {
-        let gotos =
-            (0..self.screen_height()).map(|height| termion::cursor::Goto(1, height).to_string());
-        zip(levels, gotos).fold(String::new(), |mut acc, (level, goto)| {
+        let cursor_y_offset = 2;
+        let terminal_top_index = cursor_y_offset;
+        let terminal_bottom_index = self.screen_height() + cursor_y_offset;
+        let terminal_goto_commands = (terminal_top_index..terminal_bottom_index).map(|row_idx| {
+            let y_position = row_idx; // (1,1)-based
+            termion::cursor::Goto(1, y_position).to_string()
+        });
+        zip(levels, terminal_goto_commands).fold(String::new(), |mut acc, (level, goto)| {
             acc.push_str(&level);
             acc.push_str(&goto);
             acc

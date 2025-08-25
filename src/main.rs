@@ -1,5 +1,5 @@
 use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
-use hewn::view::cursor::{FollowPlayerYCursorStrategy, StaticCursorStrategy};
+use hewn::view::cursor::FollowPlayerYCursorStrategy;
 use hewn::view::{TerminalRenderer, View, ViewCoordinate};
 
 const SCREEN_HEIGHT: u16 = 20;
