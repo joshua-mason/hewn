@@ -12,7 +12,7 @@ pub const HEIGHT: u16 = 500;
 pub const SCREEN_WIDTH: u16 = 10;
 pub const SCREEN_HEIGHT: u16 = 20;
 
-pub fn default_game() -> Game {
+pub fn create_game() -> Game {
     let mut game = Game::new(WIDTH, HEIGHT);
     let platforms = generate_platform_positions(WIDTH as usize, HEIGHT as usize);
     game.add_player_from_position((1, 1));

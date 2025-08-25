@@ -1,12 +1,12 @@
 pub mod game;
-use crate::game::default_game;
+use crate::game::create_game;
 use crate::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use hewn::runtime::WasmGameApi;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub fn new_game_api() -> WasmGameApi {
-    let game = default_game();
+    let game = create_game();
     let asciijump_pointer = Box::new(game);
     let web_runtime = hewn::runtime::WebRuntime::new(
         asciijump_pointer,
