@@ -21,7 +21,16 @@ pub struct State {
     config: wgpu::SurfaceConfiguration,
     is_surface_configured: bool,
     render_pipeline: wgpu::RenderPipeline,
+    render_pipeline_2: wgpu::RenderPipeline,
+
     mouse_position: PhysicalPosition<f64>,
+    render_pipeline_target: RenderPipelineTarget,
+}
+
+#[derive(PartialEq)]
+enum RenderPipelineTarget {
+    One,
+    Two,
 }
 
 impl State {
@@ -107,16 +116,14 @@ impl State {
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: Some("vs_main"), // 1.
-                buffers: &[],                 // 2.
+                entry_point: Some("vs_main"),
+                buffers: &[],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
-                // 3.
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
-                    // 4.
                     format: config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
@@ -135,7 +142,52 @@ impl State {
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
-            depth_stencil: None, // 1.
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
+        let shader_2 = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shader_change_colour.wgsl").into()),
+        });
+        let render_pipeline_2 = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline 2"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader_2,
+                entry_point: Some("vs_main"),
+                buffers: &[],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader_2,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+            depth_stencil: None,
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -153,7 +205,9 @@ impl State {
             is_surface_configured: false,
             window,
             render_pipeline,
+            render_pipeline_2,
             mouse_position: PhysicalPosition::new(0.1, 0.2),
+            render_pipeline_target: RenderPipelineTarget::One,
         })
     }
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -196,8 +250,13 @@ impl State {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw(0..3, 0..1)
+            if (self.render_pipeline_target == RenderPipelineTarget::One) {
+                render_pass.set_pipeline(&self.render_pipeline);
+                render_pass.draw(0..3, 0..1);
+            } else {
+                render_pass.set_pipeline(&self.render_pipeline_2);
+                render_pass.draw(0..3, 0..1);
+            }
         }
 
         // submit will accept anything that implements IntoIter
@@ -216,9 +275,10 @@ impl State {
         }
     }
 
-    fn handle_key(&self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
+    fn handle_key(&mut self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
         match (code, is_pressed) {
             (KeyCode::Escape, true) => event_loop.exit(),
+            (KeyCode::Space, true) => self.handle_spacebar(),
             _ => {}
         }
     }
@@ -228,6 +288,14 @@ impl State {
             position.x / self.window.inner_size().width as f64,
             position.y / self.window.inner_size().height as f64,
         );
+    }
+
+    fn handle_spacebar(&mut self) {
+        if self.render_pipeline_target == RenderPipelineTarget::One {
+            self.render_pipeline_target = RenderPipelineTarget::Two
+        } else {
+            self.render_pipeline_target = RenderPipelineTarget::One
+        }
     }
 }
 
