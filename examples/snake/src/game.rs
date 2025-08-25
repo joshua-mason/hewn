@@ -9,9 +9,9 @@ use std::collections::HashSet;
 
 pub fn create_game(width: u16, height: u16) -> Game {
     let mut game = Game::new(width, height);
-    let walls = generate_walls(width, height);
+    let walls_positions = generate_walls_positions(width, height);
     game.add_player_from_position((1, 1));
-    game.add_walls_from_positions(walls);
+    game.add_walls_from_positions(walls_positions);
     game.spawn_food();
     game
 }
@@ -46,6 +46,30 @@ pub struct Game {
 }
 
 impl Game {
+    fn compute_next_direction(current: Direction, key: Option<Key>) -> Direction {
+        let Some(key) = key else { return current };
+        let proposed = match key {
+            Key::Left => Some(Direction::Left),
+            Key::Right => Some(Direction::Right),
+            Key::Up => Some(Direction::Up),
+            Key::Down => Some(Direction::Down),
+            _ => None,
+        };
+        if let Some(dir) = proposed {
+            let is_uturn = matches!(
+                (current, dir),
+                (Direction::Left, Direction::Right)
+                    | (Direction::Right, Direction::Left)
+                    | (Direction::Up, Direction::Down)
+                    | (Direction::Down, Direction::Up)
+            );
+            if !is_uturn {
+                return dir;
+            }
+        }
+        current
+    }
+
     pub fn new(width: u16, height: u16) -> Game {
         Game {
             width,
@@ -95,32 +119,6 @@ impl Game {
         }
     }
 
-    fn move_direction(&mut self, key: Option<Key>) {
-        if key.is_none() {
-            return;
-        }
-        let key = key.unwrap();
-        let new_direction = match key {
-            Key::Left => Some(Direction::Left),
-            Key::Right => Some(Direction::Right),
-            Key::Up => Some(Direction::Up),
-            Key::Down => Some(Direction::Down),
-            _ => None,
-        };
-        if let Some(dir) = new_direction {
-            let is_uturn = matches!(
-                (self.player_direction, dir),
-                (Direction::Left, Direction::Right)
-                    | (Direction::Right, Direction::Left)
-                    | (Direction::Up, Direction::Down)
-                    | (Direction::Down, Direction::Up)
-            );
-            if !is_uturn {
-                self.player_direction = dir;
-            }
-        }
-    }
-
     fn set_head_velocity_from_direction(&mut self) {
         if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
             if let Some(vel) = &mut head.components.velocity_component {
@@ -142,15 +140,6 @@ impl Game {
                         vel.y = -1;
                     }
                 }
-            }
-        }
-    }
-
-    fn clear_head_velocity(&mut self) {
-        if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
-            if let Some(vel) = &mut head.components.velocity_component {
-                vel.x = 0;
-                vel.y = 0;
             }
         }
     }
@@ -289,14 +278,15 @@ impl GameLogic for Game {
         prev_positions.push(self.head_position());
         prev_positions.extend(self.body_positions());
 
-        self.move_direction(key);
+        let next_dir = Game::compute_next_direction(self.player_direction, key);
+        self.player_direction = next_dir;
         self.set_head_velocity_from_direction();
 
         self.ecs.step();
-        self.clear_head_velocity();
 
         let collisions = self.ecs.collision_pass();
         let mut ate_food = false;
+
         for [a, b] in collisions.into_iter() {
             let (_player, other) = if a == self.player_id {
                 (a, b)
@@ -329,17 +319,6 @@ impl GameLogic for Game {
                 .unwrap_or_else(|| self.head_position());
             self.grow_body_by_one(tail_target);
 
-            if let Some(fid) = self.food_id {
-                if let Some(food) = self.ecs.get_entity_by_id_mut(fid) {
-                    if let Some(size) = &mut food.components.size_component {
-                        size.x = 0;
-                        size.y = 0;
-                    }
-                    if let Some(render) = &mut food.components.render_component {
-                        render.ascii_character = '.';
-                    }
-                }
-            }
             self.spawn_food();
         }
 
@@ -367,11 +346,11 @@ impl GameLogic for Game {
     }
 }
 
-fn generate_walls(width: u16, height: u16) -> Vec<(u16, u16)> {
+fn generate_walls_positions(width: u16, height: u16) -> Vec<(u16, u16)> {
     let mut walls: Vec<(u16, u16)> = vec![];
     for x_index in 0..width {
         walls.push((x_index, 1));
-        walls.push((x_index, height - 2));
+        walls.push((x_index, height));
     }
     for y_index in 0..height {
         walls.push((0, y_index));
