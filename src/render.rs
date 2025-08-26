@@ -11,12 +11,68 @@ use winit::{
     window::Window,
 };
 
+use crate::texture;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct ShapeVertex {
+    position: [f32; 3],
+    color: [f32; 3],
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
     position: [f32; 3],
-    color: [f32; 3],
+    tex_coords: [f32; 2], // NEW!
 }
+
+impl Vertex {
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2, // NEW!
+                },
+            ],
+        }
+    }
+}
+
+const VERTICES: &[Vertex] = &[
+    Vertex {
+        position: [-0.0868241, 0.49240386, 0.0],
+        tex_coords: [0.4131759, 0.00759614],
+    }, // A
+    Vertex {
+        position: [-0.49513406, 0.06958647, 0.0],
+        tex_coords: [0.0048659444, 0.43041354],
+    }, // B
+    Vertex {
+        position: [-0.21918549, -0.44939706, 0.0],
+        tex_coords: [0.28081453, 0.949397],
+    }, // C
+    Vertex {
+        position: [0.35966998, -0.3473291, 0.0],
+        tex_coords: [0.85967, 0.84732914],
+    }, // D
+    Vertex {
+        position: [0.44147372, 0.2347359, 0.0],
+        tex_coords: [0.9414737, 0.2652641],
+    }, // E
+];
+
+const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 
 // Strategies to generate points for shapes:
 //
@@ -28,7 +84,7 @@ struct Vertex {
 //
 // These methods let you create vertices for triangles, polygons, stars, etc., as needed.
 
-fn gen_shape_buffer(points: u16) -> (Vec<Vertex>, Vec<u16>) {
+fn gen_shape_buffer(points: u16) -> (Vec<ShapeVertex>, Vec<u16>) {
     // Generate a regular polygon with `points` vertices centered at the origin, radius 0.5
     // All vertices will have a fixed color [0.5, 0.0, 0.5]
     // The indices will form a triangle fan (suitable for wgpu::PrimitiveTopology::TriangleList)
@@ -39,23 +95,23 @@ fn gen_shape_buffer(points: u16) -> (Vec<Vertex>, Vec<u16>) {
         // (could also panic or return empty)
         return (
             vec![
-                Vertex {
+                ShapeVertex {
                     position: [-0.0868241, 0.49240386, 0.0],
                     color: [0.5, 0.0, 0.5],
                 }, // A
-                Vertex {
+                ShapeVertex {
                     position: [-0.49513406, 0.06958647, 0.0],
                     color: [0.5, 0.0, 0.5],
                 }, // B
-                Vertex {
+                ShapeVertex {
                     position: [-0.21918549, -0.44939706, 0.0],
                     color: [0.5, 0.0, 0.5],
                 }, // C
-                Vertex {
+                ShapeVertex {
                     position: [0.35966998, -0.3473291, 0.0],
                     color: [0.5, 0.0, 0.5],
                 }, // D
-                Vertex {
+                ShapeVertex {
                     position: [0.44147372, 0.2347359, 0.0],
                     color: [0.5, 0.0, 0.5],
                 }, // E
@@ -74,7 +130,7 @@ fn gen_shape_buffer(points: u16) -> (Vec<Vertex>, Vec<u16>) {
         let theta = 2.0 * PI * (i as f32) / (points as f32);
         let x = radius * theta.cos();
         let y = radius * theta.sin();
-        vertices.push(Vertex {
+        vertices.push(ShapeVertex {
             position: [x, y, 0.0],
             color: [0.5, 0.0, 0.5],
         });
@@ -91,10 +147,10 @@ fn gen_shape_buffer(points: u16) -> (Vec<Vertex>, Vec<u16>) {
     (vertices, indices)
 }
 
-impl Vertex {
+impl ShapeVertex {
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            array_stride: std::mem::size_of::<ShapeVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute {
@@ -131,6 +187,8 @@ pub struct State {
     num_vertices: u32,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
+    diffuse_bind_group: wgpu::BindGroup,
+    diffuse_texture: texture::Texture,
 
     // extras
     render_pipeline_2: wgpu::RenderPipeline,
@@ -210,6 +268,50 @@ impl State {
             desired_maximum_frame_latency: 2,
         };
 
+        let diffuse_bytes = include_bytes!("happy-tree.png");
+        let diffuse_texture =
+            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        // This should match the filterable field of the
+                        // corresponding Texture entry above.
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("texture_bind_group_layout"),
+            });
+
+        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
+            label: Some("diffuse_bind_group"),
+        });
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
@@ -218,7 +320,7 @@ impl State {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
+                bind_group_layouts: &[&texture_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -308,7 +410,7 @@ impl State {
             cache: None,
         });
 
-        let (vertices, indices) = gen_shape_buffer(6);
+        let (vertices, indices) = (VERTICES, INDICES);
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -336,6 +438,8 @@ impl State {
             num_vertices,
             index_buffer,
             num_indices,
+            diffuse_bind_group,
+            diffuse_texture,
 
             render_pipeline_2,
             mouse_position: PhysicalPosition::new(0.1, 0.2),
@@ -385,6 +489,7 @@ impl State {
             match self.render_pipeline_target {
                 RenderPipelineTarget::One => {
                     render_pass.set_pipeline(&self.render_pipeline);
+                    render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
                     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                     render_pass
                         .set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);

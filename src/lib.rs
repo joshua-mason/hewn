@@ -10,7 +10,9 @@
 //! For more information, see the [README](https://github.com/joshua-mason/hewn).
 
 mod engine;
+
 pub mod render;
+pub mod texture;
 
 pub use engine::ecs;
 pub use engine::game;
