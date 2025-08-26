@@ -1,5 +1,7 @@
 use std::sync::Arc;
-
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+use wgpu::util::DeviceExt;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalPosition,
@@ -9,20 +11,129 @@ use winit::{
     window::Window,
 };
 
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct Vertex {
+    position: [f32; 3],
+    color: [f32; 3],
+}
 
+// Strategies to generate points for shapes:
+//
+// - Regular polygons: Use trigonometry. For an n-sided polygon, each vertex is at (r*cos(θ), r*sin(θ)) where θ = 2π*i/n for i in 0..n-1.
+// - Parametric equations: For circles, ellipses, or curves, use parametric formulas (e.g., circle: (r*cos(t), r*sin(t)) for t in [0, 2π]).
+// - Manual placement: For custom or irregular shapes, manually specify coordinates.
+// - Procedural generation: Use algorithms (e.g., noise, L-systems) for complex or organic shapes.
+// - Import from tools: Design in a graphics tool and export vertex data.
+//
+// These methods let you create vertices for triangles, polygons, stars, etc., as needed.
+
+fn gen_shape_buffer(points: u16) -> (Vec<Vertex>, Vec<u16>) {
+    // Generate a regular polygon with `points` vertices centered at the origin, radius 0.5
+    // All vertices will have a fixed color [0.5, 0.0, 0.5]
+    // The indices will form a triangle fan (suitable for wgpu::PrimitiveTopology::TriangleList)
+    use std::f32::consts::PI;
+
+    if points < 3 {
+        // Not enough points for a polygon, fall back to default
+        // (could also panic or return empty)
+        return (
+            vec![
+                Vertex {
+                    position: [-0.0868241, 0.49240386, 0.0],
+                    color: [0.5, 0.0, 0.5],
+                }, // A
+                Vertex {
+                    position: [-0.49513406, 0.06958647, 0.0],
+                    color: [0.5, 0.0, 0.5],
+                }, // B
+                Vertex {
+                    position: [-0.21918549, -0.44939706, 0.0],
+                    color: [0.5, 0.0, 0.5],
+                }, // C
+                Vertex {
+                    position: [0.35966998, -0.3473291, 0.0],
+                    color: [0.5, 0.0, 0.5],
+                }, // D
+                Vertex {
+                    position: [0.44147372, 0.2347359, 0.0],
+                    color: [0.5, 0.0, 0.5],
+                }, // E
+            ],
+            vec![0, 1, 4, 1, 2, 4, 2, 3, 4],
+        );
+    }
+
+    // Allocate vertices and indices on the heap (since we can't return owned Vecs as &'static)
+    // In a real implementation, you'd want to manage the lifetime or use a different return type.
+    // For demonstration, we'll use Box::leak to get a &'static reference.
+
+    let mut vertices = Vec::with_capacity(points as usize);
+    let radius = 0.5;
+    for i in 0..points {
+        let theta = 2.0 * PI * (i as f32) / (points as f32);
+        let x = radius * theta.cos();
+        let y = radius * theta.sin();
+        vertices.push(Vertex {
+            position: [x, y, 0.0],
+            color: [0.5, 0.0, 0.5],
+        });
+    }
+
+    // Indices for a triangle fan: [0, 1, 2], [0, 2, 3], ..., [0, n-1, 1]
+    let mut indices = Vec::with_capacity((points as usize - 2) * 3);
+    for i in 1..(points - 1) {
+        indices.push(0u16);
+        indices.push(i as u16);
+        indices.push((i + 1) as u16);
+    }
+
+    (vertices, indices)
+}
+
+impl Vertex {
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+            ],
+        }
+
+        // or
+        // wgpu::VertexBufferLayout {
+        //     array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+        //     step_mode: wgpu::VertexStepMode::Vertex,
+        //     attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3],
+        // }
+    }
+}
 // This will store the state of our game
 pub struct State {
     window: Arc<Window>,
-    surface: wgpu::Surface<'static>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    config: wgpu::SurfaceConfiguration,
+    surface: wgpu::Surface<'static>, // handle for a presentable surface (e.g. window, html canvas)
+    device: wgpu::Device,            // connection to GPU device
+    queue: wgpu::Queue,              // queue of commands for GPU device
+    config: wgpu::SurfaceConfiguration, // configuration (e.g. height/width)
     is_surface_configured: bool,
     render_pipeline: wgpu::RenderPipeline,
-    render_pipeline_2: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    num_vertices: u32,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
 
+    // extras
+    render_pipeline_2: wgpu::RenderPipeline,
     mouse_position: PhysicalPosition<f64>,
     render_pipeline_target: RenderPipelineTarget,
 }
@@ -117,7 +228,7 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[],
+                buffers: &[Vertex::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -197,6 +308,22 @@ impl State {
             cache: None,
         });
 
+        let (vertices, indices) = gen_shape_buffer(6);
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        let num_indices = indices.len() as u32;
+
+        let num_vertices = vertices.len() as u32;
+
         Ok(Self {
             surface,
             device,
@@ -205,6 +332,11 @@ impl State {
             is_surface_configured: false,
             window,
             render_pipeline,
+            vertex_buffer,
+            num_vertices,
+            index_buffer,
+            num_indices,
+
             render_pipeline_2,
             mouse_position: PhysicalPosition::new(0.1, 0.2),
             render_pipeline_target: RenderPipelineTarget::One,
@@ -250,12 +382,19 @@ impl State {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            if (self.render_pipeline_target == RenderPipelineTarget::One) {
-                render_pass.set_pipeline(&self.render_pipeline);
-                render_pass.draw(0..3, 0..1);
-            } else {
-                render_pass.set_pipeline(&self.render_pipeline_2);
-                render_pass.draw(0..3, 0..1);
+            match self.render_pipeline_target {
+                RenderPipelineTarget::One => {
+                    render_pass.set_pipeline(&self.render_pipeline);
+                    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+                    render_pass
+                        .set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                    render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+                }
+                RenderPipelineTarget::Two => {
+                    render_pass.set_pipeline(&self.render_pipeline_2);
+                    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+                    render_pass.draw(0..3, 0..1);
+                }
             }
         }
 
