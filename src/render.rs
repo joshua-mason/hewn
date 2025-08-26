@@ -190,6 +190,7 @@ pub struct State {
     diffuse_bind_group: wgpu::BindGroup,
     diffuse_texture: texture::Texture,
 
+    diffuse_bind_group_react: wgpu::BindGroup,
     // extras
     render_pipeline_2: wgpu::RenderPipeline,
     mouse_position: PhysicalPosition<f64>,
@@ -200,6 +201,7 @@ pub struct State {
 enum RenderPipelineTarget {
     One,
     Two,
+    Three,
 }
 
 impl State {
@@ -272,6 +274,11 @@ impl State {
         let diffuse_texture =
             texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
 
+        let diffuse_bytes_react = include_bytes!("256x256.png");
+        let diffuse_texture_react =
+            texture::Texture::from_bytes(&device, &queue, diffuse_bytes_react, "256x256.png")
+                .unwrap();
+
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -310,6 +317,21 @@ impl State {
                 },
             ],
             label: Some("diffuse_bind_group"),
+        });
+
+        let diffuse_bind_group_react = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture_react.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture_react.sampler),
+                },
+            ],
+            label: Some("diffuse_bind_group_react"),
         });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -441,6 +463,7 @@ impl State {
             diffuse_bind_group,
             diffuse_texture,
 
+            diffuse_bind_group_react,
             render_pipeline_2,
             mouse_position: PhysicalPosition::new(0.1, 0.2),
             render_pipeline_target: RenderPipelineTarget::One,
@@ -496,9 +519,18 @@ impl State {
                     render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
                 }
                 RenderPipelineTarget::Two => {
+                    // needs a different vertex buffer to work, using shape vertices
                     render_pass.set_pipeline(&self.render_pipeline_2);
                     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                     render_pass.draw(0..3, 0..1);
+                }
+                RenderPipelineTarget::Three => {
+                    render_pass.set_pipeline(&self.render_pipeline);
+                    render_pass.set_bind_group(0, &self.diffuse_bind_group_react, &[]);
+                    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+                    render_pass
+                        .set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                    render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
                 }
             }
         }
@@ -535,10 +567,17 @@ impl State {
     }
 
     fn handle_spacebar(&mut self) {
-        if self.render_pipeline_target == RenderPipelineTarget::One {
-            self.render_pipeline_target = RenderPipelineTarget::Two
-        } else {
-            self.render_pipeline_target = RenderPipelineTarget::One
+        match self.render_pipeline_target {
+            RenderPipelineTarget::One => {
+                self.render_pipeline_target = RenderPipelineTarget::Three;
+            }
+            // skip as two is broken due to vertex buffer having a different wsgl definition
+            RenderPipelineTarget::Two => {
+                self.render_pipeline_target = RenderPipelineTarget::Three;
+            }
+            RenderPipelineTarget::Three => {
+                self.render_pipeline_target = RenderPipelineTarget::One;
+            }
         }
     }
 }
