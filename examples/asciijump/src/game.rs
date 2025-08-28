@@ -151,6 +151,15 @@ impl GameHandler for Game {
         self.state = GameState::InGame;
     }
 
+    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
+        if self.state != GameState::InGame {
+            return false;
+        }
+
+        self.move_player(key);
+        true
+    }
+
     fn next(&mut self, key: Option<Key>) {
         if self.state != GameState::InGame {
             return;

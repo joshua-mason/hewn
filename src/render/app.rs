@@ -155,7 +155,7 @@ impl ApplicationHandler<State> for App {
                 ..
             } => {
                 state.handle_key(event_loop, code, key_state.is_pressed());
-                self.game.handle_key(code, key_state.is_pressed());
+                self.game.handle_key(code.into(), key_state.is_pressed());
             }
             _ => {}
         }

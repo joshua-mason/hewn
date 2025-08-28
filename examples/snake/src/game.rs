@@ -289,8 +289,7 @@ impl GameHandler for Game {
         self.state = GameState::InGame;
     }
 
-    fn handle_key(&mut self, key: winit::keyboard::KeyCode, pressed: bool) -> bool {
-        let key = Key::from(key);
+    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
         if pressed {
             self.player_direction = Game::compute_next_direction(self.player_direction, Some(key));
         }

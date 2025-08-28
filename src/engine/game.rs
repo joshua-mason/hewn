@@ -2,7 +2,7 @@
 
 use winit::keyboard::KeyCode;
 
-use crate::ecs::ECS;
+use crate::{ecs::ECS, runtime::Key};
 
 // TODO rename to GameHandler to better conform to other naming conventions? e.g. winit app handler.
 /// Trait which all games must implement.
@@ -17,5 +17,5 @@ pub trait GameHandler {
     /// Get a string for debugging.
     fn debug_str(&self) -> Option<String>;
 
-    fn handle_key(&mut self, key: KeyCode, pressed: bool) -> bool;
+    fn handle_key(&mut self, key: Key, pressed: bool) -> bool;
 }

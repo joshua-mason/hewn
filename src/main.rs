@@ -6,6 +6,28 @@ use hewn::view::{ScreenDimensions, TerminalRenderer, View, ViewCoordinate};
 const SCREEN_HEIGHT: u16 = 20;
 const SCREEN_WIDTH: u16 = 50;
 
+fn main() {
+    let mut game = game::MinimalGame::new();
+    game.start_game();
+    hewn::render::app::run(Box::new(game)).unwrap();
+    let (stdout, stdin) = initialize_terminal_io();
+
+    let mut view = View {
+        view_cursor: ViewCoordinate { x: 0, y: 0 },
+        renderer: Box::new(TerminalRenderer::new(
+            stdout,
+            ScreenDimensions {
+                x: SCREEN_WIDTH,
+                y: SCREEN_HEIGHT,
+            },
+        )),
+        cursor_strategy: Box::new(FollowPlayerYCursorStrategy::new()),
+    };
+
+    let mut game = game::MinimalGame::new();
+    let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut view);
+}
+
 mod game {
 
     pub struct GameController {
@@ -27,26 +49,26 @@ mod game {
             }
         }
 
-        pub(crate) fn handle_key(&mut self, key: KeyCode, is_pressed: bool) -> bool {
+        pub(crate) fn handle_key(&mut self, key: Key, is_pressed: bool) -> bool {
             // Log key events for debugging
             println!(
                 "[DEBUG] handle_key: key={:?} is_pressed={}",
                 key, is_pressed
             );
             match key {
-                KeyCode::KeyW | KeyCode::ArrowUp => {
+                Key::Up => {
                     self.is_up_pressed = is_pressed;
                     true
                 }
-                KeyCode::KeyS | KeyCode::ArrowDown => {
+                Key::Down => {
                     self.is_down_pressed = is_pressed;
                     true
                 }
-                KeyCode::KeyA | KeyCode::ArrowLeft => {
+                Key::Left => {
                     self.is_left_pressed = is_pressed;
                     true
                 }
-                KeyCode::KeyD | KeyCode::ArrowRight => {
+                Key::Right => {
                     self.is_right_pressed = is_pressed;
                     true
                 }
@@ -255,7 +277,7 @@ mod game {
             ))
         }
 
-        fn handle_key(&mut self, key: KeyCode, pressed: bool) -> bool {
+        fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
             let result = self.game_controller.handle_key(key, pressed);
             if result {
                 println!(
@@ -277,29 +299,6 @@ mod game {
     }
 }
 
-fn main() {
-    let mut game = game::MinimalGame::new();
-    game.start_game();
-    hewn::render::app::run(Box::new(game)).unwrap();
-    let (stdout, stdin) = initialize_terminal_io();
-
-    let mut view = View {
-        view_cursor: ViewCoordinate { x: 0, y: 0 },
-        renderer: Box::new(TerminalRenderer::new(
-            stdout,
-            ScreenDimensions {
-                x: SCREEN_WIDTH,
-                y: SCREEN_HEIGHT,
-            },
-        )),
-        cursor_strategy: Box::new(FollowPlayerYCursorStrategy::new()),
-    };
-
-    let mut game = game::MinimalGame::new();
-    let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut view);
-    // runtime.start();
-}
-
 #[cfg(test)]
 mod test {
     use crate::game;
@@ -313,7 +312,7 @@ mod test {
         assert!(player.is_some());
 
         game.start_game();
-        game.handle_key(KeyCode::ArrowDown, true);
+        game.handle_key(Key::Down, true);
         game.next();
 
         let player = game.ecs.get_entity_by_id(game.player_entity_id);
@@ -335,7 +334,7 @@ mod test {
         assert!(player.is_some());
 
         game.start_game();
-        game.handle_key(KeyCode::ArrowUp, true);
+        game.handle_key(Key::Up, true);
         game.next();
 
         let player = game.ecs.get_entity_by_id(game.player_entity_id);

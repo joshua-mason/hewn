@@ -43,6 +43,20 @@ impl From<winit::keyboard::KeyCode> for Key {
     }
 }
 
+impl From<termion::event::Key> for Key {
+    fn from(key: termion::event::Key) -> Self {
+        match key {
+            termion::event::Key::Left => Key::Left,
+            termion::event::Key::Right => Key::Right,
+            termion::event::Key::Up => Key::Up,
+            termion::event::Key::Down => Key::Down,
+            termion::event::Key::Char(' ') => Key::Space,
+            termion::event::Key::Esc => Key::Escape,
+            _ => panic!("Unsupported key: {:?}", key),
+        }
+    }
+}
+
 /// Initialize terminal IO.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn initialize_terminal_io() -> (
