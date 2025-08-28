@@ -3,6 +3,8 @@ use crate::runtime::GameHandler;
 use crate::runtime::Key;
 use crate::wgpu::render::State;
 use std::sync::Arc;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 use winit::application::ApplicationHandler;
 use winit::event::KeyEvent;
 use winit::event::MouseButton;
