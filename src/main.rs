@@ -35,11 +35,6 @@ mod game {
         }
 
         pub(crate) fn handle_key(&mut self, key: Key, is_pressed: bool) -> bool {
-            // Log key events for debugging
-            println!(
-                "[DEBUG] handle_key: key={:?} is_pressed={}",
-                key, is_pressed
-            );
             match key {
                 Key::Up => {
                     self.is_up_pressed = is_pressed;
@@ -121,23 +116,17 @@ mod game {
             } else {
                 None
             };
-            if let Some(key) = key {
-                println!("[DEBUG] update_player_velocity: key={:?}", key);
-            }
 
             let player_entity = self.ecs.get_entity_by_id_mut(self.player_entity_id);
             let Some(player_entity) = player_entity else {
-                println!("[DEBUG] update_player_velocity: player entity not found");
                 return;
             };
             let Some(velocity) = &mut player_entity.components.velocity else {
-                println!("[DEBUG] update_player_velocity: velocity component not found");
                 return;
             };
             let Some(key) = &key else {
                 velocity.x = 0;
                 velocity.y = 0;
-                // println!("[DEBUG] update_player_velocity: No key pressed, velocity set to (0,0)");
                 return;
             };
 
@@ -160,20 +149,14 @@ mod game {
                 }
                 _ => {}
             }
-            println!(
-                "[DEBUG] update_player_velocity: key={:?} velocity set to ({}, {})",
-                key, velocity.x, velocity.y
-            );
         }
 
         fn fix_player_velocity_to_zero(&mut self) {
             let player_entity = self.ecs.get_entity_by_id_mut(self.player_entity_id);
             let Some(player_entity) = player_entity else {
-                println!("[DEBUG] fix_player_velocity_to_zero: player entity not found");
                 return;
             };
             let Some(velocity) = &mut player_entity.components.velocity else {
-                println!("[DEBUG] fix_player_velocity_to_zero: velocity component not found");
                 return;
             };
             velocity.x = 0;
@@ -184,7 +167,6 @@ mod game {
     impl GameHandler for MinimalGame {
         fn start_game(&mut self) {
             self.started = true;
-            println!("[DEBUG] Game started");
         }
 
         fn next(&mut self) {
@@ -205,28 +187,9 @@ mod game {
                 .flatten()
                 .any(|entity_id| entity_id == &self.player_entity_id)
             {
-                println!(
-                    "[DEBUG] Collision detected for player entity {:?}. Stopping movement.",
-                    self.player_entity_id
-                );
                 self.fix_player_velocity_to_zero();
             }
             self.ecs.step();
-
-            // After step, check if position changed
-            let new_position = self
-                .ecs
-                .get_entity_by_id(self.player_entity_id)
-                .and_then(|e| e.components.position.as_ref().map(|p| (p.x, p.y)));
-
-            if let (Some(prev), Some(new)) = (prev_position, new_position) {
-                if prev != new {
-                    println!(
-                        "[DEBUG] Player entity {:?} moved from ({}, {}) to ({}, {})",
-                        self.player_entity_id, prev.0, prev.1, new.0, new.1
-                    );
-                }
-            }
         }
 
         fn ecs(&self) -> &ECS {
@@ -249,23 +212,7 @@ mod game {
         }
 
         fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
-            let result = self.game_controller.handle_key(key, pressed);
-            if result {
-                println!(
-                    "[DEBUG] handle_key: Player entity {:?} key={:?} pressed={}",
-                    self.player_entity_id, key, pressed
-                );
-                // Also print current velocity and position for debugging
-                if let Some(player_entity) = self.ecs.get_entity_by_id(self.player_entity_id) {
-                    if let Some(velocity) = &player_entity.components.velocity {
-                        println!("[DEBUG] Player velocity: ({}, {})", velocity.x, velocity.y);
-                    }
-                    if let Some(position) = &player_entity.components.position {
-                        println!("[DEBUG] Player position: ({}, {})", position.x, position.y);
-                    }
-                }
-            }
-            result
+            self.game_controller.handle_key(key, pressed)
         }
     }
 }
