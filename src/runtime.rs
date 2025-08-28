@@ -1,21 +1,13 @@
 //! Wasm and terminal game runtimes.
 
+use super::view::View;
 use crate::ecs::ComponentType;
 use crate::ecs::Entity;
+use crate::ecs::ECS;
 use crate::render::wgpu::State;
-use std::sync::Arc;
-use winit::application::ApplicationHandler;
-use winit::event::KeyEvent;
-use winit::event::MouseButton;
-use winit::event::WindowEvent;
-use winit::event_loop::ActiveEventLoop;
-use winit::event_loop::EventLoop;
-use winit::keyboard::PhysicalKey;
-use winit::window::Window;
-
-use super::{game::GameHandler, view::View};
 #[cfg(not(target_arch = "wasm32"))]
 use std::io::{self, Stdout};
+use std::sync::Arc;
 use std::{
     thread,
     time::{self, Duration, Instant},
@@ -25,9 +17,34 @@ use termion::input::TermRead;
 #[cfg(not(target_arch = "wasm32"))]
 use termion::raw::{IntoRawMode, RawTerminal};
 use wasm_bindgen::prelude::*;
+use winit::application::ApplicationHandler;
+use winit::event::KeyEvent;
+use winit::event::MouseButton;
+use winit::event::WindowEvent;
+use winit::event_loop::ActiveEventLoop;
+use winit::event_loop::EventLoop;
+use winit::keyboard::PhysicalKey;
+use winit::window::Window;
 
 const FRAME_RATE_MILLIS: u64 = 10;
 const GAME_STEP_MILLIS: u64 = 100;
+
+/// Trait which all games must implement.
+///
+/// TODO rename to GameHandler to better conform to other naming conventions? e.g. winit app handler.
+pub trait GameHandler {
+    /// Start the game.
+    fn start_game(&mut self);
+    /// Compute the next game state based on player input.
+    fn next(&mut self);
+    /// Get the Entity Component System
+    fn ecs(&self) -> &ECS;
+
+    /// Get a string for debugging.
+    fn debug_str(&self) -> Option<String>;
+
+    fn handle_key(&mut self, key: Key, pressed: bool) -> bool;
+}
 
 /// Key for player control.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

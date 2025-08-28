@@ -2,8 +2,7 @@ use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
 use hewn::ecs::{Components, ECS};
-use hewn::game::GameHandler;
-use hewn::runtime::Key;
+use hewn::runtime::{GameHandler, Key};
 use rand::{rngs::StdRng, Rng, RngCore, SeedableRng};
 use std::collections::HashSet;
 

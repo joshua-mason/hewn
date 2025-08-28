@@ -1,7 +1,7 @@
 pub mod game;
 
 use crate::game::create_game;
-use hewn::game::GameHandler;
+use hewn::runtime::GameHandler;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

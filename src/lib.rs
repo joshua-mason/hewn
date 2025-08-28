@@ -16,5 +16,4 @@ pub mod runtime;
 pub mod texture;
 
 pub use engine::ecs;
-pub use engine::game;
 pub use engine::view;

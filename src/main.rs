@@ -1,4 +1,4 @@
-use hewn::game::GameHandler;
+use hewn::runtime::GameHandler;
 use hewn::runtime::{TerminalRuntime, WindowRuntime};
 
 const SCREEN_HEIGHT: u16 = 20;
@@ -67,8 +67,7 @@ mod game {
             self, CameraFollow, Components, EntityId, PositionComponent, RenderComponent,
             SizeComponent, VelocityComponent, ECS,
         },
-        game::GameHandler,
-        runtime::Key,
+        runtime::{GameHandler, Key},
     };
 
     pub struct MinimalGame {
@@ -274,8 +273,7 @@ mod game {
 #[cfg(test)]
 mod test {
     use crate::game;
-    use hewn::{game::GameHandler, runtime::Key};
-    use winit::keyboard::KeyCode;
+    use hewn::runtime::{GameHandler, Key};
 
     #[test]
     fn test_player_move() {
