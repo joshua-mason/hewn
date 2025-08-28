@@ -2,65 +2,13 @@ use crate::{ecs::Entity, texture};
 use cgmath::prelude::*;
 use cgmath::InnerSpace;
 use cgmath::SquareMatrix;
+use std::f32::consts::PI;
 use std::mem;
 use std::{iter, sync::Arc};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
-
-// #[repr(C)]
-// #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-// pub(crate) struct Vertex {
-//     pub(crate) position: [f32; 3],
-//     pub(crate) tex_coords: [f32; 2],
-// }
-
-// impl Vertex {
-//     pub(crate) fn desc() -> wgpu::VertexBufferLayout<'static> {
-//         wgpu::VertexBufferLayout {
-//             array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
-//             step_mode: wgpu::VertexStepMode::Vertex,
-//             attributes: &[
-//                 wgpu::VertexAttribute {
-//                     offset: 0,
-//                     shader_location: 0,
-//                     format: wgpu::VertexFormat::Float32x3,
-//                 },
-//                 wgpu::VertexAttribute {
-//                     offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-//                     shader_location: 1,
-//                     format: wgpu::VertexFormat::Float32x2,
-//                 },
-//             ],
-//         }
-//     }
-// }
-
-// pub(crate) const VERTICES: &[Vertex] = &[
-//     Vertex {
-//         position: [-0.0868241, 0.49240386, 0.0],
-//         tex_coords: [0.4131759, 0.00759614],
-//     }, // A
-//     Vertex {
-//         position: [-0.49513406, 0.06958647, 0.0],
-//         tex_coords: [0.0048659444, 0.43041354],
-//     }, // B
-//     Vertex {
-//         position: [-0.21918549, -0.44939706, 0.0],
-//         tex_coords: [0.28081453, 0.949397],
-//     }, // C
-//     Vertex {
-//         position: [0.35966998, -0.3473291, 0.0],
-//         tex_coords: [0.85967, 0.84732914],
-//     }, // D
-//     Vertex {
-//         position: [0.44147372, 0.2347359, 0.0],
-//         tex_coords: [0.9414737, 0.2652641],
-//     }, // E
-// ];
-
-// pub(crate) const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4, /* padding */ 0];
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -69,49 +17,30 @@ struct Vertex {
     color: [f32; 3],
 }
 
-// const (VERTICES, INDICES) = gen_shape_buffer(5);
-
-// Strategies to generate points for shapes:
-//
-// - Regular polygons: Use trigonometry. For an n-sided polygon, each vertex is at (r*cos(θ), r*sin(θ)) where θ = 2π*i/n for i in 0..n-1.
-// - Parametric equations: For circles, ellipses, or curves, use parametric formulas (e.g., circle: (r*cos(t), r*sin(t)) for t in [0, 2π]).
-// - Manual placement: For custom or irregular shapes, manually specify coordinates.
-// - Procedural generation: Use algorithms (e.g., noise, L-systems) for complex or organic shapes.
-// - Import from tools: Design in a graphics tool and export vertex data.
-//
-// These methods let you create vertices for triangles, polygons, stars, etc., as needed.
-
 fn gen_shape_buffer(points: u16, rotation_deg: f32, size: f32) -> (Vec<Vertex>, Vec<u16>) {
-    // Generate a regular polygon with `points` vertices centered at the origin,
-    // with the given `size` (radius) and `rotation_deg` (degrees CCW from +X axis).
-    // All vertices will have a fixed color [0.5, 0.0, 0.5].
-    // The indices will form a triangle fan (suitable for wgpu::PrimitiveTopology::TriangleList).
-    use std::f32::consts::PI;
-
     if points < 3 {
-        // Not enough points for a polygon, fall back to default pentagon
         return (
             vec![
                 Vertex {
                     position: [-0.0868241, 0.49240386, 0.0],
                     color: [0.0, 0.0, 0.0],
-                }, // A
+                },
                 Vertex {
                     position: [-0.49513406, 0.06958647, 0.0],
                     color: [0.0, 0.0, 0.0],
-                }, // B
+                },
                 Vertex {
                     position: [-0.21918549, -0.44939706, 0.0],
                     color: [0.0, 0.0, 0.0],
-                }, // C
+                },
                 Vertex {
                     position: [0.35966998, -0.3473291, 0.0],
                     color: [0.0, 0.0, 0.0],
-                }, // D
+                },
                 Vertex {
                     position: [0.44147372, 0.2347359, 0.0],
                     color: [0.0, 0.0, 0.0],
-                }, // E
+                },
             ],
             vec![0, 1, 4, 1, 2, 4, 2, 3, 4],
         );
@@ -129,7 +58,6 @@ fn gen_shape_buffer(points: u16, rotation_deg: f32, size: f32) -> (Vec<Vertex>, 
         });
     }
 
-    // Indices for a triangle fan: [0, 1, 2], [0, 2, 3], ..., [0, n-1, 1]
     let mut indices = Vec::with_capacity((points as usize - 2) * 3);
     for i in 1..(points - 1) {
         indices.push(0u16);
@@ -158,13 +86,6 @@ impl Vertex {
                 },
             ],
         }
-
-        // or
-        // wgpu::VertexBufferLayout {
-        //     array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-        //     step_mode: wgpu::VertexStepMode::Vertex,
-        //     attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3],
-        // }
     }
 }
 
@@ -296,14 +217,6 @@ impl CameraController {
         }
     }
 }
-
-pub(crate) const NUM_INSTANCES_PER_ROW: u32 = 10;
-
-pub(crate) const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
-    NUM_INSTANCES_PER_ROW as f32 * 0.5,
-    0.0,
-    NUM_INSTANCES_PER_ROW as f32 * 0.5,
-);
 
 pub(crate) struct Instance {
     pub(crate) position: cgmath::Vector3<f32>,
@@ -636,30 +549,6 @@ impl State {
             })
             .collect::<Vec<_>>();
 
-        // let instances = (0..NUM_INSTANCES_PER_ROW)
-        //     .flat_map(|z| {
-        //         (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-        //             let position = cgmath::Vector3 {
-        //                 x: x as f32,
-        //                 y: 0.0,
-        //                 z: z as f32,
-        //             } - INSTANCE_DISPLACEMENT;
-
-        //             let rotation = if position.is_zero() {
-        //                 // this is needed so an object at (0, 0, 0) won't get scaled to zero
-        //                 // as Quaternions can affect scale if they're not created correctly
-        //                 cgmath::Quaternion::from_axis_angle(
-        //                     cgmath::Vector3::unit_z(),
-        //                     cgmath::Deg(0.0),
-        //                 )
-        //             } else {
-        //                 cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-        //             };
-
-        //             Instance { position, rotation }
-        //         })
-        //     })
-        //     .collect::<Vec<_>>();
         let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance Buffer"),
@@ -711,8 +600,6 @@ impl State {
     pub(crate) fn handle_key(&mut self, event_loop: &ActiveEventLoop, key: KeyCode, pressed: bool) {
         if key == KeyCode::Escape && pressed {
             event_loop.exit();
-        } else {
-            // self.camera_controller.handle_key(key, pressed);
         }
     }
 
