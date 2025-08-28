@@ -4,7 +4,7 @@ pub struct Entity {
     pub components: Components,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Components {
     pub position: Option<PositionComponent>,
     pub velocity: Option<VelocityComponent>,
@@ -25,7 +25,7 @@ impl Components {
     }
 }
 
-#[derive(PartialEq, Debug, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Debug, Eq, Hash, Clone, Copy, Default)]
 pub struct EntityId(pub u16);
 
 impl Entity {
@@ -113,6 +113,7 @@ impl Component for CameraFollow {
     const TYPE: ComponentType = ComponentType::CameraFollow;
 }
 
+#[derive(Default)]
 pub struct ECS {
     next_entity_id: EntityId,
     entities: Vec<Entity>,
@@ -267,11 +268,6 @@ pub mod collisions {
     use crate::ecs::{Entity, EntityId};
     use std::ops::Range;
 
-    pub fn collision_pass(objects: &[Entity]) -> Vec<[EntityId; 2]> {
-        let collisions = process_collisions(objects);
-        collisions
-    }
-
     #[derive(Debug, PartialEq)]
     struct CollisionBox {
         pub x: Range<u16>,
@@ -317,7 +313,7 @@ pub mod collisions {
             && overlapping_1d(&a_collision_box.y, &b_collision_box.y)
     }
 
-    fn process_collisions(objects: &[Entity]) -> Vec<[EntityId; 2]> {
+    pub fn collision_pass(objects: &[Entity]) -> Vec<[EntityId; 2]> {
         // TODO: Collision is O(n^2) - worth looking at better approaches in future
         let mut collisions: Vec<[EntityId; 2]> = vec![];
         for i in 0..objects.len() {

@@ -2,7 +2,7 @@
 
 use crate::ecs::ComponentType;
 use crate::ecs::Entity;
-use crate::render::render::State;
+use crate::render::wgpu::State;
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::KeyEvent;
@@ -98,7 +98,7 @@ impl TerminalRuntime {
 
         let (stdout, stdin) = initialize_terminal_io();
 
-        let mut view = View {
+        let view = View {
             view_cursor: ViewCoordinate { x: 0, y: 0 },
             renderer: Box::new(TerminalRenderer::new(
                 stdout,
@@ -157,11 +157,12 @@ impl TerminalRuntime {
     }
 }
 
+#[derive(Default)]
 pub struct WindowRuntime {}
 
 impl WindowRuntime {
     pub fn new() -> WindowRuntime {
-        WindowRuntime {}
+        WindowRuntime::default()
     }
 
     pub fn start(&mut self, game: &mut dyn GameHandler) -> anyhow::Result<()> {
@@ -233,7 +234,7 @@ impl<'a> ApplicationHandler<State> for App<'a> {
             .ecs()
             .get_entities_by(crate::ecs::ComponentType::Render)
             .iter()
-            .map(|e| (*e).clone())
+            .map(|e| **e)
             // probably terrible performance cloning here we when we should pass a reference as we only
             // need to read - but this is a quick fix for now.
             .collect::<Vec<Entity>>();
@@ -298,7 +299,7 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                     .ecs()
                     .get_entities_by(crate::ecs::ComponentType::Render)
                     .iter()
-                    .map(|e| (*e).clone())
+                    .map(|e| **e)
                     // probably terrible performance cloning here we when we should pass a reference as we only
                     // need to read - but this is a quick fix for now.
                     .collect::<Vec<Entity>>();

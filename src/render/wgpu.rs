@@ -12,7 +12,7 @@ use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
+pub struct Vertex {
     position: [f32; 3],
     color: [f32; 3],
 }
@@ -61,8 +61,8 @@ fn gen_shape_buffer(points: u16, rotation_deg: f32, size: f32) -> (Vec<Vertex>, 
     let mut indices = Vec::with_capacity((points as usize - 2) * 3);
     for i in 1..(points - 1) {
         indices.push(0u16);
-        indices.push(i as u16);
-        indices.push((i + 1) as u16);
+        indices.push(i);
+        indices.push(i + 1);
     }
 
     (vertices, indices)

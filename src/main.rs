@@ -1,7 +1,5 @@
 use hewn::game::GameHandler;
-use hewn::runtime::{initialize_terminal_io, TerminalRuntime, WindowRuntime};
-use hewn::view::cursor::FollowPlayerYCursorStrategy;
-use hewn::view::{ScreenDimensions, TerminalRenderer, View, ViewCoordinate};
+use hewn::runtime::{TerminalRuntime, WindowRuntime};
 
 const SCREEN_HEIGHT: u16 = 20;
 const SCREEN_WIDTH: u16 = 50;
@@ -20,7 +18,6 @@ fn main() {
 mod game {
 
     pub struct GameController {
-        speed: f32,
         is_up_pressed: bool,
         is_down_pressed: bool,
         is_left_pressed: bool,
@@ -28,9 +25,8 @@ mod game {
     }
 
     impl GameController {
-        pub(crate) fn new(speed: f32) -> Self {
+        pub(crate) fn new() -> Self {
             Self {
-                speed,
                 is_up_pressed: false,
                 is_down_pressed: false,
                 is_left_pressed: false,
@@ -74,15 +70,12 @@ mod game {
         game::GameHandler,
         runtime::Key,
     };
-    use winit::keyboard::KeyCode;
 
     pub struct MinimalGame {
         started: bool,
         pub ecs: ecs::ECS,
         pub player_entity_id: EntityId,
-
         pub game_controller: GameController,
-        last_player_position: Option<(u16, u16)>,
     }
 
     impl MinimalGame {
@@ -109,17 +102,11 @@ mod game {
                 camera_follow: None,
             });
 
-            // Get initial player position for tracking
-            let last_player_position = ecs
-                .get_entity_by_id(player_entity_id)
-                .and_then(|e| e.components.position.as_ref().map(|p| (p.x, p.y)));
-
             MinimalGame {
                 started: false,
                 ecs,
                 player_entity_id,
-                game_controller: GameController::new(1.0),
-                last_player_position,
+                game_controller: GameController::new(),
             }
         }
 
@@ -248,12 +235,8 @@ mod game {
         }
 
         fn debug_str(&self) -> Option<String> {
-            let Some(player_entity) = self.ecs.get_entity_by_id(self.player_entity_id) else {
-                return None;
-            };
-            let Some(position) = &player_entity.components.position else {
-                return None;
-            };
+            let player_entity = self.ecs.get_entity_by_id(self.player_entity_id)?;
+            let position = &player_entity.components.position?;
 
             let start_game_str = if self.started {
                 "Started"
