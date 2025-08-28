@@ -1,10 +1,10 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Entity {
     pub id: EntityId,
     pub components: Components,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Components {
     pub position: Option<PositionComponent>,
     pub velocity: Option<VelocityComponent>,
@@ -72,7 +72,7 @@ pub enum ComponentType {
 trait Component {
     const TYPE: ComponentType;
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PositionComponent {
     pub x: u16,
     pub y: u16,
@@ -81,7 +81,7 @@ impl Component for PositionComponent {
     const TYPE: ComponentType = ComponentType::Position;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct VelocityComponent {
     pub x: i16,
     pub y: i16,
@@ -90,7 +90,7 @@ impl Component for VelocityComponent {
     const TYPE: ComponentType = ComponentType::Velocity;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SizeComponent {
     pub x: u16,
     pub y: u16,
@@ -99,7 +99,7 @@ impl Component for SizeComponent {
     const TYPE: ComponentType = ComponentType::Size;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct RenderComponent {
     pub ascii_character: char,
 }
@@ -107,7 +107,7 @@ impl Component for RenderComponent {
     const TYPE: ComponentType = ComponentType::Render;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct CameraFollow {}
 impl Component for CameraFollow {
     const TYPE: ComponentType = ComponentType::CameraFollow;

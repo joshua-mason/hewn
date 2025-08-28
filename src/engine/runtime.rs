@@ -29,6 +29,20 @@ pub enum Key {
     Escape,
 }
 
+impl From<winit::keyboard::KeyCode> for Key {
+    fn from(key: winit::keyboard::KeyCode) -> Self {
+        match key {
+            winit::keyboard::KeyCode::ArrowLeft => Key::Left,
+            winit::keyboard::KeyCode::ArrowRight => Key::Right,
+            winit::keyboard::KeyCode::ArrowUp => Key::Up,
+            winit::keyboard::KeyCode::ArrowDown => Key::Down,
+            winit::keyboard::KeyCode::Space => Key::Space,
+            winit::keyboard::KeyCode::Escape => Key::Escape,
+            _ => panic!("Unsupported key: {:?}", key),
+        }
+    }
+}
+
 /// Initialize terminal IO.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn initialize_terminal_io() -> (
@@ -91,7 +105,7 @@ impl TerminalRuntime<'_> {
 
             let now = time::Instant::now();
             if now - self.last_frame_time > Duration::from_millis(GAME_STEP_MILLIS) {
-                self.game.next(self.player_control_key);
+                self.game.next();
                 self.last_frame_time = now;
 
                 if input.is_none() {
@@ -137,8 +151,8 @@ impl WebRuntime {
     }
 
     /// Compute the next game state based on player input.
-    pub fn tick(&mut self, key: Option<WasmKey>) {
-        self.game.next(map_wasm_key(key));
+    pub fn tick(&mut self) {
+        self.game.next();
     }
 
     /// Render the game to a string.
@@ -161,8 +175,8 @@ impl WasmGameApi {
         self.web_runtime.start();
     }
 
-    pub fn tick(&mut self, key: Option<WasmKey>) {
-        self.web_runtime.tick(key);
+    pub fn tick(&mut self) {
+        self.web_runtime.tick();
     }
 
     pub fn render(&mut self) -> String {

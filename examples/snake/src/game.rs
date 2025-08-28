@@ -289,7 +289,15 @@ impl GameLogic for Game {
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self, key: Option<Key>) {
+    fn handle_key(&mut self, key: winit::keyboard::KeyCode, pressed: bool) -> bool {
+        let key = Key::from(key);
+        if pressed {
+            self.player_direction = Game::compute_next_direction(self.player_direction, Some(key));
+        }
+        true
+    }
+
+    fn next(&mut self) {
         if self.state != GameState::InGame {
             return;
         }
@@ -298,8 +306,8 @@ impl GameLogic for Game {
         prev_positions.push(self.head_position());
         prev_positions.extend(self.body_positions());
 
-        let next_dir = Game::compute_next_direction(self.player_direction, key);
-        self.player_direction = next_dir;
+        // let next_dir = Game::compute_next_direction(self.player_direction, key);
+        // self.player_direction = next_dir;
         self.set_head_velocity_from_direction();
 
         self.ecs.step();
