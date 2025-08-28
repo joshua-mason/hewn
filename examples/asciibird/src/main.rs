@@ -4,7 +4,7 @@ use crate::game::create_game;
 use hewn::view::{cursor, ScreenDimensions};
 #[cfg(not(target_arch = "wasm32"))]
 use hewn::{
-    runtime::{initialize_terminal_io, TerminalRuntime},
+    runtime::{modname::initialize_terminal_io, modname::TerminalRuntime},
     view::{TerminalRenderer, View},
 };
 
@@ -17,7 +17,7 @@ fn main() {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn play_asciibird_in_terminal() {
-    let (stdout, stdin) = initialize_terminal_io();
+    let (stdout, stdin) = modname::initialize_terminal_io();
 
     let mut game = create_game(None);
     let renderer = TerminalRenderer::new(
@@ -32,7 +32,7 @@ fn play_asciibird_in_terminal() {
         view_cursor: hewn::view::ViewCoordinate { x: 0, y: 0 },
         cursor_strategy: Box::new(cursor::FollowPlayerXCursorStrategy::new()),
     };
-    let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut display);
+    let mut runtime = modname::TerminalRuntime::new(stdin, &mut game, &mut display);
 
     runtime.start();
 }

@@ -1,7 +1,9 @@
 //! View, cursor and renderer.
 
-use crate::ecs::{Entity, PositionComponent};
-use crate::engine::view::cursor::CursorStrategy;
+use crate::{
+    ecs::{Entity, PositionComponent},
+    terminal::render::cursor::CursorStrategy,
+};
 use std::{
     io::{Stdout, Write},
     iter::zip,
@@ -91,7 +93,7 @@ impl View {
 
 /// Player view cursor and strategies.
 pub mod cursor {
-    use crate::view::{Renderer, ViewCoordinate};
+    use crate::terminal::render::{Renderer, ViewCoordinate};
 
     pub trait CursorStrategy {
         fn update(

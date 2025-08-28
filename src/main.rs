@@ -1,5 +1,5 @@
 use hewn::runtime::GameHandler;
-use hewn::runtime::{TerminalRuntime, WindowRuntime};
+use hewn::terminal::runtime::TerminalRuntime;
 
 const SCREEN_HEIGHT: u16 = 20;
 const SCREEN_WIDTH: u16 = 50;
@@ -7,7 +7,7 @@ const SCREEN_WIDTH: u16 = 50;
 fn main() {
     let mut game = game::MinimalGame::new();
     game.start_game();
-    let mut runtime = WindowRuntime::new();
+    let mut runtime = hewn::wgpu::runtime::WindowRuntime::new();
     let _ = runtime.start(&mut game);
 
     let mut game = game::MinimalGame::new();

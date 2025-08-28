@@ -1,4 +1,5 @@
-use crate::{ecs::Entity, texture};
+use crate::ecs::Entity;
+use crate::wgpu::texture;
 use cgmath::prelude::*;
 use cgmath::InnerSpace;
 use cgmath::SquareMatrix;

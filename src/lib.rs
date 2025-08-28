@@ -11,9 +11,8 @@
 
 mod engine;
 
-pub mod render;
 pub mod runtime;
-pub mod texture;
+pub mod terminal;
+pub mod wgpu;
 
 pub use engine::ecs;
-pub use engine::view;
