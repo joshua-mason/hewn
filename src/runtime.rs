@@ -54,6 +54,7 @@ impl From<winit::keyboard::KeyCode> for Key {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl From<termion::event::Key> for Key {
     fn from(key: termion::event::Key) -> Self {
         match key {
@@ -252,7 +253,7 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 wasm_bindgen_futures::spawn_local(async move {
                     assert!(proxy
                         .send_event(
-                            State::new(window)
+                            State::new(window, game_entities)
                                 .await
                                 .expect("Unable to create canvas!!!")
                         )
@@ -336,14 +337,14 @@ impl<'a> ApplicationHandler<State> for App<'a> {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen(start)]
-pub fn run_web() -> Result<(), wasm_bindgen::JsValue> {
-    console_error_panic_hook::set_once();
-    run().unwrap_throw();
+// #[cfg(target_arch = "wasm32")]
+// #[wasm_bindgen(start)]
+// pub fn run_web() -> Result<(), wasm_bindgen::JsValue> {
+//     console_error_panic_hook::set_once();
+//     run().unwrap_throw();
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 // ------------------------------------------------------------------------------------------------
 

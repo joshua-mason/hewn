@@ -12,9 +12,9 @@
 mod engine;
 
 pub mod render;
+pub mod runtime;
 pub mod texture;
 
 pub use engine::ecs;
 pub use engine::game;
-pub use engine::runtime;
 pub use engine::view;

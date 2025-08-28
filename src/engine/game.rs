@@ -1,7 +1,5 @@
 //! Game logic trait and entity handling.
 
-use winit::keyboard::KeyCode;
-
 use crate::{ecs::ECS, runtime::Key};
 
 // TODO rename to GameHandler to better conform to other naming conventions? e.g. winit app handler.

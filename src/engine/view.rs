@@ -249,45 +249,6 @@ impl Renderer for TerminalRenderer {
     }
 }
 
-/// A renderer for the web.
-pub struct WebRenderer {
-    screen_dimensions: ScreenDimensions,
-}
-
-impl WebRenderer {
-    pub fn new(screen_dimensions: ScreenDimensions) -> WebRenderer {
-        WebRenderer { screen_dimensions }
-    }
-}
-
-impl Renderer for WebRenderer {
-    fn render(&mut self, _debug_string: Option<String>, view: String, _h: u16) -> String {
-        // TODO unused return value as we just pass through the view
-        view
-    }
-
-    fn player_view(&mut self, levels: Vec<String>) -> String {
-        // In order to conform to the same interface as the terminal, we return a String - and we therefore
-        // are currently using a divider to indicate the divide. We should just be splitting by the width
-        // on the string in the web, rather than using this implementation. However we are also planning on
-        // simply outputting the entities to draw.
-        let separator = (0..self.screen_height()).map(|_| "|");
-        zip(levels, separator).fold(String::new(), |mut acc, (level, goto)| {
-            acc.push_str(&level);
-            acc.push_str(&goto);
-            acc
-        })
-    }
-
-    fn screen_width(&self) -> u16 {
-        self.screen_dimensions.x
-    }
-
-    fn screen_height(&self) -> u16 {
-        self.screen_dimensions.y
-    }
-}
-
 /// Utility function to build a string of a given character and length.
 pub fn build_string(ch: char, length: usize) -> String {
     ch.to_string().repeat(length)
