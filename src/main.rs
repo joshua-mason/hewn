@@ -10,22 +10,10 @@ fn main() {
     let mut game = game::MinimalGame::new();
     game.start_game();
     hewn::render::app::run(Box::new(game)).unwrap();
-    let (stdout, stdin) = initialize_terminal_io();
-
-    let mut view = View {
-        view_cursor: ViewCoordinate { x: 0, y: 0 },
-        renderer: Box::new(TerminalRenderer::new(
-            stdout,
-            ScreenDimensions {
-                x: SCREEN_WIDTH,
-                y: SCREEN_HEIGHT,
-            },
-        )),
-        cursor_strategy: Box::new(FollowPlayerYCursorStrategy::new()),
-    };
 
     let mut game = game::MinimalGame::new();
-    let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut view);
+    let mut runtime = TerminalRuntime::new(SCREEN_WIDTH, SCREEN_HEIGHT);
+    runtime.start(&mut game);
 }
 
 mod game {

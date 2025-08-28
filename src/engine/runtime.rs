@@ -70,32 +70,44 @@ pub fn initialize_terminal_io() -> (
 
 /// A runtime for a terminal game.
 #[cfg(not(target_arch = "wasm32"))]
-pub struct TerminalRuntime<'a> {
+pub struct TerminalRuntime {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
-    pub game: &'a mut dyn GameHandler,
-    pub display: &'a mut View,
+    pub display: View,
     last_frame_time: Instant,
     player_control_key: Option<Key>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl TerminalRuntime<'_> {
-    pub fn new<'a>(
-        stdin: termion::input::Keys<termion::AsyncReader>,
-        game: &'a mut dyn GameHandler,
-        display: &'a mut View,
-    ) -> TerminalRuntime<'a> {
+impl TerminalRuntime {
+    pub fn new(width: u16, height: u16) -> TerminalRuntime {
+        use crate::view::{
+            cursor::FollowPlayerYCursorStrategy, ScreenDimensions, TerminalRenderer, ViewCoordinate,
+        };
+
+        let (stdout, stdin) = initialize_terminal_io();
+
+        let mut view = View {
+            view_cursor: ViewCoordinate { x: 0, y: 0 },
+            renderer: Box::new(TerminalRenderer::new(
+                stdout,
+                ScreenDimensions {
+                    x: width,
+                    y: height,
+                },
+            )),
+            cursor_strategy: Box::new(FollowPlayerYCursorStrategy::new()),
+        };
+
         TerminalRuntime {
             stdin,
-            game,
             last_frame_time: Instant::now(),
-            display,
+            display: view,
             player_control_key: None,
         }
     }
 
     /// Start the game loop listening for player input and rendering the game.
-    pub fn start(&mut self) {
+    pub fn start(&mut self, game: &mut dyn GameHandler) {
         loop {
             use crate::ecs::ComponentType;
 
@@ -105,10 +117,10 @@ impl TerminalRuntime<'_> {
                 match key {
                     termion::event::Key::Char('q') => break,
                     key if key != termion::event::Key::Char(' ') => {
-                        self.player_control_key = map_termion_key(key);
+                        game.handle_key(key.into(), true);
                     }
                     termion::event::Key::Char(' ') => {
-                        self.game.start_game();
+                        game.start_game();
                     }
                     _ => {
                         self.player_control_key = None;
@@ -119,16 +131,16 @@ impl TerminalRuntime<'_> {
 
             let now = time::Instant::now();
             if now - self.last_frame_time > Duration::from_millis(GAME_STEP_MILLIS) {
-                self.game.next();
+                game.next();
                 self.last_frame_time = now;
 
                 if input.is_none() {
                     self.player_control_key = None;
                 }
             }
-            let ecs = self.game.ecs();
+            let ecs = game.ecs();
             let entities = ecs.get_entities_by(ComponentType::Render);
-            self.display.next(entities, self.game.debug_str());
+            self.display.next(entities, game.debug_str());
         }
     }
 }
