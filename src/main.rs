@@ -1,5 +1,5 @@
 use hewn::game::GameHandler;
-use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
+use hewn::runtime::{initialize_terminal_io, TerminalRuntime, WindowRuntime};
 use hewn::view::cursor::FollowPlayerYCursorStrategy;
 use hewn::view::{ScreenDimensions, TerminalRenderer, View, ViewCoordinate};
 
@@ -9,7 +9,8 @@ const SCREEN_WIDTH: u16 = 50;
 fn main() {
     let mut game = game::MinimalGame::new();
     game.start_game();
-    hewn::render::app::run(Box::new(game)).unwrap();
+    let mut runtime = WindowRuntime::new();
+    let _ = runtime.start(&mut game);
 
     let mut game = game::MinimalGame::new();
     let mut runtime = TerminalRuntime::new(SCREEN_WIDTH, SCREEN_HEIGHT);
