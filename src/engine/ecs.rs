@@ -31,7 +31,7 @@ pub struct EntityId(pub u16);
 impl Entity {
     pub fn new(id: EntityId) -> Entity {
         Entity {
-            id: id,
+            id,
             components: Components::new(),
         }
     }

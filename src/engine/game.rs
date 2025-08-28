@@ -3,7 +3,6 @@
 use winit::keyboard::KeyCode;
 
 use crate::ecs::ECS;
-use crate::runtime::Key;
 
 // TODO rename to GameHandler to better conform to other naming conventions? e.g. winit app handler.
 /// Trait which all games must implement.

@@ -1,7 +1,6 @@
+use super::render::State;
 use crate::ecs::Entity;
 use crate::game::GameLogic;
-
-use super::render::State;
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::KeyEvent;
@@ -9,7 +8,6 @@ use winit::event::MouseButton;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::event_loop::EventLoop;
-use winit::keyboard::KeyCode;
 use winit::keyboard::PhysicalKey;
 use winit::window::Window;
 

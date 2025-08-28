@@ -188,23 +188,6 @@ pub fn new_wasm_game_api(web_runtime: WebRuntime) -> WasmGameApi {
     WasmGameApi { web_runtime }
 }
 
-/// Map a web key to a Hewn key.
-/// TODO: do we need this, or should we just expose the Hewn key enum?
-fn map_wasm_key(k: Option<WasmKey>) -> Option<Key> {
-    if k.is_none() {
-        return None;
-    }
-    let k = k.unwrap();
-    match k {
-        WasmKey::Left => Some(Key::Left),
-        WasmKey::Right => Some(Key::Right),
-        WasmKey::Up => Some(Key::Up),
-        WasmKey::Down => Some(Key::Down),
-        WasmKey::Space => Some(Key::Space),
-        WasmKey::Escape => Some(Key::Escape),
-    }
-}
-
 #[wasm_bindgen]
 pub enum WasmKey {
     Left,
