@@ -2,7 +2,7 @@ use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
 use hewn::ecs::{Components, ECS};
-use hewn::game::GameLogic;
+use hewn::game::GameHandler;
 use hewn::runtime::Key;
 use rand::RngCore;
 use rand::{rngs::StdRng, Rng, SeedableRng};
@@ -136,7 +136,7 @@ impl Game {
     }
 }
 
-impl GameLogic for Game {
+impl GameHandler for Game {
     fn start_game(&mut self) {
         self.score = 0;
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
@@ -236,7 +236,7 @@ impl GameLogic for Game {
 mod tests {
     use super::*;
     use hewn::ecs::ComponentType;
-    use hewn::game::GameLogic;
+    use hewn::game::GameHandler;
 
     fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
         let ecs = game.ecs();

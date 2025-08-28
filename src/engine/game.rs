@@ -6,7 +6,7 @@ use crate::ecs::ECS;
 
 // TODO rename to GameHandler to better conform to other naming conventions? e.g. winit app handler.
 /// Trait which all games must implement.
-pub trait GameLogic {
+pub trait GameHandler {
     /// Start the game.
     fn start_game(&mut self);
     /// Compute the next game state based on player input.

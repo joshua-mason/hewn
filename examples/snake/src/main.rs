@@ -1,6 +1,6 @@
 mod game;
 use crate::game::create_game;
-use hewn::game::GameLogic;
+use hewn::game::GameHandler;
 #[cfg(not(target_arch = "wasm32"))]
 use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
 #[cfg(not(target_arch = "wasm32"))]

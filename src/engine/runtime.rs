@@ -2,7 +2,7 @@
 
 use crate::ecs::ComponentType;
 
-use super::{game::GameLogic, view::View};
+use super::{game::GameHandler, view::View};
 #[cfg(not(target_arch = "wasm32"))]
 use std::io::{self, Stdout};
 use std::{
@@ -58,7 +58,7 @@ pub fn initialize_terminal_io() -> (
 #[cfg(not(target_arch = "wasm32"))]
 pub struct TerminalRuntime<'a> {
     pub stdin: termion::input::Keys<termion::AsyncReader>,
-    pub game: &'a mut dyn GameLogic,
+    pub game: &'a mut dyn GameHandler,
     pub display: &'a mut View,
     last_frame_time: Instant,
     player_control_key: Option<Key>,
@@ -68,7 +68,7 @@ pub struct TerminalRuntime<'a> {
 impl TerminalRuntime<'_> {
     pub fn new<'a>(
         stdin: termion::input::Keys<termion::AsyncReader>,
-        game: &'a mut dyn GameLogic,
+        game: &'a mut dyn GameHandler,
         display: &'a mut View,
     ) -> TerminalRuntime<'a> {
         TerminalRuntime {
@@ -135,13 +135,13 @@ pub fn map_termion_key(key: termion::event::Key) -> Option<Key> {
 
 /// A runtime for a web game.
 pub struct WebRuntime {
-    game: Box<dyn GameLogic>,
+    game: Box<dyn GameHandler>,
     display: View,
 }
 
 impl WebRuntime {
     /// Create a new web runtime.
-    pub fn new(game: Box<dyn GameLogic>, display: View) -> WebRuntime {
+    pub fn new(game: Box<dyn GameHandler>, display: View) -> WebRuntime {
         WebRuntime { game, display }
     }
 

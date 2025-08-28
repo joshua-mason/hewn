@@ -1,6 +1,6 @@
 use super::render::State;
 use crate::ecs::Entity;
-use crate::game::GameLogic;
+use crate::game::GameHandler;
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::KeyEvent;
@@ -15,13 +15,13 @@ pub struct App {
     #[cfg(target_arch = "wasm32")]
     pub(crate) proxy: Option<winit::event_loop::EventLoopProxy<State>>,
     pub(crate) render_state: Option<State>,
-    pub(crate) game: Box<dyn GameLogic>,
+    pub(crate) game: Box<dyn GameHandler>,
 }
 
 impl App {
     pub fn new(
         #[cfg(target_arch = "wasm32")] event_loop: &EventLoop<State>,
-        game: Box<dyn GameLogic>,
+        game: Box<dyn GameHandler>,
     ) -> Self {
         #[cfg(target_arch = "wasm32")]
         let proxy = Some(event_loop.create_proxy());
@@ -162,7 +162,7 @@ impl ApplicationHandler<State> for App {
     }
 }
 
-pub fn run(game: Box<dyn GameLogic>) -> anyhow::Result<()> {
+pub fn run(game: Box<dyn GameHandler>) -> anyhow::Result<()> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         env_logger::init();

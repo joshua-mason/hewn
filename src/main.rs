@@ -1,4 +1,4 @@
-use hewn::game::GameLogic;
+use hewn::game::GameHandler;
 use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
 use hewn::view::cursor::FollowPlayerYCursorStrategy;
 use hewn::view::{ScreenDimensions, TerminalRenderer, View, ViewCoordinate};
@@ -60,7 +60,7 @@ mod game {
             self, CameraFollow, Components, EntityId, PositionComponent, RenderComponent,
             SizeComponent, VelocityComponent, ECS,
         },
-        game::GameLogic,
+        game::GameHandler,
         runtime::Key,
     };
     use winit::keyboard::KeyCode;
@@ -184,7 +184,7 @@ mod game {
         }
     }
 
-    impl GameLogic for MinimalGame {
+    impl GameHandler for MinimalGame {
         fn start_game(&mut self) {
             self.started = true;
             println!("[DEBUG] Game started");
@@ -303,7 +303,7 @@ fn main() {
 #[cfg(test)]
 mod test {
     use crate::game;
-    use hewn::{game::GameLogic, runtime::Key};
+    use hewn::{game::GameHandler, runtime::Key};
     use winit::keyboard::KeyCode;
 
     #[test]
