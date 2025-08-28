@@ -5,7 +5,7 @@ use std::io::Stdout;
 use std::time::{self, Duration, Instant};
 use termion::raw::RawTerminal;
 pub(crate) const FRAME_RATE_MILLIS: u64 = 10;
-pub(crate) const GAME_STEP_MILLIS: u64 = 100;
+pub(crate) const GAME_STEP_MILLIS: u64 = 10;
 
 impl From<termion::event::Key> for Key {
     fn from(key: termion::event::Key) -> Self {
@@ -93,6 +93,11 @@ impl TerminalRuntime {
                         self.player_control_key = None;
                     }
                 }
+            } else {
+                game.handle_key(Key::Up, false);
+                game.handle_key(Key::Down, false);
+                game.handle_key(Key::Left, false);
+                game.handle_key(Key::Right, false);
             }
             thread::sleep(time::Duration::from_millis(FRAME_RATE_MILLIS));
 

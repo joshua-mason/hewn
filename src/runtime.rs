@@ -1,4 +1,7 @@
 use crate::ecs::ECS;
+use crate::terminal::render::View;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 /// Trait which all games must implement.
 ///

@@ -105,18 +105,6 @@ mod game {
         }
 
         fn update_player_velocity(&mut self) {
-            let key = if self.game_controller.is_up_pressed {
-                Some(Key::Up)
-            } else if self.game_controller.is_down_pressed {
-                Some(Key::Down)
-            } else if self.game_controller.is_left_pressed {
-                Some(Key::Left)
-            } else if self.game_controller.is_right_pressed {
-                Some(Key::Right)
-            } else {
-                None
-            };
-
             let player_entity = self.ecs.get_entity_by_id_mut(self.player_entity_id);
             let Some(player_entity) = player_entity else {
                 return;
@@ -124,30 +112,19 @@ mod game {
             let Some(velocity) = &mut player_entity.components.velocity else {
                 return;
             };
-            let Some(key) = &key else {
-                velocity.x = 0;
+            if self.game_controller.is_up_pressed {
+                velocity.y = 1;
+            } else if self.game_controller.is_down_pressed {
+                velocity.y = -1;
+            } else {
                 velocity.y = 0;
-                return;
-            };
-
-            match key {
-                Key::Left => {
-                    velocity.x = -1;
-                    velocity.y = 0;
-                }
-                Key::Right => {
-                    velocity.x = 1;
-                    velocity.y = 0;
-                }
-                Key::Up => {
-                    velocity.x = 0;
-                    velocity.y = 1;
-                }
-                Key::Down => {
-                    velocity.x = 0;
-                    velocity.y = -1;
-                }
-                _ => {}
+            }
+            if self.game_controller.is_left_pressed {
+                velocity.x = -1;
+            } else if self.game_controller.is_right_pressed {
+                velocity.x = 1;
+            } else {
+                velocity.x = 0;
             }
         }
 
@@ -173,13 +150,6 @@ mod game {
             if !self.started {
                 return;
             }
-
-            // Track previous position for debug
-            let prev_position = self
-                .ecs
-                .get_entity_by_id(self.player_entity_id)
-                .and_then(|e| e.components.position.as_ref().map(|p| (p.x, p.y)));
-
             self.update_player_velocity();
             let collisions = self.ecs.collision_pass();
             if collisions
