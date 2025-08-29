@@ -55,8 +55,6 @@ impl GameHandler for HelloGame { // 4.
 }
 ```
 
-**What changed:**
-
 1. Import `GameHandler` trait - the core interface all Hewn games implement
 2. Import `ECS` - the Entity Component System that manages game objects
 3. `HelloGame` struct holds our game state (just an ECS for now)
@@ -123,8 +121,6 @@ impl HelloGame {
 // ..
 ```
 
-**What changed:**
-
 1. Added `player_id` field to store a reference to our character entity
 2. Player positioned at coordinates (5, 5) in the game world  
 3. `RenderComponent` makes the entity appear as `@` character on screen
@@ -149,8 +145,6 @@ impl GameHandler for HelloGame {
 }
 // ..
 ```
-
-**What changed:**
 
 1. `ecs.step()` updates all entities each frame (position, rendering, etc.)
 2. Look up the player entity by its ID to access its components
@@ -201,8 +195,6 @@ impl GameController {
 }
 // ..
 ```
-
-**What changed:**
 
 1. `GameController` struct tracks the current state of arrow keys (pressed/not pressed)
 2. `handle_key()` updates the key states when keys are pressed or released
@@ -271,8 +263,6 @@ impl GameHandler for HelloGame {
 // ..
 ```
 
-**What changed:**
-
 1. Added `game_controller` field to track input state
 2. Player now has a `VelocityComponent` - the ECS automatically moves entities with velocity
 3. Player size is `2x1` so it appears wider in the terminal  
@@ -299,8 +289,6 @@ fn main() {
     let _ = runtime.start(&mut game);
 }
 ```
-
-**What changed:**
 
 1. Swap `TerminalRuntime` for `WindowRuntime` - that's literally it!
 
@@ -333,8 +321,6 @@ impl HelloGame {
 }
 // ..
 ```
-
-**What changed:**
 
 1. Wall positioned at (8, 5) - to the right of the player starting position
 2. Wall renders as `#` character on screen
@@ -369,8 +355,6 @@ impl GameHandler for HelloGame {
     // ..
 }
 ```
-
-**What changed:**
 
 1. `collision_pass()` returns pairs of entities that are colliding
 2. **Important**: Iterate over collision pairs `[a, b]` - don't use `.flatten()` which loses pairing info
