@@ -172,6 +172,57 @@ pub mod cursor {
                 (x as i16 + self.offset as i16 - renderer.screen_width() as i16).max(0) as u16;
         }
     }
+
+    #[derive(Default)]
+    pub struct FollowPlayerXYCursorStrategy {
+        x_offset: usize,
+        y_offset: usize,
+    }
+
+    impl FollowPlayerXYCursorStrategy {
+        pub fn new() -> FollowPlayerXYCursorStrategy {
+            FollowPlayerXYCursorStrategy {
+                x_offset: 10,
+                y_offset: 3,
+            }
+        }
+    }
+
+    impl CursorStrategy for FollowPlayerXYCursorStrategy {
+        fn update(
+            &mut self,
+            cursor: &mut ViewCoordinate,
+            renderer: &dyn Renderer,
+            coords: &ViewCoordinate,
+        ) {
+            // Y axis logic (same as before)
+            let y = coords.y;
+            let y_abs_diff = y.abs_diff(cursor.y);
+            if !(y_abs_diff > 1 && y_abs_diff < (renderer.screen_height() - 2_u16)) {
+                cursor.y = (y as i16 + self.y_offset as i16 - renderer.screen_height() as i16)
+                    .max(0) as u16;
+            }
+
+            // X axis logic: make the camera follow the player more smoothly,
+            // not just when reaching the edge, but when the player moves past a margin.
+            let x = coords.x;
+            let screen_w = renderer.screen_width();
+            let left_margin = self.x_offset as u16;
+            let right_margin = screen_w.saturating_sub(self.x_offset as u16 + 1);
+
+            // If player is left of the left margin, move view left.
+            if x < cursor.x + left_margin {
+                let new_cursor_x = x.saturating_sub(left_margin);
+                cursor.x = new_cursor_x;
+            }
+            // If player is right of the right margin, move view right.
+            else if x > cursor.x + right_margin {
+                let new_cursor_x = x.saturating_sub(right_margin);
+                cursor.x = new_cursor_x;
+            }
+            // Otherwise, keep cursor.x unchanged (player is within margins).
+        }
+    }
 }
 
 /// Trait which all renderers must implement.

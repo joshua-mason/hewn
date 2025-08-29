@@ -4,8 +4,8 @@ use crate::terminal::render::View;
 use std::io::Stdout;
 use std::time::{self, Duration, Instant};
 use termion::raw::RawTerminal;
-pub(crate) const FRAME_RATE_MILLIS: u64 = 10;
-pub(crate) const GAME_STEP_MILLIS: u64 = 10;
+pub(crate) const FRAME_RATE_MILLIS: u64 = 100;
+pub(crate) const GAME_STEP_MILLIS: u64 = 100;
 
 impl From<termion::event::Key> for Key {
     fn from(key: termion::event::Key) -> Self {
@@ -46,7 +46,8 @@ pub struct TerminalRuntime {
 impl TerminalRuntime {
     pub fn new(width: u16, height: u16) -> TerminalRuntime {
         use crate::terminal::render::{
-            cursor::FollowPlayerYCursorStrategy, ScreenDimensions, TerminalRenderer, ViewCoordinate,
+            cursor::FollowPlayerXYCursorStrategy, ScreenDimensions, TerminalRenderer,
+            ViewCoordinate,
         };
 
         let (stdout, stdin) = initialize_terminal_io();
@@ -60,7 +61,7 @@ impl TerminalRuntime {
                     y: height,
                 },
             )),
-            cursor_strategy: Box::new(FollowPlayerYCursorStrategy::new()),
+            cursor_strategy: Box::new(FollowPlayerXYCursorStrategy::new()),
         };
 
         TerminalRuntime {

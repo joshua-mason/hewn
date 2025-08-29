@@ -2,7 +2,7 @@ use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
 use hewn::ecs::{Components, ECS};
-use hewn::game::GameHandler;
+use hewn::runtime::GameHandler;
 use hewn::runtime::Key;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::collections::HashSet;
@@ -143,12 +143,10 @@ impl GameHandler for Game {
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self, key: Option<Key>) {
+    fn next(&mut self) {
         if self.state != GameState::InGame {
             return;
         }
-
-        self.move_player(key);
 
         self.ecs.step();
 
@@ -195,6 +193,32 @@ impl GameHandler for Game {
             Some(format!("v = {:4}, x = {:3}, y = {:3}", vel.y, pos.x, pos.y))
         } else {
             None
+        }
+    }
+
+    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
+        if !pressed {
+            return true; // Ignore key releases
+        }
+
+        match key {
+            Key::Up => {
+                if self.state == GameState::InGame {
+                    if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+                        if let Some(velocity) = &mut player.components.velocity {
+                            velocity.y = 5;
+                        }
+                    }
+                }
+                true
+            }
+            Key::Space => {
+                if self.state != GameState::InGame {
+                    self.start_game();
+                }
+                true
+            }
+            _ => false,
         }
     }
 }

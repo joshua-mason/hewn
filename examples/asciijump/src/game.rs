@@ -2,7 +2,7 @@ use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
 use hewn::ecs::{Components, ECS};
-use hewn::game::GameHandler;
+use hewn::runtime::GameHandler;
 use hewn::runtime::Key;
 use rand::RngCore;
 use rand::{rngs::StdRng, Rng, SeedableRng};
@@ -151,21 +151,10 @@ impl GameHandler for Game {
         self.state = GameState::InGame;
     }
 
-    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
-        if self.state != GameState::InGame {
-            return false;
-        }
-
-        self.move_player(key);
-        true
-    }
-
-    fn next(&mut self, key: Option<Key>) {
+    fn next(&mut self) {
         if self.state != GameState::InGame {
             return;
         }
-
-        self.move_player(key);
 
         self.ecs.step();
 
@@ -239,13 +228,43 @@ impl GameHandler for Game {
             None
         }
     }
+    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
+        match key {
+            Key::Left | Key::Right => {
+                if self.state == GameState::InGame {
+                    if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+                        if let Some(velocity) = &mut player.components.velocity {
+                            if pressed {
+                                velocity.x = if key == Key::Left { -1 } else { 1 };
+                            } else {
+                                // Only stop horizontal movement if the released key matches the current direction
+                                if (key == Key::Left && velocity.x < 0)
+                                    || (key == Key::Right && velocity.x > 0)
+                                {
+                                    velocity.x = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+                true
+            }
+            Key::Space => {
+                if pressed {
+                    self.start_game();
+                }
+                true
+            }
+            _ => false,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use hewn::ecs::ComponentType;
-    use hewn::game::GameHandler;
+    use hewn::runtime::GameHandler;
 
     fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
         let ecs = game.ecs();
@@ -261,7 +280,7 @@ mod tests {
         game.add_platforms_from_positions(vec![(1, 3)]);
         game.start_game();
 
-        game.next(None);
+        game.next();
 
         let player = get_player_entity(&game);
         let pos = player.components.position.as_ref().unwrap();
@@ -283,7 +302,7 @@ mod tests {
 
         let mut bounced = false;
         for _ in 0..30 {
-            game.next(None);
+            game.next();
             let player = get_player_entity(&game);
             let pos = player.components.position.as_ref().unwrap();
             let vel = player.components.velocity.as_ref().unwrap();

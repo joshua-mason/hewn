@@ -36,7 +36,19 @@ impl WindowRuntime {
         WindowRuntime::default()
     }
 
+    pub fn with_update_frequency(_update_frequency: u32) -> WindowRuntime {
+        WindowRuntime::default()
+    }
+
     pub fn start(&mut self, game: &mut dyn GameHandler) -> anyhow::Result<()> {
+        self.start_with_update_frequency(game, 5)
+    }
+
+    pub fn start_with_update_frequency(
+        &mut self,
+        game: &mut dyn GameHandler,
+        update_frequency: u32,
+    ) -> anyhow::Result<()> {
         #[cfg(not(target_arch = "wasm32"))]
         {
             env_logger::init();
@@ -47,10 +59,11 @@ impl WindowRuntime {
         }
 
         let event_loop = EventLoop::with_user_event().build()?;
-        let mut app = App::new(
+        let mut app = App::with_update_frequency(
             #[cfg(target_arch = "wasm32")]
             &event_loop,
             game,
+            update_frequency,
         );
         event_loop.run_app(&mut app)?;
 
@@ -63,12 +76,27 @@ pub struct App<'a> {
     pub(crate) proxy: Option<winit::event_loop::EventLoopProxy<State>>,
     pub(crate) render_state: Option<State>,
     pub(crate) game: &'a mut dyn GameHandler,
+    pub(crate) frame_counter: u32,
+    pub(crate) update_frequency: u32, // Update game every N frames
 }
 
 impl<'a> App<'a> {
     pub fn new(
         #[cfg(target_arch = "wasm32")] event_loop: &EventLoop<State>,
         game: &'a mut dyn GameHandler,
+    ) -> Self {
+        Self::with_update_frequency(
+            #[cfg(target_arch = "wasm32")]
+            event_loop,
+            game,
+            5,
+        )
+    }
+
+    pub fn with_update_frequency(
+        #[cfg(target_arch = "wasm32")] event_loop: &EventLoop<State>,
+        game: &'a mut dyn GameHandler,
+        update_frequency: u32,
     ) -> Self {
         #[cfg(target_arch = "wasm32")]
         let proxy = Some(event_loop.create_proxy());
@@ -77,6 +105,8 @@ impl<'a> App<'a> {
             #[cfg(target_arch = "wasm32")]
             proxy,
             game,
+            frame_counter: 0,
+            update_frequency,
         }
     }
 }
@@ -163,8 +193,13 @@ impl<'a> ApplicationHandler<State> for App<'a> {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             WindowEvent::RedrawRequested => {
-                // game should move to state?
-                self.game.next();
+                self.frame_counter += 1;
+
+                if self.frame_counter >= self.update_frequency {
+                    self.game.next();
+                    self.frame_counter = 0;
+                }
+
                 let game_entities = self
                     .game
                     .ecs()
