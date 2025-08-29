@@ -225,6 +225,7 @@ pub mod cursor {
     }
 }
 
+// TODO trait only used once, no need for trait
 /// Trait which all renderers must implement.
 pub trait Renderer {
     fn screen_height(&self) -> u16;
@@ -262,12 +263,12 @@ impl Renderer for TerminalRenderer {
     fn render(&mut self, debug_string: Option<String>, view: String, h: u16) -> String {
         write!(
             self.stdout(),
-            "{}{}{}{}{:?}",
+            "{}{}{}{}{}",
             termion::clear::All,
             termion::cursor::Goto(1, 1),
             view,
             termion::cursor::Goto(1, h + 2),
-            debug_string
+            debug_string.unwrap_or("".to_string())
         )
         .unwrap();
         self.stdout().lock().flush().unwrap();

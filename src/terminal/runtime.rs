@@ -1,7 +1,12 @@
+use crate::ecs::ComponentType;
 use crate::runtime::GameHandler;
 use crate::runtime::Key;
 use crate::terminal::render::View;
+use crate::terminal::render::{
+    ScreenDimensions, TerminalRenderer, ViewCoordinate, cursor::FollowPlayerXYCursorStrategy,
+};
 use std::io::Stdout;
+use std::thread;
 use std::time::{self, Duration, Instant};
 use termion::raw::RawTerminal;
 pub(crate) const FRAME_RATE_MILLIS: u64 = 100;
@@ -45,11 +50,6 @@ pub struct TerminalRuntime {
 
 impl TerminalRuntime {
     pub fn new(width: u16, height: u16) -> TerminalRuntime {
-        use crate::terminal::render::{
-            cursor::FollowPlayerXYCursorStrategy, ScreenDimensions, TerminalRenderer,
-            ViewCoordinate,
-        };
-
         let (stdout, stdin) = initialize_terminal_io();
 
         let view = View {
@@ -75,10 +75,6 @@ impl TerminalRuntime {
     /// Start the game loop listening for player input and rendering the game.
     pub fn start(&mut self, game: &mut dyn GameHandler) {
         loop {
-            use std::thread;
-
-            use crate::ecs::ComponentType;
-
             let input = self.stdin.next();
 
             if let Some(Ok(key)) = input {
