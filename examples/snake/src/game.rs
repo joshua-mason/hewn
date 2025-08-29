@@ -2,8 +2,7 @@ use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
 use hewn::ecs::{Components, ECS};
-use hewn::game::GameLogic;
-use hewn::runtime::Key;
+use hewn::runtime::{GameHandler, Key};
 use rand::{rngs::StdRng, Rng, RngCore, SeedableRng};
 use std::collections::HashSet;
 
@@ -276,7 +275,7 @@ impl Game {
     }
 }
 
-impl GameLogic for Game {
+impl GameHandler for Game {
     fn start_game(&mut self) {
         self.score = 0;
         if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
@@ -289,7 +288,14 @@ impl GameLogic for Game {
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self, key: Option<Key>) {
+    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
+        if pressed {
+            self.player_direction = Game::compute_next_direction(self.player_direction, Some(key));
+        }
+        true
+    }
+
+    fn next(&mut self) {
         if self.state != GameState::InGame {
             return;
         }
@@ -298,8 +304,8 @@ impl GameLogic for Game {
         prev_positions.push(self.head_position());
         prev_positions.extend(self.body_positions());
 
-        let next_dir = Game::compute_next_direction(self.player_direction, key);
-        self.player_direction = next_dir;
+        // let next_dir = Game::compute_next_direction(self.player_direction, key);
+        // self.player_direction = next_dir;
         self.set_head_velocity_from_direction();
 
         self.ecs.step();

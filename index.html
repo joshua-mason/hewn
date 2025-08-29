@@ -8,8 +8,8 @@
     <title>Learn WGPU</title>
     <style>
         canvas {
-            width: 800px;
-            height: 600px;
+            width: 400px;
+            height: 400px;
             padding: 0;
             margin: 0;
         }
@@ -18,11 +18,11 @@
 
 <body id="wasm-example">
     <script type="module">
-        import init, { run_in_canvas } from "./pkg/snake.js";
+        import init, { run_web } from "./pkg/hewn.js";
         init().then(() => {
             console.log("WASM Loaded");
             console.log("Running WASM");
-            run_in_canvas(50, 50, null);
+            run_web();
         });
     </script>
     <canvas id="canvas"></canvas>

@@ -1,29 +1,18 @@
 mod game;
 use crate::game::create_game;
 #[cfg(not(target_arch = "wasm32"))]
-use hewn::runtime::{initialize_terminal_io, TerminalRuntime};
-#[cfg(not(target_arch = "wasm32"))]
-use hewn::view::{ScreenDimensions, TerminalRenderer, View};
+use hewn::runtime::GameHandler;
 
-const SCREEN_WIDTH: u16 = 40;
-const SCREEN_HEIGHT: u16 = 10;
+const SCREEN_WIDTH: u16 = 50;
+const SCREEN_HEIGHT: u16 = 50;
 
 fn main() {
-    let (stdout, stdin) = initialize_terminal_io();
     let mut game = create_game(SCREEN_WIDTH, SCREEN_HEIGHT, None);
-    let renderer = TerminalRenderer::new(
-        stdout,
-        ScreenDimensions {
-            x: SCREEN_WIDTH,
-            y: SCREEN_HEIGHT,
-        },
-    );
-    let mut display = View {
-        renderer: Box::new(renderer),
-        view_cursor: hewn::view::ViewCoordinate { x: 0, y: 0 },
-        cursor_strategy: Box::new(hewn::view::cursor::StaticCursorStrategy::new()),
-    };
-    let mut runtime = TerminalRuntime::new(stdin, &mut game, &mut display);
+    game.start_game();
+    let mut runtime = hewn::wgpu::runtime::WindowRuntime::new();
+    let _ = runtime.start(&mut game);
 
-    runtime.start();
+    let mut game = create_game(SCREEN_WIDTH, SCREEN_HEIGHT, None);
+    let mut runtime = hewn::terminal::runtime::TerminalRuntime::new(SCREEN_WIDTH, SCREEN_HEIGHT);
+    runtime.start(&mut game);
 }

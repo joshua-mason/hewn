@@ -1,10 +1,10 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Entity {
     pub id: EntityId,
     pub components: Components,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Components {
     pub position: Option<PositionComponent>,
     pub velocity: Option<VelocityComponent>,
@@ -25,13 +25,13 @@ impl Components {
     }
 }
 
-#[derive(PartialEq, Debug, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Debug, Eq, Hash, Clone, Copy, Default)]
 pub struct EntityId(pub u16);
 
 impl Entity {
     pub fn new(id: EntityId) -> Entity {
         Entity {
-            id: id,
+            id,
             components: Components::new(),
         }
     }
@@ -72,7 +72,7 @@ pub enum ComponentType {
 trait Component {
     const TYPE: ComponentType;
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PositionComponent {
     pub x: u16,
     pub y: u16,
@@ -81,7 +81,7 @@ impl Component for PositionComponent {
     const TYPE: ComponentType = ComponentType::Position;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct VelocityComponent {
     pub x: i16,
     pub y: i16,
@@ -90,7 +90,7 @@ impl Component for VelocityComponent {
     const TYPE: ComponentType = ComponentType::Velocity;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SizeComponent {
     pub x: u16,
     pub y: u16,
@@ -99,7 +99,7 @@ impl Component for SizeComponent {
     const TYPE: ComponentType = ComponentType::Size;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct RenderComponent {
     pub ascii_character: char,
 }
@@ -107,12 +107,13 @@ impl Component for RenderComponent {
     const TYPE: ComponentType = ComponentType::Render;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct CameraFollow {}
 impl Component for CameraFollow {
     const TYPE: ComponentType = ComponentType::CameraFollow;
 }
 
+#[derive(Default)]
 pub struct ECS {
     next_entity_id: EntityId,
     entities: Vec<Entity>,
@@ -131,8 +132,8 @@ impl ECS {
                 sum as u16
             }
         }
-        let velocitys = self.get_entities_by_mut(ComponentType::Velocity);
-        for c in velocitys {
+        let velocities = self.get_entities_by_mut(ComponentType::Velocity);
+        for c in velocities {
             let Some(position) = &mut c.components.position else {
                 continue;
             };
@@ -264,13 +265,8 @@ impl ECS {
 }
 
 pub mod collisions {
-    use crate::ecs::{Entity, EntityId};
+    use crate::ecs::{Entity, EntityId, VelocityComponent};
     use std::ops::Range;
-
-    pub fn collision_pass(objects: &[Entity]) -> Vec<[EntityId; 2]> {
-        let collisions = process_collisions(objects);
-        collisions
-    }
 
     #[derive(Debug, PartialEq)]
     struct CollisionBox {
@@ -288,9 +284,11 @@ pub mod collisions {
                 return None;
             };
 
-            let Some(velocity) = &entity.components.velocity else {
-                return None;
-            };
+            let velocity = entity
+                .components
+                .velocity
+                .as_ref()
+                .unwrap_or(&VelocityComponent { x: 0, y: 0 });
 
             Some(CollisionBox {
                 x: CollisionBox::range_from_physical_properties(position.x, size.x, velocity.x),
@@ -317,7 +315,7 @@ pub mod collisions {
             && overlapping_1d(&a_collision_box.y, &b_collision_box.y)
     }
 
-    fn process_collisions(objects: &[Entity]) -> Vec<[EntityId; 2]> {
+    pub fn collision_pass(objects: &[Entity]) -> Vec<[EntityId; 2]> {
         // TODO: Collision is O(n^2) - worth looking at better approaches in future
         let mut collisions: Vec<[EntityId; 2]> = vec![];
         for i in 0..objects.len() {
