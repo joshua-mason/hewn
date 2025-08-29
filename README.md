@@ -445,7 +445,3 @@ python3 -m http.server
 ---
 
 **Happy game making!** 🎮
-
-## License
-
-This project is licensed under [your license here].
