@@ -3,8 +3,6 @@ use crate::ecs::ECS;
 use wasm_bindgen::prelude::*;
 
 /// Trait which all games must implement.
-///
-/// TODO rename to GameHandler to better conform to other naming conventions? e.g. winit app handler.
 pub trait GameHandler {
     /// Start the game.
     fn start_game(&mut self);
