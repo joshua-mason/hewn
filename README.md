@@ -50,7 +50,7 @@ impl GameHandler for HelloGame { // 4.
     fn ecs(&self) -> &ECS { &self.ecs }
     
     fn debug_str(&self) -> Option<String> {
-        Some("Hello Hewn! Press Q to exit.".to_string()) // 6.
+        Some("Hello Hewn! Press Q to exit.".to_string()) // 5.
     }
 }
 ```
