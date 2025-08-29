@@ -44,7 +44,7 @@ termion = "4"
 crate-type = ["cdylib", "rlib"]
 
 [workspace]
-members = ["examples/snake", "examples/asciibird", "examples/asciijump"]
+members = ["examples/snake", "examples/asciibird", "examples/asciijump", "examples/tutorial"]
 
 [profile.release]
 strip = true

@@ -132,8 +132,8 @@ impl ECS {
                 sum as u16
             }
         }
-        let velocitys = self.get_entities_by_mut(ComponentType::Velocity);
-        for c in velocitys {
+        let velocities = self.get_entities_by_mut(ComponentType::Velocity);
+        for c in velocities {
             let Some(position) = &mut c.components.position else {
                 continue;
             };
@@ -265,7 +265,7 @@ impl ECS {
 }
 
 pub mod collisions {
-    use crate::ecs::{Entity, EntityId};
+    use crate::ecs::{Entity, EntityId, VelocityComponent};
     use std::ops::Range;
 
     #[derive(Debug, PartialEq)]
@@ -284,9 +284,11 @@ pub mod collisions {
                 return None;
             };
 
-            let Some(velocity) = &entity.components.velocity else {
-                return None;
-            };
+            let velocity = entity
+                .components
+                .velocity
+                .as_ref()
+                .unwrap_or(&VelocityComponent { x: 0, y: 0 });
 
             Some(CollisionBox {
                 x: CollisionBox::range_from_physical_properties(position.x, size.x, velocity.x),
