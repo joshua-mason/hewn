@@ -378,7 +378,7 @@ fn generate_walls_positions(width: u16, height: u16) -> Vec<(u16, u16)> {
         walls.push((x_index, 1));
         walls.push((x_index, height));
     }
-    for y_index in 0..height {
+    for y_index in 1..(height) {
         walls.push((0, y_index));
         walls.push((width - 1, y_index));
     }

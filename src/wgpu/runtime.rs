@@ -14,16 +14,18 @@ use winit::event_loop::EventLoop;
 use winit::keyboard::PhysicalKey;
 use winit::window::Window;
 
-impl From<winit::keyboard::KeyCode> for Key {
-    fn from(key: winit::keyboard::KeyCode) -> Self {
+impl TryFrom<winit::keyboard::KeyCode> for Key {
+    type Error = &'static str;
+
+    fn try_from(key: winit::keyboard::KeyCode) -> Result<Self, Self::Error> {
         match key {
-            winit::keyboard::KeyCode::ArrowLeft => Key::Left,
-            winit::keyboard::KeyCode::ArrowRight => Key::Right,
-            winit::keyboard::KeyCode::ArrowUp => Key::Up,
-            winit::keyboard::KeyCode::ArrowDown => Key::Down,
-            winit::keyboard::KeyCode::Space => Key::Space,
-            winit::keyboard::KeyCode::Escape => Key::Escape,
-            _ => panic!("Unsupported key: {:?}", key),
+            winit::keyboard::KeyCode::ArrowLeft => Ok(Key::Left),
+            winit::keyboard::KeyCode::ArrowRight => Ok(Key::Right),
+            winit::keyboard::KeyCode::ArrowUp => Ok(Key::Up),
+            winit::keyboard::KeyCode::ArrowDown => Ok(Key::Down),
+            winit::keyboard::KeyCode::Space => Ok(Key::Space),
+            winit::keyboard::KeyCode::Escape => Ok(Key::Escape),
+            _ => Err("Key not supported"),
         }
     }
 }
@@ -130,23 +132,28 @@ impl<'a> ApplicationHandler<State> for App<'a> {
             window_attributes = window_attributes.with_canvas(Some(html_canvas_element));
         }
 
-        let game_entities = self
+        let renderable_entities = self
             .game
             .ecs()
-            .get_entities_by(crate::ecs::ComponentType::Render)
+            .get_entities_with_component(crate::ecs::ComponentType::Render)
             .iter()
             .map(|e| **e)
             // probably terrible performance cloning here we when we should pass a reference as we only
-            // need to read - but this is a quick fix for now.
+            // need to read - but this is a temporary fix for now.
             .collect::<Vec<Entity>>();
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            // If we are not on web we can use pollster to
-            // await the
-            self.render_state =
-                Some(pollster::block_on(State::new(window, game_entities)).unwrap());
+            use crate::wgpu::render::CameraStrategy;
+            self.render_state = Some(
+                pollster::block_on(State::new(
+                    window,
+                    renderable_entities,
+                    CameraStrategy::AllEntities,
+                ))
+                .unwrap(),
+            );
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -200,16 +207,16 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                     self.frame_counter = 0;
                 }
 
-                let game_entities = self
+                let renderable_entities = self
                     .game
                     .ecs()
-                    .get_entities_by(crate::ecs::ComponentType::Render)
+                    .get_entities_with_component(crate::ecs::ComponentType::Render)
                     .iter()
                     .map(|e| **e)
                     // probably terrible performance cloning here we when we should pass a reference as we only
                     // need to read - but this is a quick fix for now.
                     .collect::<Vec<Entity>>();
-                state.update(game_entities);
+                state.update(renderable_entities);
                 match state.render() {
                     Ok(_) => {}
                     // Reconfigure the surface if it's lost or outdated
@@ -237,7 +244,9 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 ..
             } => {
                 state.handle_key(event_loop, code, key_state.is_pressed());
-                self.game.handle_key(code.into(), key_state.is_pressed());
+                let _ = code
+                    .try_into()
+                    .and_then(|key| Ok(self.game.handle_key(key, key_state.is_pressed())));
             }
             _ => {}
         }

@@ -1,4 +1,5 @@
 use crate::ecs::Entity;
+use crate::ecs::EntityId;
 use crate::wgpu::texture;
 use cgmath::prelude::*;
 use cgmath::InnerSpace;
@@ -10,6 +11,11 @@ use std::{iter, sync::Arc};
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
+
+pub enum CameraStrategy {
+    CameraFollow(EntityId),
+    AllEntities,
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -293,6 +299,7 @@ pub struct State {
     pub(crate) diffuse_bind_group: wgpu::BindGroup,
     pub(crate) instances: Vec<Instance>,
     pub(crate) instance_buffer: wgpu::Buffer,
+    pub camera_strategy: CameraStrategy,
 
     pub(crate) vertices: Vec<Vertex>,
     pub(crate) indices: Vec<u16>,
@@ -303,11 +310,15 @@ pub struct State {
     pub(crate) camera_buffer: wgpu::Buffer,
     pub(crate) camera_bind_group: wgpu::BindGroup,
     pub(crate) window: Arc<Window>,
-    pub(crate) entities: Vec<Entity>,
+    pub(crate) renderable_entities: Vec<Entity>,
 }
 
 impl State {
-    pub(crate) async fn new(window: Arc<Window>, entities: Vec<Entity>) -> anyhow::Result<State> {
+    pub(crate) async fn new(
+        window: Arc<Window>,
+        renderable_entities: Vec<Entity>,
+        camera_strategy: CameraStrategy,
+    ) -> anyhow::Result<State> {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
@@ -528,11 +539,10 @@ impl State {
         });
         let num_indices = indices.len() as u32;
 
-        let instances = entities
+        let instances = renderable_entities
             .iter()
             .map(|e| {
                 let position = e.components.position.unwrap();
-                // let rotation = e.components.rotation.unwrap();
                 let rotation = cgmath::Quaternion::from_axis_angle(
                     cgmath::Vector3::unit_z(),
                     cgmath::Deg(0.0),
@@ -579,7 +589,8 @@ impl State {
             instances,
             instance_buffer,
             window,
-            entities,
+            renderable_entities,
+            camera_strategy,
         })
     }
 
@@ -604,11 +615,11 @@ impl State {
         }
     }
 
-    pub(crate) fn update(&mut self, game_entities: Vec<Entity>) {
-        self.entities = game_entities;
+    pub(crate) fn update(&mut self, renderable_entities: Vec<Entity>) {
+        self.renderable_entities = renderable_entities;
 
         let instances = self
-            .entities
+            .renderable_entities
             .iter()
             .map(|e| {
                 let position = e.components.position.unwrap();
@@ -644,26 +655,60 @@ impl State {
         // Log the instance positions to stdout so we can see things are moving when keys are hit.
         self.instance_buffer = instance_buffer;
 
-        let camera_follow_entity = self
-            .entities
+        let camera_points = self
+            .renderable_entities
             .iter()
-            .find(|e| e.components.camera_follow.is_some());
-        if let Some(camera_follow_entity) = camera_follow_entity {
-            let camera_follow_position = camera_follow_entity.components.position.unwrap();
-            // self.camera
-            self.camera.eye = cgmath::Point3::new(
-                camera_follow_position.x as f32 * 0.1,
-                camera_follow_position.y as f32 * 0.1,
-                5.0,
-            );
-            self.camera.target = cgmath::Point3::new(
-                camera_follow_position.x as f32 * 0.1,
-                camera_follow_position.y as f32 * 0.1,
-                0.0,
-            );
+            .fold((0, 0, 0, 0), |mut acc, e| {
+                if let Some(position) = e.components.position {
+                    if (position.x < acc.0) {
+                        acc.0 = position.x;
+                    }
+                    if (position.x > acc.1) {
+                        acc.1 = position.x;
+                    }
+                    if (position.y < acc.2) {
+                        acc.2 = position.y;
+                    }
+                    if (position.y > acc.3) {
+                        acc.3 = position.y;
+                    }
+                }
+                acc
+            });
+        let camera_x_position = (camera_points.0 + camera_points.1) as f32 / 2.0;
+        let camera_y_position = (camera_points.2 + camera_points.3) as f32 / 2.0;
+
+        let game_width = camera_points.1 - camera_points.0;
+        let z_depth = game_width as f32 / 7.8;
+        match self.camera_strategy {
+            CameraStrategy::CameraFollow(entity_id) => {
+                let entity = self
+                    .renderable_entities
+                    .iter()
+                    .find(|e| e.id == entity_id)
+                    .unwrap(); // what do we do in the case the entity doesn't exist?
+                let camera_follow_position = entity.components.position.unwrap();
+                self.camera.eye = cgmath::Point3::new(
+                    camera_follow_position.x as f32 * 0.1,
+                    camera_follow_position.y as f32 * 0.1,
+                    z_depth,
+                );
+                self.camera.target = cgmath::Point3::new(
+                    camera_follow_position.x as f32 * 0.1,
+                    camera_follow_position.y as f32 * 0.1,
+                    0.0,
+                );
+                self.camera_uniform.update_view_proj(&self.camera);
+            }
+            CameraStrategy::AllEntities => {
+                self.camera.eye =
+                    cgmath::Point3::new(camera_x_position * 0.1, camera_y_position * 0.1, z_depth);
+                self.camera.target =
+                    cgmath::Point3::new(camera_x_position * 0.1, camera_y_position * 0.1, 0.0);
+                self.camera_uniform.update_view_proj(&self.camera);
+            }
         }
-        // self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update_view_proj(&self.camera);
+
         self.queue.write_buffer(
             &self.camera_buffer,
             0,

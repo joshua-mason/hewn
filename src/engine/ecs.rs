@@ -77,6 +77,7 @@ pub struct PositionComponent {
     pub x: u16,
     pub y: u16,
 }
+
 impl Component for PositionComponent {
     const TYPE: ComponentType = ComponentType::Position;
 }
@@ -183,7 +184,7 @@ impl ECS {
         self.entities.iter_mut().find(|e| e.id == id)
     }
 
-    pub fn get_entities_by(&self, component_type: ComponentType) -> Vec<&Entity> {
+    pub fn get_entities_with_component(&self, component_type: ComponentType) -> Vec<&Entity> {
         let entities = self
             .entities
             .iter()

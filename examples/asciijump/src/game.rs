@@ -268,7 +268,7 @@ mod tests {
 
     fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
         let ecs = game.ecs();
-        let mut tracked = ecs.get_entities_by(ComponentType::CameraFollow);
+        let mut tracked = ecs.get_entities_with_component(ComponentType::CameraFollow);
         assert!(tracked.len() > 0, "player entity not found");
         tracked.remove(0)
     }

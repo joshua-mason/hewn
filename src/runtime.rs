@@ -26,4 +26,5 @@ pub enum Key {
     Down,
     Space,
     Escape,
+    Q,
 }
