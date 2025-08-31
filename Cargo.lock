@@ -1745,6 +1745,7 @@ dependencies = [
 name = "snake"
 version = "0.0.0"
 dependencies = [
+ "cgmath",
  "getrandom 0.2.15",
  "hewn",
  "js-sys",

@@ -21,7 +21,6 @@ pub enum CameraStrategy {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     position: [f32; 3],
-    color: [f32; 3],
 }
 
 fn gen_shape_buffer(points: u16, rotation_deg: f32, size: f32) -> (Vec<Vertex>, Vec<u16>) {
@@ -30,23 +29,18 @@ fn gen_shape_buffer(points: u16, rotation_deg: f32, size: f32) -> (Vec<Vertex>, 
             vec![
                 Vertex {
                     position: [-0.0868241, 0.49240386, 0.0],
-                    color: [0.0, 0.0, 0.0],
                 },
                 Vertex {
                     position: [-0.49513406, 0.06958647, 0.0],
-                    color: [0.0, 0.0, 0.0],
                 },
                 Vertex {
                     position: [-0.21918549, -0.44939706, 0.0],
-                    color: [0.0, 0.0, 0.0],
                 },
                 Vertex {
                     position: [0.35966998, -0.3473291, 0.0],
-                    color: [0.0, 0.0, 0.0],
                 },
                 Vertex {
                     position: [0.44147372, 0.2347359, 0.0],
-                    color: [0.0, 0.0, 0.0],
                 },
             ],
             vec![0, 1, 4, 1, 2, 4, 2, 3, 4],
@@ -61,7 +55,6 @@ fn gen_shape_buffer(points: u16, rotation_deg: f32, size: f32) -> (Vec<Vertex>, 
         let y = size * theta.sin();
         vertices.push(Vertex {
             position: [x, y, 0.0],
-            color: [0.0, 0.0, 0.0],
         });
     }
 
@@ -80,18 +73,11 @@ impl Vertex {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-            ],
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
         }
     }
 }
@@ -225,21 +211,21 @@ impl CameraController {
     }
 }
 
-pub(crate) struct Instance {
+pub(crate) struct InstancePosition {
     pub(crate) position: cgmath::Vector3<f32>,
     pub(crate) rotation: cgmath::Quaternion<f32>,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct InstanceRaw {
+pub(crate) struct InstancePositionRaw {
     pub(crate) model: [[f32; 4]; 4],
 }
 
-impl InstanceRaw {
+impl InstancePositionRaw {
     pub(crate) fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<InstanceRaw>() as wgpu::BufferAddress,
+            array_stride: mem::size_of::<InstancePositionRaw>() as wgpu::BufferAddress,
             // We need to switch from using a step mode of Vertex to Instance
             // This means that our shaders will only change to use the next
             // instance when the shader starts processing a new instance
@@ -274,12 +260,44 @@ impl InstanceRaw {
     }
 }
 
-impl Instance {
-    pub(crate) fn to_raw(&self) -> InstanceRaw {
-        InstanceRaw {
+impl InstancePosition {
+    pub(crate) fn to_raw(&self) -> InstancePositionRaw {
+        InstancePositionRaw {
             model: (cgmath::Matrix4::from_translation(self.position)
                 * cgmath::Matrix4::from(self.rotation))
             .into(),
+        }
+    }
+}
+
+pub(crate) struct InstanceColor {
+    pub(crate) color: cgmath::Vector3<f32>,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct InstanceColorRaw {
+    pub(crate) model: [f32; 3],
+}
+
+impl InstanceColorRaw {
+    pub(crate) fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<InstanceColorRaw>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 9,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
+        }
+    }
+}
+
+impl InstanceColor {
+    pub(crate) fn to_raw(&self) -> InstanceColorRaw {
+        InstanceColorRaw {
+            model: self.color.into(),
         }
     }
 }
@@ -297,8 +315,10 @@ pub struct State {
     #[allow(dead_code)]
     pub(crate) diffuse_texture: texture::Texture,
     pub(crate) diffuse_bind_group: wgpu::BindGroup,
-    pub(crate) instances: Vec<Instance>,
-    pub(crate) instance_buffer: wgpu::Buffer,
+    pub(crate) instance_positions: Vec<InstancePosition>,
+    pub instance_colors: Vec<InstanceColor>,
+    pub(crate) instance_positions_buffer: wgpu::Buffer,
+    pub(crate) instance_colors_buffer: wgpu::Buffer,
     pub camera_strategy: CameraStrategy,
 
     pub(crate) vertices: Vec<Vertex>,
@@ -483,7 +503,11 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc(), InstanceRaw::desc()],
+                buffers: &[
+                    Vertex::desc(),
+                    InstancePositionRaw::desc(),
+                    InstanceColorRaw::desc(),
+                ],
                 compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -525,7 +549,7 @@ impl State {
             cache: None,
         });
 
-        let (vertices, indices) = gen_shape_buffer(4, 45.0, 0.1);
+        let (vertices, indices) = gen_shape_buffer(4, 45.0, 0.08);
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -539,31 +563,50 @@ impl State {
         });
         let num_indices = indices.len() as u32;
 
-        let instances = renderable_entities
+        let (instance_positions, instance_colors): (Vec<InstancePosition>, Vec<InstanceColor>) =
+            renderable_entities
+                .iter()
+                .map(|e| {
+                    let position = e.components.position.unwrap();
+                    let rotation = cgmath::Quaternion::from_axis_angle(
+                        cgmath::Vector3::unit_z(),
+                        cgmath::Deg(0.0),
+                    );
+                    let color = e.components.render.unwrap().rgb;
+
+                    let position_3d = cgmath::Vector3 {
+                        x: position.x as f32 * 0.1,
+                        y: position.y as f32 * 0.1,
+                        z: 0.0,
+                    };
+                    (
+                        InstancePosition {
+                            position: position_3d,
+                            rotation,
+                        },
+                        InstanceColor { color },
+                    )
+                })
+                .unzip();
+        // .collect::<Vec<_>>();
+
+        let instance_positions_raw = instance_positions
             .iter()
-            .map(|e| {
-                let position = e.components.position.unwrap();
-                let rotation = cgmath::Quaternion::from_axis_angle(
-                    cgmath::Vector3::unit_z(),
-                    cgmath::Deg(0.0),
-                );
-
-                let position_3d = cgmath::Vector3 {
-                    x: position.x as f32 * 0.1,
-                    y: position.y as f32 * 0.1,
-                    z: 0.0,
-                };
-                Instance {
-                    position: position_3d,
-                    rotation,
-                }
-            })
+            .map(InstancePosition::to_raw)
             .collect::<Vec<_>>();
-
-        let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
-        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Instance Buffer"),
-            contents: bytemuck::cast_slice(&instance_data),
+        let instance_colors_raw = instance_colors
+            .iter()
+            .map(InstanceColor::to_raw)
+            .collect::<Vec<_>>();
+        let instance_positions_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Instance Position Buffer"),
+                contents: bytemuck::cast_slice(&instance_positions_raw),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let instance_colors_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Instance Color Buffer"),
+            contents: bytemuck::cast_slice(&instance_colors_raw),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
@@ -586,8 +629,10 @@ impl State {
             camera_buffer,
             camera_bind_group,
             camera_uniform,
-            instances,
-            instance_buffer,
+            instance_positions,
+            instance_colors,
+            instance_positions_buffer,
+            instance_colors_buffer,
             window,
             renderable_entities,
             camera_strategy,
@@ -618,42 +663,61 @@ impl State {
     pub(crate) fn update(&mut self, renderable_entities: Vec<Entity>) {
         self.renderable_entities = renderable_entities;
 
-        let instances = self
-            .renderable_entities
-            .iter()
-            .map(|e| {
-                let position = e.components.position.unwrap();
-                let rotation = cgmath::Quaternion::from_axis_angle(
-                    cgmath::Vector3::unit_z(),
-                    cgmath::Deg(0.0),
-                );
+        let (instance_positions, instance_colors): (Vec<InstancePosition>, Vec<InstanceColor>) =
+            self.renderable_entities
+                .iter()
+                .map(|e| {
+                    let position = e.components.position.unwrap();
+                    let render = e.components.render.unwrap();
+                    let rotation = cgmath::Quaternion::from_axis_angle(
+                        cgmath::Vector3::unit_z(),
+                        cgmath::Deg(0.0),
+                    );
 
-                let position_3d = cgmath::Vector3 {
-                    x: position.x as f32 * 0.1,
-                    y: position.y as f32 * 0.1,
-                    z: 0.0,
-                };
-                Instance {
-                    position: position_3d,
-                    rotation,
-                }
-            })
-            .collect::<Vec<_>>();
-        self.instances = instances;
-        let instance_data = self
-            .instances
+                    let position_3d = cgmath::Vector3 {
+                        x: position.x as f32 * 0.1,
+                        y: position.y as f32 * 0.1,
+                        z: 0.0,
+                    };
+                    (
+                        InstancePosition {
+                            position: position_3d,
+                            rotation,
+                        },
+                        InstanceColor { color: render.rgb },
+                    )
+                })
+                .unzip();
+        self.instance_positions = instance_positions;
+        self.instance_colors = instance_colors;
+        let instance_position_data = self
+            .instance_positions
             .iter()
-            .map(Instance::to_raw)
+            .map(InstancePosition::to_raw)
             .collect::<Vec<_>>();
-        let instance_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(&instance_data),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
+        let instance_positions_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Instance Position Buffer"),
+                    contents: bytemuck::cast_slice(&instance_position_data),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
+        let instance_colors_data = self
+            .instance_colors
+            .iter()
+            .map(InstanceColor::to_raw)
+            .collect::<Vec<_>>();
+        let instance_colors_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Instance Position Buffer"),
+                    contents: bytemuck::cast_slice(&instance_colors_data),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
         // Log the instance positions to stdout so we can see things are moving when keys are hit.
-        self.instance_buffer = instance_buffer;
+        self.instance_positions_buffer = instance_positions_buffer;
+        self.instance_colors_buffer = instance_colors_buffer;
 
         let camera_points = self
             .renderable_entities
@@ -761,9 +825,14 @@ impl State {
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, self.instance_positions_buffer.slice(..));
+            render_pass.set_vertex_buffer(2, self.instance_colors_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
+            render_pass.draw_indexed(
+                0..self.num_indices,
+                0,
+                0..self.instance_positions.len() as _,
+            );
         }
 
         self.queue.submit(iter::once(encoder.finish()));

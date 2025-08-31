@@ -1,3 +1,4 @@
+use cgmath;
 use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
@@ -99,6 +100,11 @@ impl Game {
             size: Some(SizeComponent { x: 1, y: 1 }),
             render: Some(RenderComponent {
                 ascii_character: '0',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
             }),
             camera_follow: Some(CameraFollow {}),
         };
@@ -115,6 +121,11 @@ impl Game {
                 size: Some(SizeComponent { x: 1, y: 1 }),
                 render: Some(RenderComponent {
                     ascii_character: '#',
+                    rgb: cgmath::Vector3 {
+                        x: 0.0,
+                        y: 0.1,
+                        z: 0.0,
+                    },
                 }),
                 camera_follow: None,
             };
@@ -164,6 +175,11 @@ impl Game {
             size: Some(SizeComponent { x: 1, y: 1 }),
             render: Some(RenderComponent {
                 ascii_character: '+',
+                rgb: cgmath::Vector3 {
+                    x: 0.1,
+                    y: 0.0,
+                    z: 0.0,
+                },
             }),
             camera_follow: None,
         };
@@ -230,6 +246,11 @@ impl Game {
             size: Some(SizeComponent { x: 1, y: 1 }),
             render: Some(RenderComponent {
                 ascii_character: 'o',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.1,
+                },
             }),
             camera_follow: None,
         };

@@ -1,3 +1,5 @@
+use cgmath::Vector3;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Entity {
     pub id: EntityId,
@@ -53,7 +55,10 @@ impl Entity {
                     x: size.0,
                     y: size.1,
                 }),
-                render: ascii_character.map(|c| RenderComponent { ascii_character: c }),
+                render: ascii_character.map(|c| RenderComponent {
+                    ascii_character: c,
+                    rgb: Vector3::new(0.0, 0.0, 0.0),
+                }),
                 camera_follow: if track { Some(CameraFollow {}) } else { None },
             },
         }
@@ -103,6 +108,7 @@ impl Component for SizeComponent {
 #[derive(Debug, Clone, Copy)]
 pub struct RenderComponent {
     pub ascii_character: char,
+    pub rgb: Vector3<f32>,
 }
 impl Component for RenderComponent {
     const TYPE: ComponentType = ComponentType::Render;

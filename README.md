@@ -109,7 +109,14 @@ impl HelloGame {
         
         let player_id = ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 5, y: 5 }), // 2.
-            render: Some(RenderComponent { ascii_character: '@' }), // 3.
+            render: Some(RenderComponent { // 3.
+                ascii_character: '@',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            }),
             velocity: None,
             size: Some(SizeComponent { x: 1, y: 1 }), // 4.
             camera_follow: None,
@@ -123,7 +130,7 @@ impl HelloGame {
 
 1. Added `player_id` field to store a reference to our character entity
 2. Player positioned at coordinates (5, 5) in the game world  
-3. `RenderComponent` makes the entity appear as `@` character on screen
+3. `RenderComponent` makes the entity appear as `@` character on screen - we also include an `rgb` with the colour for wgpu rendering.
 4. `SizeComponent` defines the entity's collision box (1×1 unit)
 
 Next, let's update the game loop and debug display:
@@ -215,7 +222,14 @@ impl HelloGame {
         
         let player_id = ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 5, y: 5 }), 
-            render: Some(RenderComponent { ascii_character: '@' }),
+            render: Some(RenderComponent { 
+                ascii_character: '@',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            }),
             velocity: Some(VelocityComponent { x: 0, y: 0 }), // 2.
             size: Some(SizeComponent { x: 2, y: 1 }), // 3.
             camera_follow: None,
@@ -311,7 +325,14 @@ impl HelloGame {
         // Add a wall
         ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 8, y: 5 }), // 1.
-            render: Some(RenderComponent { ascii_character: '#' }), // 2.
+            render: Some(RenderComponent { // 2.
+                ascii_character: '#'
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            }),
             velocity: None, // 3.
             size: Some(SizeComponent { x: 2, y: 1 }), // 4.
             camera_follow: None,
@@ -323,7 +344,7 @@ impl HelloGame {
 ```
 
 1. Wall positioned at (8, 5) - to the right of the player starting position
-2. Wall renders as `#` character on screen
+2. Wall renders as `#` character on screen, or a black square in wgpu rendering
 3. Wall has no velocity (it doesn't move) - note that this could also be set to `VelocityComponent { x: 0, y: 0 }`.
 4. Wall has 2×1 size, so it appears as `##` (2 units wide)
 
