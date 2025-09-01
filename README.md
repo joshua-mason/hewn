@@ -378,7 +378,7 @@ impl GameHandler for HelloGame {
 ```
 
 1. `collision_pass()` returns pairs of entities that are colliding
-2. **Important**: Iterate over collision pairs `[a, b]` - don't use `.flatten()` which loses pairing info
+2. Iterate over collision pairs `[a, b]`
 3. When collision detected, immediately stop the player by resetting velocity to `(0, 0)`
 4. **Critical**: Call `ecs.step()` AFTER collision detection to apply the movement
 
