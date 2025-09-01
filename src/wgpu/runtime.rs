@@ -1,6 +1,7 @@
 use crate::ecs::Entity;
 use crate::runtime::GameHandler;
 use crate::runtime::Key;
+use crate::wgpu::render::CameraStrategy;
 use crate::wgpu::render::State;
 use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
@@ -145,7 +146,6 @@ impl<'a> ApplicationHandler<State> for App<'a> {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use crate::wgpu::render::CameraStrategy;
             self.render_state = Some(
                 pollster::block_on(State::new(
                     window,
@@ -162,7 +162,7 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 wasm_bindgen_futures::spawn_local(async move {
                     assert!(proxy
                         .send_event(
-                            State::new(window, game_entities)
+                            State::new(window, renderable_entities, CameraStrategy::AllEntities,)
                                 .await
                                 .expect("Unable to create canvas!!!")
                         )

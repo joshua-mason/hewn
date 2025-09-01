@@ -11,8 +11,4 @@ fn main() {
     game.start_game();
     let mut runtime = hewn::wgpu::runtime::WindowRuntime::new();
     let _ = runtime.start(&mut game);
-
-    let mut game = create_game(SCREEN_WIDTH, SCREEN_HEIGHT, None);
-    let mut runtime = hewn::terminal::runtime::TerminalRuntime::new(SCREEN_WIDTH, SCREEN_HEIGHT);
-    runtime.start(&mut game);
 }

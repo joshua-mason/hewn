@@ -303,34 +303,34 @@ impl InstanceColor {
 }
 
 pub struct State {
-    pub(crate) surface: wgpu::Surface<'static>,
-    pub(crate) device: wgpu::Device,
-    pub(crate) queue: wgpu::Queue,
-    pub(crate) config: wgpu::SurfaceConfiguration,
-    pub(crate) is_surface_configured: bool,
-    pub(crate) render_pipeline: wgpu::RenderPipeline,
-    pub(crate) vertex_buffer: wgpu::Buffer,
-    pub(crate) index_buffer: wgpu::Buffer,
-    pub(crate) num_indices: u32,
+    surface: wgpu::Surface<'static>,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    config: wgpu::SurfaceConfiguration,
+    is_surface_configured: bool,
+    render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
     #[allow(dead_code)]
-    pub(crate) diffuse_texture: texture::Texture,
-    pub(crate) diffuse_bind_group: wgpu::BindGroup,
-    pub(crate) instance_positions: Vec<InstancePosition>,
-    pub instance_colors: Vec<InstanceColor>,
-    pub(crate) instance_positions_buffer: wgpu::Buffer,
-    pub(crate) instance_colors_buffer: wgpu::Buffer,
-    pub camera_strategy: CameraStrategy,
+    diffuse_texture: texture::Texture,
+    diffuse_bind_group: wgpu::BindGroup,
+    instance_positions: Vec<InstancePosition>,
+    instance_colors: Vec<InstanceColor>,
+    instance_positions_buffer: wgpu::Buffer,
+    instance_colors_buffer: wgpu::Buffer,
+    camera_strategy: CameraStrategy,
 
-    pub(crate) vertices: Vec<Vertex>,
-    pub(crate) indices: Vec<u16>,
+    vertices: Vec<Vertex>,
+    indices: Vec<u16>,
 
-    pub(crate) camera: Camera,
-    pub(crate) camera_controller: CameraController,
-    pub(crate) camera_uniform: CameraUniform,
-    pub(crate) camera_buffer: wgpu::Buffer,
-    pub(crate) camera_bind_group: wgpu::BindGroup,
+    camera: Camera,
+    camera_controller: CameraController,
+    camera_uniform: CameraUniform,
+    camera_buffer: wgpu::Buffer,
+    camera_bind_group: wgpu::BindGroup,
     pub(crate) window: Arc<Window>,
-    pub(crate) renderable_entities: Vec<Entity>,
+    renderable_entities: Vec<Entity>,
 }
 
 impl State {
@@ -740,10 +740,10 @@ impl State {
                 acc
             });
         let camera_x_position = (camera_points.0 + camera_points.1) as f32 / 2.0;
-        let camera_y_position = (camera_points.2 + camera_points.3) as f32 / 2.0;
+        let camera_y_position = (1 - camera_points.2 + camera_points.3) as f32 / 2.0;
 
         let game_width = camera_points.1 - camera_points.0;
-        let z_depth = game_width as f32 / 7.8;
+        let z_depth = game_width as f32 / 8.1;
         match self.camera_strategy {
             CameraStrategy::CameraFollow(entity_id) => {
                 let entity = self
