@@ -12,9 +12,11 @@ use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
+#[derive(Default, Copy, Clone)]
 pub enum CameraStrategy {
-    CameraFollow(EntityId),
+    #[default]
     AllEntities,
+    CameraFollow(EntityId),
 }
 
 #[repr(C)]
@@ -742,8 +744,6 @@ impl State {
         let camera_x_position = (camera_points.0 + camera_points.1) as f32 / 2.0;
         let camera_y_position = (1 - camera_points.2 + camera_points.3) as f32 / 2.0;
 
-        let game_width = camera_points.1 - camera_points.0;
-        let z_depth = game_width as f32 / 8.1;
         match self.camera_strategy {
             CameraStrategy::CameraFollow(entity_id) => {
                 let entity = self
@@ -755,7 +755,7 @@ impl State {
                 self.camera.eye = cgmath::Point3::new(
                     camera_follow_position.x as f32 * 0.1,
                     camera_follow_position.y as f32 * 0.1,
-                    z_depth,
+                    4.0,
                 );
                 self.camera.target = cgmath::Point3::new(
                     camera_follow_position.x as f32 * 0.1,
@@ -765,6 +765,8 @@ impl State {
                 self.camera_uniform.update_view_proj(&self.camera);
             }
             CameraStrategy::AllEntities => {
+                let game_width = camera_points.1 - camera_points.0;
+                let z_depth = game_width as f32 / 8.1;
                 self.camera.eye =
                     cgmath::Point3::new(camera_x_position * 0.1, camera_y_position * 0.1, z_depth);
                 self.camera.target =

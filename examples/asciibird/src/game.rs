@@ -26,10 +26,10 @@ pub enum GameState {
 pub struct Game {
     pub state: GameState,
     pub score: u16,
+    pub player_id: EntityId,
 
     rng: Box<dyn rand::RngCore>,
     ecs: ECS,
-    player_id: EntityId,
     wall_ids: HashSet<EntityId>,
     width: u16,
     height: u16,
@@ -72,6 +72,7 @@ impl Game {
             size: Some(SizeComponent { x: 1, y: 1 }),
             render: Some(RenderComponent {
                 ascii_character: '#',
+                rgb: (0.0, 0.0, 0.0).into(),
             }),
             camera_follow: Some(CameraFollow {}),
         };
@@ -87,6 +88,7 @@ impl Game {
                 size: Some(SizeComponent { x: 1, y: 1 }),
                 render: Some(RenderComponent {
                     ascii_character: '\\',
+                    rgb: (0.0, 0.0, 0.5).into(),
                 }),
                 camera_follow: None,
             };

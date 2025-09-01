@@ -32,7 +32,9 @@ impl TryFrom<winit::keyboard::KeyCode> for Key {
 }
 
 #[derive(Default)]
-pub struct WindowRuntime {}
+pub struct WindowRuntime {
+    camera_strategy: CameraStrategy,
+}
 
 impl WindowRuntime {
     pub fn new() -> WindowRuntime {
@@ -43,14 +45,23 @@ impl WindowRuntime {
         WindowRuntime::default()
     }
 
-    pub fn start(&mut self, game: &mut dyn GameHandler) -> anyhow::Result<()> {
-        self.start_with_update_frequency(game, 5)
+    pub fn with_camera_strategy(camera_strategy: CameraStrategy) -> WindowRuntime {
+        WindowRuntime { camera_strategy }
+    }
+
+    pub fn start(
+        &mut self,
+        game: &mut dyn GameHandler,
+        camera_strategy: CameraStrategy,
+    ) -> anyhow::Result<()> {
+        self.start_with_update_frequency(game, 5, camera_strategy)
     }
 
     pub fn start_with_update_frequency(
         &mut self,
         game: &mut dyn GameHandler,
         update_frequency: u32,
+        camera_strategy: CameraStrategy,
     ) -> anyhow::Result<()> {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -67,6 +78,7 @@ impl WindowRuntime {
             &event_loop,
             game,
             update_frequency,
+            camera_strategy,
         );
         event_loop.run_app(&mut app)?;
 
@@ -81,18 +93,21 @@ pub struct App<'a> {
     pub(crate) game: &'a mut dyn GameHandler,
     pub(crate) frame_counter: u32,
     pub(crate) update_frequency: u32, // Update game every N frames
+    pub(crate) camera_strategy: CameraStrategy,
 }
 
 impl<'a> App<'a> {
     pub fn new(
         #[cfg(target_arch = "wasm32")] event_loop: &EventLoop<State>,
         game: &'a mut dyn GameHandler,
+        camera_strategy: CameraStrategy,
     ) -> Self {
         Self::with_update_frequency(
             #[cfg(target_arch = "wasm32")]
             event_loop,
             game,
             5,
+            camera_strategy,
         )
     }
 
@@ -100,6 +115,7 @@ impl<'a> App<'a> {
         #[cfg(target_arch = "wasm32")] event_loop: &EventLoop<State>,
         game: &'a mut dyn GameHandler,
         update_frequency: u32,
+        camera_strategy: CameraStrategy,
     ) -> Self {
         #[cfg(target_arch = "wasm32")]
         let proxy = Some(event_loop.create_proxy());
@@ -110,6 +126,7 @@ impl<'a> App<'a> {
             game,
             frame_counter: 0,
             update_frequency,
+            camera_strategy,
         }
     }
 }
@@ -150,7 +167,7 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 pollster::block_on(State::new(
                     window,
                     renderable_entities,
-                    CameraStrategy::AllEntities,
+                    self.camera_strategy,
                 ))
                 .unwrap(),
             );
@@ -162,7 +179,7 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 wasm_bindgen_futures::spawn_local(async move {
                     assert!(proxy
                         .send_event(
-                            State::new(window, renderable_entities, CameraStrategy::AllEntities,)
+                            State::new(window, renderable_entities, self.camera_strategy,)
                                 .await
                                 .expect("Unable to create canvas!!!")
                         )

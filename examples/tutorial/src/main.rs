@@ -1,3 +1,4 @@
+use cgmath;
 use hewn::ecs::{Components, EntityId, PositionComponent, RenderComponent, SizeComponent};
 use hewn::wgpu::runtime::WindowRuntime;
 use hewn::{ecs::ECS, runtime::GameHandler};
@@ -56,6 +57,11 @@ impl HelloGame {
             position: Some(PositionComponent { x: 5, y: 5 }),
             render: Some(RenderComponent {
                 ascii_character: '@',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
             }),
             velocity: Some(VelocityComponent { x: 0, y: 0 }),
             size: Some(SizeComponent { x: 1, y: 1 }),
@@ -65,6 +71,11 @@ impl HelloGame {
             position: Some(PositionComponent { x: 8, y: 5 }),
             render: Some(RenderComponent {
                 ascii_character: '#',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.5,
+                    z: 0.0,
+                },
             }),
             velocity: None,
             size: Some(SizeComponent { x: 2, y: 1 }),
@@ -142,5 +153,9 @@ impl GameHandler for HelloGame {
 fn main() {
     let mut game = HelloGame::new();
     let mut runtime = WindowRuntime::new();
-    let _ = runtime.start(&mut game);
+    let entity_id = game.player_id;
+    let _ = runtime.start(
+        &mut game,
+        hewn::wgpu::render::CameraStrategy::CameraFollow(entity_id),
+    );
 }
