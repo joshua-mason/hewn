@@ -16,7 +16,7 @@ Hewn is a minimal Rust game engine for learning and tinkering, with support for 
 - 🎮 **ECS** - Entity Component System architecture
 - ⚡ **Cross-Platform** - Write once, run anywhere
 
-## Quick Start
+## Getting started
 
 > [!NOTE]
 > **Complete tutorial code** is available in `examples/tutorial/`. The following tutorial builds up from the simplest possible game.
