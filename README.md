@@ -181,7 +181,7 @@ pub struct GameController { // 1.
 }
 
 impl GameController {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             is_up_pressed: false,
             is_down_pressed: false,
@@ -190,7 +190,7 @@ impl GameController {
         }
     }
 
-    pub(crate) fn handle_key(&mut self, key: Key, is_pressed: bool) -> bool {
+    pub fn handle_key(&mut self, key: Key, is_pressed: bool) -> bool {
         match key { // 2.
             Key::Up => { self.is_up_pressed = is_pressed; true }
             Key::Down => { self.is_down_pressed = is_pressed; true }
