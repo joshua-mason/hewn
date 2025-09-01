@@ -287,28 +287,7 @@ impl GameHandler for HelloGame {
 
 Your `@` character now responds to arrow keys! Try moving around and watch the debug text update with your position. Now let's see the same game running in a desktop window...
 
-### Step 4: Same Game, Desktop Window
-
-Now we've built our game, it's possible to run in our `WindowRuntime`. Without changing our game, we use the `wgpu` runtime:
-
-```rust
-// ..
-use hewn::wgpu::runtime::WindowRuntime; // NEW!
-
-// ..
-
-fn main() {
-    let mut game = HelloGame::new(); // Same game!
-    let mut runtime = WindowRuntime::new(); // 1.
-    let _ = runtime.start(&mut game);
-}
-```
-
-1. Swap `TerminalRuntime` for `WindowRuntime` - that's literally it!
-
-Your `@` character now renders as a colored square in a desktop window.
-
-### Step 5: Add Collision Detection
+### Step 4: Add Collision Detection
 
 Let's add a wall that blocks the player's movement to make it feel like a real game.
 
@@ -388,6 +367,28 @@ impl GameHandler for HelloGame {
 Now you'll see a `##` wall that blocks your `@` character's movement! Try moving right into it.
 
 🎉 Congratulations! You’ve built a simple game with movement and collision using Hewn. Explore, experiment, and have fun making your own games! Check the examples or docs for more advanced features.
+
+
+### Step 5: Same Game, Desktop Window
+
+Now we've built our game, it's possible to run in our `WindowRuntime`. Without changing our game, we use the `wgpu` runtime:
+
+```rust
+// ..
+use hewn::wgpu::runtime::WindowRuntime; // NEW!
+
+// ..
+
+fn main() {
+    let mut game = HelloGame::new(); // Same game!
+    let mut runtime = WindowRuntime::new(); // 1.
+    let _ = runtime.start(&mut game);
+}
+```
+
+1. Swap `TerminalRuntime` for `WindowRuntime` - that's literally it!
+
+Your `@` character now renders as a colored square in a desktop window.
 
 
 ---
