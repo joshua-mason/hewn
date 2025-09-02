@@ -4,6 +4,7 @@ use crate::runtime::Key;
 use crate::wgpu::render::CameraStrategy;
 use crate::wgpu::render::State;
 use std::sync::Arc;
+use std::time::Instant;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use winit::application::ApplicationHandler;
@@ -32,35 +33,16 @@ impl TryFrom<winit::keyboard::KeyCode> for Key {
 }
 
 #[derive(Default)]
-pub struct WindowRuntime {
-    camera_strategy: CameraStrategy,
-}
+pub struct WindowRuntime {}
 
 impl WindowRuntime {
     pub fn new() -> WindowRuntime {
         WindowRuntime::default()
     }
 
-    pub fn with_update_frequency(_update_frequency: u32) -> WindowRuntime {
-        WindowRuntime::default()
-    }
-
-    pub fn with_camera_strategy(camera_strategy: CameraStrategy) -> WindowRuntime {
-        WindowRuntime { camera_strategy }
-    }
-
     pub fn start(
         &mut self,
         game: &mut dyn GameHandler,
-        camera_strategy: CameraStrategy,
-    ) -> anyhow::Result<()> {
-        self.start_with_update_frequency(game, 5, camera_strategy)
-    }
-
-    pub fn start_with_update_frequency(
-        &mut self,
-        game: &mut dyn GameHandler,
-        update_frequency: u32,
         camera_strategy: CameraStrategy,
     ) -> anyhow::Result<()> {
         #[cfg(not(target_arch = "wasm32"))]
@@ -73,11 +55,10 @@ impl WindowRuntime {
         }
 
         let event_loop = EventLoop::with_user_event().build()?;
-        let mut app = App::with_update_frequency(
+        let mut app = App::new(
             #[cfg(target_arch = "wasm32")]
             &event_loop,
             game,
-            update_frequency,
             camera_strategy,
         );
         event_loop.run_app(&mut app)?;
@@ -92,29 +73,15 @@ pub struct App<'a> {
     pub(crate) render_state: Option<State>,
     pub(crate) game: &'a mut dyn GameHandler,
     pub(crate) frame_counter: u32,
-    pub(crate) update_frequency: u32, // Update game every N frames
     pub(crate) camera_strategy: CameraStrategy,
+
+    last_frame: Instant,
 }
 
 impl<'a> App<'a> {
     pub fn new(
         #[cfg(target_arch = "wasm32")] event_loop: &EventLoop<State>,
         game: &'a mut dyn GameHandler,
-        camera_strategy: CameraStrategy,
-    ) -> Self {
-        Self::with_update_frequency(
-            #[cfg(target_arch = "wasm32")]
-            event_loop,
-            game,
-            5,
-            camera_strategy,
-        )
-    }
-
-    pub fn with_update_frequency(
-        #[cfg(target_arch = "wasm32")] event_loop: &EventLoop<State>,
-        game: &'a mut dyn GameHandler,
-        update_frequency: u32,
         camera_strategy: CameraStrategy,
     ) -> Self {
         #[cfg(target_arch = "wasm32")]
@@ -125,8 +92,8 @@ impl<'a> App<'a> {
             proxy,
             game,
             frame_counter: 0,
-            update_frequency,
             camera_strategy,
+            last_frame: std::time::Instant::now(),
         }
     }
 }
@@ -219,10 +186,11 @@ impl<'a> ApplicationHandler<State> for App<'a> {
             WindowEvent::RedrawRequested => {
                 self.frame_counter += 1;
 
-                if self.frame_counter >= self.update_frequency {
-                    self.game.next();
-                    self.frame_counter = 0;
-                }
+                let now = Instant::now();
+                let dt = now - self.last_frame;
+                self.game.next(dt);
+                self.frame_counter = 0;
+                self.last_frame = now;
 
                 let renderable_entities = self
                     .game

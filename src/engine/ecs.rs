@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use cgmath::Vector3;
 
 #[derive(Debug, Clone, Copy)]
@@ -40,9 +42,9 @@ impl Entity {
 
     pub fn from_tuples(
         id: EntityId,
-        pos: (u16, u16),
-        vel: (i16, i16),
-        size: (u16, u16),
+        pos: (f32, f32),
+        vel: (f32, f32),
+        size: (f32, f32),
         ascii_character: Option<char>,
         track: bool,
     ) -> Entity {
@@ -79,18 +81,27 @@ trait Component {
 }
 #[derive(Debug, Clone, Copy)]
 pub struct PositionComponent {
-    pub x: u16,
-    pub y: u16,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Component for PositionComponent {
     const TYPE: ComponentType = ComponentType::Position;
 }
 
+impl From<(f32, f32)> for PositionComponent {
+    fn from(tuple: (f32, f32)) -> Self {
+        PositionComponent {
+            x: tuple.0,
+            y: tuple.1,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct VelocityComponent {
-    pub x: i16,
-    pub y: i16,
+    pub x: f32,
+    pub y: f32,
 }
 impl Component for VelocityComponent {
     const TYPE: ComponentType = ComponentType::Velocity;
@@ -98,8 +109,8 @@ impl Component for VelocityComponent {
 
 #[derive(Debug, Clone, Copy)]
 pub struct SizeComponent {
-    pub x: u16,
-    pub y: u16,
+    pub x: f32,
+    pub y: f32,
 }
 impl Component for SizeComponent {
     const TYPE: ComponentType = ComponentType::Size;
@@ -127,18 +138,8 @@ pub struct ECS {
 }
 
 impl ECS {
-    pub fn step(&mut self) {
+    pub fn step(&mut self, dt: Duration) {
         // Consider splitting systems e.g. if we are handling gravity in the future
-        fn clamped_add(position: u16, delta: i16) -> u16 {
-            let sum = position as i32 + delta as i32;
-            if sum < 0 {
-                0
-            } else if sum > u16::MAX as i32 {
-                u16::MAX
-            } else {
-                sum as u16
-            }
-        }
         let velocities = self.get_entities_by_mut(ComponentType::Velocity);
         for c in velocities {
             let Some(position) = &mut c.components.position else {
@@ -149,17 +150,17 @@ impl ECS {
                 continue;
             };
 
-            if velocity.x != 0 {
-                position.x = clamped_add(position.x, velocity.x);
+            if velocity.x != 0.0 {
+                position.x = position.x + velocity.x * dt.as_secs_f32();
             }
-            if velocity.y != 0 {
-                position.y = clamped_add(position.y, velocity.y);
+            if velocity.y != 0.0 {
+                position.y = position.y + velocity.y * dt.as_secs_f32();
             }
         }
     }
 
-    pub fn collision_pass(&self) -> Vec<[EntityId; 2]> {
-        collisions::collision_pass(&self.entities)
+    pub fn collision_pass(&self, dt: Duration) -> Vec<[EntityId; 2]> {
+        collisions::collision_pass(&self.entities, dt)
     }
 }
 
@@ -273,16 +274,16 @@ impl ECS {
 
 pub mod collisions {
     use crate::ecs::{Entity, EntityId, VelocityComponent};
-    use std::ops::Range;
+    use std::{ops::Range, time::Duration};
 
     #[derive(Debug, PartialEq)]
     struct CollisionBox {
-        pub x: Range<u16>,
-        pub y: Range<u16>,
+        pub x: Range<f32>,
+        pub y: Range<f32>,
     }
 
     impl CollisionBox {
-        pub fn from_entity(entity: &Entity) -> Option<CollisionBox> {
+        pub fn from_entity(entity: &Entity, dt: Duration) -> Option<CollisionBox> {
             let Some(position) = &entity.components.position else {
                 return None;
             };
@@ -295,19 +296,27 @@ pub mod collisions {
                 .components
                 .velocity
                 .as_ref()
-                .unwrap_or(&VelocityComponent { x: 0, y: 0 });
+                .unwrap_or(&VelocityComponent { x: 0.0, y: 0.0 });
 
             Some(CollisionBox {
-                x: CollisionBox::range_from_physical_properties(position.x, size.x, velocity.x),
-                y: CollisionBox::range_from_physical_properties(position.y, size.y, velocity.y),
+                x: CollisionBox::range_from_physical_properties(
+                    position.x,
+                    size.x,
+                    velocity.x * dt.as_secs_f32(),
+                ),
+                y: CollisionBox::range_from_physical_properties(
+                    position.y,
+                    size.y,
+                    velocity.y * dt.as_secs_f32(),
+                ),
             })
         }
 
-        fn range_from_physical_properties(position: u16, size: u16, velocity: i16) -> Range<u16> {
-            if velocity.is_positive() {
-                return position..(position as i16 + size as i16 + velocity) as u16;
+        fn range_from_physical_properties(position: f32, size: f32, velocity: f32) -> Range<f32> {
+            if velocity.is_sign_positive() {
+                return position..(position + size + velocity);
             }
-            (position as i16 + velocity) as u16..position + size
+            (position + velocity)..position + size
         }
     }
 
@@ -315,14 +324,14 @@ pub mod collisions {
         a_collision_box: &CollisionBox,
         b_collision_box: &CollisionBox,
     ) -> bool {
-        fn overlapping_1d(a: &Range<u16>, b: &Range<u16>) -> bool {
+        fn overlapping_1d(a: &Range<f32>, b: &Range<f32>) -> bool {
             a.end > b.start && b.end > a.start
         }
         overlapping_1d(&a_collision_box.x, &b_collision_box.x)
             && overlapping_1d(&a_collision_box.y, &b_collision_box.y)
     }
 
-    pub fn collision_pass(objects: &[Entity]) -> Vec<[EntityId; 2]> {
+    pub fn collision_pass(objects: &[Entity], dt: Duration) -> Vec<[EntityId; 2]> {
         // TODO: Collision is O(n^2) - worth looking at better approaches in future
         let mut collisions: Vec<[EntityId; 2]> = vec![];
         for i in 0..objects.len() {
@@ -331,10 +340,10 @@ pub mod collisions {
             let a = &left[i];
 
             for b in rest {
-                let Some(a_collision_box) = CollisionBox::from_entity(a) else {
+                let Some(a_collision_box) = CollisionBox::from_entity(a, dt) else {
                     continue;
                 };
-                let Some(b_collision_box) = CollisionBox::from_entity(b) else {
+                let Some(b_collision_box) = CollisionBox::from_entity(b, dt) else {
                     continue;
                 };
 
@@ -348,6 +357,8 @@ pub mod collisions {
 
     #[cfg(test)]
     mod test {
+        use std::time::Duration;
+
         use crate::ecs::{
             collisions::{collision_pass, CollisionBox},
             Entity, EntityId,
@@ -355,11 +366,13 @@ pub mod collisions {
 
         #[test]
         fn test_collision_pass_static_same_place_entities() {
-            let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
-            let entity_2 = Entity::from_tuples(EntityId(1), (0, 0), (0, 0), (1, 1), None, false);
+            let entity_1 =
+                Entity::from_tuples(EntityId(0), (0.0, 0.0), (0.0, 0.0), (1.0, 1.0), None, false);
+            let entity_2 =
+                Entity::from_tuples(EntityId(1), (0.0, 0.0), (0.0, 0.0), (1.0, 1.0), None, false);
 
             let entities = &[entity_1, entity_2];
-            let collisions = collision_pass(entities);
+            let collisions = collision_pass(entities, Duration::from_secs(1));
             assert_eq!(1, collisions.len());
             assert_eq!(EntityId(0), collisions[0][0]);
             assert_eq!(EntityId(1), collisions[0][1]);
@@ -367,31 +380,37 @@ pub mod collisions {
 
         #[test]
         fn test_collision_pass_static_one_tile_gap_entities() {
-            let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
-            let entity_2 = Entity::from_tuples(EntityId(1), (2, 2), (0, 0), (1, 1), None, false);
+            let entity_1 =
+                Entity::from_tuples(EntityId(0), (0.0, 0.0), (0.0, 0.0), (1.0, 1.0), None, false);
+            let entity_2 =
+                Entity::from_tuples(EntityId(1), (2.0, 2.0), (0.0, 0.0), (1.0, 1.0), None, false);
 
             let entities = &[entity_1, entity_2];
-            let collisions = collision_pass(entities);
+            let collisions = collision_pass(entities, Duration::from_secs(1));
             assert_eq!(0, collisions.len());
         }
 
         #[test]
         fn test_collision_pass_static_adjacent_entities() {
-            let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (0, 0), (1, 1), None, false);
-            let entity_2 = Entity::from_tuples(EntityId(1), (1, 1), (0, 0), (1, 1), None, false);
+            let entity_1 =
+                Entity::from_tuples(EntityId(0), (0.0, 0.0), (0.0, 0.0), (1.0, 1.0), None, false);
+            let entity_2 =
+                Entity::from_tuples(EntityId(1), (1.0, 1.0), (0.0, 0.0), (1.0, 1.0), None, false);
 
             let entities = &[entity_1, entity_2];
-            let collisions = collision_pass(entities);
+            let collisions = collision_pass(entities, Duration::from_secs(1));
             assert_eq!(0, collisions.len());
         }
 
         #[test]
         fn test_collision_pass_crashing_entities() {
-            let entity_1 = Entity::from_tuples(EntityId(0), (0, 0), (1, 1), (1, 1), None, false);
-            let entity_2 = Entity::from_tuples(EntityId(1), (1, 1), (0, 0), (1, 1), None, false);
+            let entity_1 =
+                Entity::from_tuples(EntityId(0), (0.0, 0.0), (1.0, 1.0), (1.0, 1.0), None, false);
+            let entity_2 =
+                Entity::from_tuples(EntityId(1), (1.0, 1.0), (0.0, 0.0), (1.0, 1.0), None, false);
 
             let entities = &[entity_1, entity_2];
-            let collisions = collision_pass(entities);
+            let collisions = collision_pass(entities, Duration::from_secs(1));
             assert_eq!(1, collisions.len());
             assert_eq!(EntityId(0), collisions[0][0]);
             assert_eq!(EntityId(1), collisions[0][1]);
@@ -399,13 +418,25 @@ pub mod collisions {
 
         #[test]
         fn test_collision_pass_player_up_and_wall_should_collide() {
-            let entity_player =
-                Entity::from_tuples(EntityId(0), (5, 5), (0, 1), (2, 1), Some('O'), true);
-            let entity_wall =
-                Entity::from_tuples(EntityId(1), (5, 6), (0, 0), (2, 1), Some('#'), false);
+            let entity_player = Entity::from_tuples(
+                EntityId(0),
+                (5.0, 5.0),
+                (0.0, 1.0),
+                (2.0, 1.0),
+                Some('O'),
+                true,
+            );
+            let entity_wall = Entity::from_tuples(
+                EntityId(1),
+                (5.0, 6.0),
+                (0.0, 0.0),
+                (2.0, 1.0),
+                Some('#'),
+                false,
+            );
 
             let entities = &[entity_player, entity_wall];
-            let collisions = collision_pass(entities);
+            let collisions = collision_pass(entities, Duration::from_secs(1));
             assert_eq!(
                 1,
                 collisions.len(),
@@ -421,13 +452,25 @@ pub mod collisions {
 
         #[test]
         fn test_collision_pass_player_down_and_wall_should_collide() {
-            let entity_player =
-                Entity::from_tuples(EntityId(0), (5, 6), (0, -1), (2, 1), Some('O'), true);
-            let entity_wall =
-                Entity::from_tuples(EntityId(1), (5, 5), (0, 0), (2, 1), Some('#'), false);
+            let entity_player = Entity::from_tuples(
+                EntityId(0),
+                (5.0, 6.0),
+                (0.0, -1.0),
+                (2.0, 1.0),
+                Some('O'),
+                true,
+            );
+            let entity_wall = Entity::from_tuples(
+                EntityId(1),
+                (5.0, 5.0),
+                (0.0, 0.0),
+                (2.0, 1.0),
+                Some('#'),
+                false,
+            );
 
             let entities = &[entity_player, entity_wall];
-            let collisions = collision_pass(entities);
+            let collisions = collision_pass(entities, Duration::from_secs(1));
             assert_eq!(
                 1,
                 collisions.len(),
@@ -444,14 +487,27 @@ pub mod collisions {
 
         #[test]
         fn test_entity_collision_box_moving() {
-            let entity_player =
-                Entity::from_tuples(EntityId(0), (5, 5), (0, -1), (2, 1), Some('O'), true);
+            let entity_player = Entity::from_tuples(
+                EntityId(0),
+                (5.0, 5.0),
+                (0.0, -1.0),
+                (2.0, 1.0),
+                Some('O'),
+                true,
+            );
 
-            let maybe_collision_box = CollisionBox::from_entity(&entity_player);
+            let maybe_collision_box =
+                CollisionBox::from_entity(&entity_player, Duration::from_secs(1));
 
             let collision_box = maybe_collision_box.expect("Collision box not created");
 
-            assert_eq!(collision_box, CollisionBox { x: 5..7, y: 4..6 })
+            assert_eq!(
+                collision_box,
+                CollisionBox {
+                    x: 5.0..7.0,
+                    y: 4.0..6.0
+                }
+            )
         }
     }
 }
@@ -499,14 +555,14 @@ mod test {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
         let entity_one_id = ecs.add_entity_from_components(Components {
-            position: Some(PositionComponent { x: 0, y: 0 }),
+            position: Some(PositionComponent { x: 0.0, y: 0.0 }),
             velocity: None,
             render: None,
             size: None,
             camera_follow: None,
         });
         let entity_two_id = ecs.add_entity_from_components(Components {
-            position: Some(PositionComponent { x: 1, y: 1 }),
+            position: Some(PositionComponent { x: 1.0, y: 1.0 }),
             velocity: None,
             render: None,
             size: None,
@@ -522,8 +578,8 @@ mod test {
             .position
             .as_ref()
             .unwrap();
-        assert_eq!(entity_position.x, 0);
-        assert_eq!(entity_position.y, 0);
+        assert_eq!(entity_position.x, 0.0);
+        assert_eq!(entity_position.y, 0.0);
 
         let entity_two_from_ecs = ecs.get_entity_by_id(entity_two_id);
         assert_eq!(entity_two_from_ecs.unwrap().id, EntityId(1));
@@ -533,8 +589,8 @@ mod test {
             .position
             .as_ref()
             .unwrap();
-        assert_eq!(entity_position.x, 1);
-        assert_eq!(entity_position.y, 1);
+        assert_eq!(entity_position.x, 1.0);
+        assert_eq!(entity_position.y, 1.0);
     }
 
     #[test]
@@ -542,15 +598,15 @@ mod test {
         let mut ecs = ECS::new();
         assert_eq!(ecs.entities.len(), 0);
         let entity_one_id = ecs.add_entity_from_components(Components {
-            position: Some(PositionComponent { x: 0, y: 0 }),
-            velocity: Some(VelocityComponent { x: 0, y: 0 }),
+            position: Some(PositionComponent { x: 0.0, y: 0.0 }),
+            velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }),
             render: None,
             size: None,
             camera_follow: None,
         });
         let entity_two_id = ecs.add_entity_from_components(Components {
-            position: Some(PositionComponent { x: 1, y: 1 }),
-            velocity: Some(VelocityComponent { x: 1, y: 1 }),
+            position: Some(PositionComponent { x: 1.0, y: 1.0 }),
+            velocity: Some(VelocityComponent { x: 1.0, y: 1.0 }),
             render: None,
             size: None,
             camera_follow: None,
@@ -565,8 +621,8 @@ mod test {
             .velocity
             .as_ref()
             .unwrap();
-        assert_eq!(entity_velocity.x, 0);
-        assert_eq!(entity_velocity.y, 0);
+        assert_eq!(entity_velocity.x, 0.0);
+        assert_eq!(entity_velocity.y, 0.0);
 
         let entity_from_ecs = ecs.get_entity_by_id(entity_two_id);
         assert_eq!(entity_from_ecs.unwrap().id, entity_two_id);
@@ -576,10 +632,10 @@ mod test {
             .velocity
             .as_ref()
             .unwrap();
-        assert_eq!(entity_velocity.x, 1);
-        assert_eq!(entity_velocity.y, 1);
+        assert_eq!(entity_velocity.x, 1.0);
+        assert_eq!(entity_velocity.y, 1.0);
 
-        ecs.step();
+        ecs.step(Duration::from_secs(1));
 
         let entity_from_ecs = ecs.get_entity_by_id(entity_one_id);
         assert_eq!(entity_from_ecs.unwrap().id, entity_one_id);
@@ -589,8 +645,8 @@ mod test {
             .position
             .as_ref()
             .unwrap();
-        assert_eq!(entity_position.x, 0);
-        assert_eq!(entity_position.y, 0);
+        assert_eq!(entity_position.x, 0.0);
+        assert_eq!(entity_position.y, 0.0);
 
         let entity_from_ecs = ecs.get_entity_by_id(entity_two_id);
         assert_eq!(entity_from_ecs.unwrap().id, entity_two_id);
@@ -600,7 +656,7 @@ mod test {
             .position
             .as_ref()
             .unwrap();
-        assert_eq!(entity_position.x, 2);
-        assert_eq!(entity_position.y, 2);
+        assert_eq!(entity_position.x, 2.0);
+        assert_eq!(entity_position.y, 2.0);
     }
 }

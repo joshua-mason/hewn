@@ -2,7 +2,6 @@ use crate::ecs::Entity;
 use crate::ecs::EntityId;
 use crate::wgpu::texture;
 use cgmath::prelude::*;
-use cgmath::InnerSpace;
 use cgmath::SquareMatrix;
 use std::f32::consts::PI;
 use std::mem;
@@ -128,91 +127,6 @@ impl CameraUniform {
     }
 }
 
-pub(crate) struct CameraController {
-    pub(crate) speed: f32,
-    pub(crate) is_up_pressed: bool,
-    pub(crate) is_down_pressed: bool,
-    pub(crate) is_forward_pressed: bool,
-    pub(crate) is_backward_pressed: bool,
-    pub(crate) is_left_pressed: bool,
-    pub(crate) is_right_pressed: bool,
-}
-
-impl CameraController {
-    pub(crate) fn new(speed: f32) -> Self {
-        Self {
-            speed,
-            is_up_pressed: false,
-            is_down_pressed: false,
-            is_forward_pressed: false,
-            is_backward_pressed: false,
-            is_left_pressed: false,
-            is_right_pressed: false,
-        }
-    }
-
-    pub(crate) fn handle_key(&mut self, key: KeyCode, is_pressed: bool) -> bool {
-        match key {
-            KeyCode::Space => {
-                self.is_up_pressed = is_pressed;
-                true
-            }
-            KeyCode::ShiftLeft => {
-                self.is_down_pressed = is_pressed;
-                true
-            }
-            KeyCode::KeyW | KeyCode::ArrowUp => {
-                self.is_forward_pressed = is_pressed;
-                true
-            }
-            KeyCode::KeyA | KeyCode::ArrowLeft => {
-                self.is_left_pressed = is_pressed;
-                true
-            }
-            KeyCode::KeyS | KeyCode::ArrowDown => {
-                self.is_backward_pressed = is_pressed;
-                true
-            }
-            KeyCode::KeyD | KeyCode::ArrowRight => {
-                self.is_right_pressed = is_pressed;
-                true
-            }
-            _ => false,
-        }
-    }
-
-    pub(crate) fn update_camera(&self, camera: &mut Camera) {
-        let forward = camera.target - camera.eye;
-        let forward_norm = forward.normalize();
-        let forward_mag = forward.magnitude();
-
-        // Prevents glitching when camera gets too close to the
-        // center of the scene.
-        if self.is_forward_pressed && forward_mag > self.speed {
-            camera.eye += forward_norm * self.speed;
-        }
-        if self.is_backward_pressed {
-            camera.eye -= forward_norm * self.speed;
-        }
-
-        let right = forward_norm.cross(camera.up);
-
-        // Redo radius calc in case the up/ down is pressed.
-        let forward = camera.target - camera.eye;
-        let forward_mag = forward.magnitude();
-
-        if self.is_right_pressed {
-            // Rescale the distance between the target and eye so
-            // that it doesn't change. The eye therefore still
-            // lies on the circle made by the target and eye.
-            camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
-        }
-        if self.is_left_pressed {
-            camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
-        }
-    }
-}
-
 pub(crate) struct InstancePosition {
     pub(crate) position: cgmath::Vector3<f32>,
     pub(crate) rotation: cgmath::Quaternion<f32>,
@@ -327,7 +241,6 @@ pub struct State {
     indices: Vec<u16>,
 
     camera: Camera,
-    camera_controller: CameraController,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
@@ -452,7 +365,6 @@ impl State {
             znear: 0.1,
             zfar: 100.0,
         };
-        let camera_controller = CameraController::new(0.2);
 
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
@@ -627,7 +539,6 @@ impl State {
             vertices,
             indices,
             camera,
-            camera_controller,
             camera_buffer,
             camera_bind_group,
             camera_uniform,
@@ -721,28 +632,28 @@ impl State {
         self.instance_positions_buffer = instance_positions_buffer;
         self.instance_colors_buffer = instance_colors_buffer;
 
-        let camera_points = self
-            .renderable_entities
-            .iter()
-            .fold((0, 0, 0, 0), |mut acc, e| {
-                if let Some(position) = e.components.position {
-                    if (position.x < acc.0) {
-                        acc.0 = position.x;
+        let camera_points =
+            self.renderable_entities
+                .iter()
+                .fold((0.0, 0.0, 0.0, 0.0), |mut acc, e| {
+                    if let Some(position) = e.components.position {
+                        if position.x < acc.0 {
+                            acc.0 = position.x;
+                        }
+                        if position.x > acc.1 {
+                            acc.1 = position.x;
+                        }
+                        if position.y < acc.2 {
+                            acc.2 = position.y;
+                        }
+                        if position.y > acc.3 {
+                            acc.3 = position.y;
+                        }
                     }
-                    if (position.x > acc.1) {
-                        acc.1 = position.x;
-                    }
-                    if (position.y < acc.2) {
-                        acc.2 = position.y;
-                    }
-                    if (position.y > acc.3) {
-                        acc.3 = position.y;
-                    }
-                }
-                acc
-            });
-        let camera_x_position = (camera_points.0 + camera_points.1) as f32 / 2.0;
-        let camera_y_position = (1 - camera_points.2 + camera_points.3) as f32 / 2.0;
+                    acc
+                });
+        let camera_x_position = (camera_points.0 + camera_points.1) / 2.0;
+        let camera_y_position = (1.0 - camera_points.2 + camera_points.3) / 2.0;
 
         match self.camera_strategy {
             CameraStrategy::CameraFollow(entity_id) => {
