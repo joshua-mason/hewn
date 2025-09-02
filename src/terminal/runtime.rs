@@ -9,8 +9,8 @@ use std::io::Stdout;
 use std::thread;
 use std::time::{self, Duration, Instant};
 use termion::raw::RawTerminal;
-pub(crate) const FRAME_RATE_MILLIS: u64 = 100;
-pub(crate) const GAME_STEP_MILLIS: u64 = 100;
+
+const REFRESH_RATE: u64 = 50;
 
 impl TryFrom<termion::event::Key> for Key {
     type Error = &'static str;
@@ -101,20 +101,20 @@ impl TerminalRuntime {
                 game.handle_key(Key::Left, false);
                 game.handle_key(Key::Right, false);
             }
-            thread::sleep(time::Duration::from_millis(FRAME_RATE_MILLIS));
+            thread::sleep(time::Duration::from_millis(REFRESH_RATE));
+
+            if input.is_none() {
+                self.player_control_key = None;
+            }
 
             let now = time::Instant::now();
-            if now - self.last_frame_time > Duration::from_millis(GAME_STEP_MILLIS) {
-                game.next();
+            if now - self.last_frame_time > Duration::from_millis(REFRESH_RATE) {
+                game.next(now - self.last_frame_time);
+                let ecs = game.ecs();
+                let entities = ecs.get_entities_with_component(ComponentType::Render);
+                self.display.next(entities, game.debug_str());
                 self.last_frame_time = now;
-
-                if input.is_none() {
-                    self.player_control_key = None;
-                }
             }
-            let ecs = game.ecs();
-            let entities = ecs.get_entities_with_component(ComponentType::Render);
-            self.display.next(entities, game.debug_str());
         }
     }
 }

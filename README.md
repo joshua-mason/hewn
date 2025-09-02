@@ -32,6 +32,7 @@ use hewn::{
     runtime::GameHandler, // 1.
     ecs::ECS, // 2.
 };
+use std::time::Duration; // NEW: dt for frame time
 
 struct HelloGame {
     ecs: ECS, // 3.
@@ -45,7 +46,7 @@ impl HelloGame {
 
 impl GameHandler for HelloGame { // 4.
     fn start_game(&mut self) {}
-    fn next(&mut self) {}
+    fn next(&mut self, _dt: Duration) {}
     fn handle_key(&mut self, _key: hewn::runtime::Key, _pressed: bool) -> bool { true }
     fn ecs(&self) -> &ECS { &self.ecs }
     
@@ -84,6 +85,9 @@ This creates a minimal game that shows "Hello Hewn! Press Q to exit." at the bot
 > [!TIP]
 > Run this with `cargo run` and you'll see a field of `.` characters representing empty space, with your debug text at the bottom. We're about to add a character that moves around this world!
 
+> [!NOTE]
+> Delta time: `next(dt: Duration)` provides the time since the last frame. Treat velocities as "world units per second" — the ECS scales movement and collision by `dt` so motion is frame-rate independent.
+
 ### Step 2: Add a Visible Character
 
 Now let's add a character that appears on screen. This is where the ECS comes in - we'll create an entity with position and rendering components.
@@ -94,8 +98,6 @@ First, let's create the player entity:
 // ..
 use hewn::{
     ecs::{ECS, EntityId, Components, PositionComponent, RenderComponent, SizeComponent}, // NEW!
-    runtime::GameHandler,
-    terminal::runtime::TerminalRuntime,
 };
 
 struct HelloGame {
@@ -108,7 +110,7 @@ impl HelloGame {
         let mut ecs = ECS::new();
         
         let player_id = ecs.add_entity_from_components(Components {
-            position: Some(PositionComponent { x: 5, y: 5 }), // 2.
+            position: Some(PositionComponent { x: 5.0, y: 5.0 }), // 2.
             render: Some(RenderComponent { // 3.
                 ascii_character: '@',
                 rgb: cgmath::Vector3 {
@@ -118,7 +120,7 @@ impl HelloGame {
                 },
             }),
             velocity: None,
-            size: Some(SizeComponent { x: 1, y: 1 }), // 4.
+            size: Some(SizeComponent { x: 1.0, y: 1.0 }), // 4.
             camera_follow: None,
         });
         
@@ -139,8 +141,8 @@ Next, let's update the game loop and debug display:
 // ..
 impl GameHandler for HelloGame {
     // ..
-    fn next(&mut self) {
-        self.ecs.step(); // 1.
+    fn next(&mut self, dt: Duration) {
+        self.ecs.step(dt); // 1.
     }
     // ..
     
@@ -165,12 +167,16 @@ Let's make our character respond to arrow keys using a controller pattern.
 
 First, let's create a controller to track key states:
 
+> [!NOTE]
+> Coordinate system: `x` increases to the right and `y` increases upward. For example, pressing Up sets a positive `y` velocity.
+
 ```rust
 // ..
 use hewn::{
     runtime::Key, // NEW!
     ecs::VelocityComponent, // NEW!
 };
+use std::time::Duration; // NEW!
 
 // Add a controller to track key states
 pub struct GameController { // 1.
@@ -221,7 +227,7 @@ impl HelloGame {
         let mut ecs = ECS::new();
         
         let player_id = ecs.add_entity_from_components(Components {
-            position: Some(PositionComponent { x: 5, y: 5 }), 
+            position: Some(PositionComponent { x: 5.0, y: 5.0 }), 
             render: Some(RenderComponent { 
                 ascii_character: '@',
                 rgb: cgmath::Vector3 {
@@ -230,8 +236,8 @@ impl HelloGame {
                     z: 0.0,
                 },
             }),
-            velocity: Some(VelocityComponent { x: 0, y: 0 }), // 2.
-            size: Some(SizeComponent { x: 2, y: 1 }), // 3.
+            velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }), // 2.
+            size: Some(SizeComponent { x: 2.0, y: 1.0 }), // 3.
             camera_follow: None,
         });
         
@@ -245,29 +251,29 @@ impl HelloGame {
 
 impl GameHandler for HelloGame {
     // ..
-    fn next(&mut self) {
+    fn next(&mut self, dt: Duration) {
         // Update player velocity based on controller state
         let velocity = self.ecs.get_entity_by_id_mut(self.player_id)
             .and_then(|player| player.components.velocity.as_mut());
         if let Some(velocity) = velocity {
             if self.game_controller.is_up_pressed { // 5.
-                velocity.y = 1;
+                velocity.y = 2.0;
             } else if self.game_controller.is_down_pressed {
-                velocity.y = -1;
+                velocity.y = -2.0;
             } else {
-                velocity.y = 0;
+                velocity.y = 0.0;
             }
 
             if self.game_controller.is_left_pressed {
-                velocity.x = -1;
+                velocity.x = -2.0;
             } else if self.game_controller.is_right_pressed {
-                velocity.x = 1;
+                velocity.x = 2.0;
             } else {
-                velocity.x = 0;
+                velocity.x = 0.0;
             }
         }
         
-        self.ecs.step(); // 6.
+        self.ecs.step(dt); // 6.
     }
     
     fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
@@ -303,9 +309,9 @@ impl HelloGame {
 
         // Add a wall
         ecs.add_entity_from_components(Components {
-            position: Some(PositionComponent { x: 8, y: 5 }), // 1.
+            position: Some(PositionComponent { x: 8.0, y: 5.0 }), // 1.
             render: Some(RenderComponent { // 2.
-                ascii_character: '#'
+                ascii_character: '#',
                 rgb: cgmath::Vector3 {
                     x: 0.0,
                     y: 0.0,
@@ -313,7 +319,7 @@ impl HelloGame {
                 },
             }),
             velocity: None, // 3.
-            size: Some(SizeComponent { x: 2, y: 1 }), // 4.
+            size: Some(SizeComponent { x: 2.0, y: 1.0 }), // 4.
             camera_follow: None,
         });
         // ..
@@ -333,24 +339,24 @@ If you run now, you'll see the player move through the wall. Next, let's add col
 // ..
 impl GameHandler for HelloGame {
     // ..
-    fn next(&mut self) {
+    fn next(&mut self, dt: Duration) {
         
         // .. Velocity update logic from Step 3 ..  
 
         // Check for collisions BEFORE moving entities
-        let collisions = self.ecs.collision_pass(); // 1.
+        let collisions = self.ecs.collision_pass(dt); // 1.
         for [a, b] in collisions.into_iter() { // 2.
             if a == self.player_id || b == self.player_id {
                 let player_entity = self.ecs.get_entity_by_id_mut(self.player_id);
                 let Some(player_entity) = player_entity else { return; };
                 let Some(velocity) = &mut player_entity.components.velocity else { return; };
-                velocity.x = 0; // 3.
-                velocity.y = 0;
+                velocity.x = 0.0; // 3.
+                velocity.y = 0.0;
                 break; // Stop after first collision
             }
         }
         
-        self.ecs.step(); // 4. Move entities AFTER collision check
+        self.ecs.step(dt); // 4. Move entities AFTER collision check
     }
     // ..
 }
@@ -406,7 +412,7 @@ Your `@` character now renders as a colored square in a desktop window.
 Hewn games implement the `GameHandler` trait:
 
 - **`start_game()`** - Initialize your game state
-- **`next()`** - Update game logic each frame  
+- **`next(dt: Duration)`** - Update game logic each frame with delta time  
 - **`handle_key()`** - Process keyboard input
 - **`ecs()`** - Access the Entity Component System
 - **`debug_str()`** - Show debug info (terminal only)

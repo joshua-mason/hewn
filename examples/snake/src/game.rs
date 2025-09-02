@@ -6,6 +6,7 @@ use hewn::ecs::{Components, ECS};
 use hewn::runtime::{GameHandler, Key};
 use rand::{rngs::StdRng, Rng, RngCore, SeedableRng};
 use std::collections::HashSet;
+use std::time::Duration;
 
 pub fn create_game(width: u16, height: u16, seed: Option<u64>) -> Game {
     let mut game = Game::new(width, height, seed);
@@ -45,6 +46,10 @@ pub struct Game {
     wall_ids: HashSet<EntityId>,
     food_id: Option<EntityId>,
     rng: Box<dyn RngCore>,
+
+    // Add timer for discrete movement
+    move_timer: f32,
+    move_interval: f32,
 }
 
 impl Game {
@@ -90,14 +95,16 @@ impl Game {
             wall_ids: HashSet::new(),
             food_id: None,
             rng,
+            move_timer: 0.0,
+            move_interval: 0.1,
         }
     }
 
     pub fn initialise_player(&mut self) {
         let components = Components {
-            position: Some(PositionComponent { x: 1, y: 1 }),
-            velocity: Some(VelocityComponent { x: 0, y: 1 }),
-            size: Some(SizeComponent { x: 1, y: 1 }),
+            position: Some(PositionComponent { x: 1.0, y: 1.0 }),
+            velocity: None,
+            size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             render: Some(RenderComponent {
                 ascii_character: '0',
                 rgb: cgmath::Vector3 {
@@ -113,12 +120,12 @@ impl Game {
         self.player_direction = Direction::Up;
     }
 
-    pub fn add_walls_from_positions(&mut self, walls: Vec<(u16, u16)>) {
+    pub fn add_walls_from_positions(&mut self, walls: Vec<(f32, f32)>) {
         for (x, y) in walls.into_iter() {
             let components = Components {
                 position: Some(PositionComponent { x, y }),
-                velocity: Some(VelocityComponent { x: 0, y: 0 }),
-                size: Some(SizeComponent { x: 1, y: 1 }),
+                velocity: None,
+                size: Some(SizeComponent { x: 1.0, y: 1.0 }),
                 render: Some(RenderComponent {
                     ascii_character: '#',
                     rgb: cgmath::Vector3 {
@@ -139,25 +146,21 @@ impl Game {
         self.add_walls_from_positions(walls_positions);
     }
 
-    fn set_head_velocity_from_direction(&mut self) {
+    fn move_head_discrete(&mut self) {
         if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
-            if let Some(vel) = &mut head.components.velocity {
+            if let Some(pos) = &mut head.components.position {
                 match self.player_direction {
                     Direction::Left => {
-                        vel.x = -1;
-                        vel.y = 0;
+                        pos.x -= 1.0;
                     }
                     Direction::Right => {
-                        vel.x = 1;
-                        vel.y = 0;
+                        pos.x += 1.0;
                     }
                     Direction::Up => {
-                        vel.x = 0;
-                        vel.y = 1;
+                        pos.y += 1.0;
                     }
                     Direction::Down => {
-                        vel.x = 0;
-                        vel.y = -1;
+                        pos.y -= 1.0;
                     }
                 }
             }
@@ -171,8 +174,8 @@ impl Game {
                 x: empty_tile.0,
                 y: empty_tile.1,
             }),
-            velocity: Some(VelocityComponent { x: 0, y: 0 }),
-            size: Some(SizeComponent { x: 1, y: 1 }),
+            velocity: None,
+            size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             render: Some(RenderComponent {
                 ascii_character: '+',
                 rgb: cgmath::Vector3 {
@@ -198,8 +201,8 @@ impl Game {
                     pos.y = y;
                 }
                 if let Some(size) = &mut food.components.size {
-                    size.x = 1;
-                    size.y = 1;
+                    size.x = 1.0;
+                    size.y = 1.0;
                 }
                 if let Some(render) = &mut food.components.render {
                     render.ascii_character = '+';
@@ -208,27 +211,30 @@ impl Game {
         }
     }
 
-    fn find_empty_tile(&mut self) -> Option<(u16, u16)> {
-        let mut occupied: std::collections::HashSet<(u16, u16)> = std::collections::HashSet::new();
-        occupied.insert(self.head_position());
+    fn find_empty_tile(&mut self) -> Option<(f32, f32)> {
+        let mut occupied: std::collections::HashSet<(i32, i32)> = std::collections::HashSet::new();
+        let head_pos = self.head_position();
+        occupied.insert((head_pos.0.round() as i32, head_pos.1.round() as i32));
         for (x, y) in self.body_positions() {
-            occupied.insert((x, y));
+            occupied.insert((x.round() as i32, y.round() as i32));
         }
         for w in self.wall_ids.iter() {
             if let Some(ent) = self.ecs.get_entity_by_id(*w) {
                 if let Some(pos) = &ent.components.position {
-                    occupied.insert((pos.x, pos.y));
+                    occupied.insert((pos.x.round() as i32, pos.y.round() as i32));
                 }
             }
         }
 
         let rng = &mut self.rng;
-        let mut target: Option<(u16, u16)> = None;
+        let mut target: Option<(f32, f32)> = None;
         let max_tries = (self.width as u32 * self.height as u32).max(100);
         for _ in 0..max_tries {
-            let x = rng.gen_range(1..(self.width - 1));
-            let y = rng.gen_range(1..(self.height - 1));
-            if !occupied.contains(&(x, y)) {
+            let x_grid = rng.gen_range(1..(self.width - 1));
+            let y_grid = rng.gen_range(1..(self.height - 1));
+            let x = x_grid as f32;
+            let y = y_grid as f32;
+            if !occupied.contains(&(x as i32, y as i32)) {
                 target = Some((x, y));
                 break;
             }
@@ -236,14 +242,14 @@ impl Game {
         target
     }
 
-    fn grow_body_by_one(&mut self, tail_target: (u16, u16)) {
+    fn grow_body_by_one(&mut self, tail_target: (f32, f32)) {
         let components = Components {
             position: Some(PositionComponent {
                 x: tail_target.0,
                 y: tail_target.1,
             }),
-            velocity: Some(VelocityComponent { x: 0, y: 0 }),
-            size: Some(SizeComponent { x: 1, y: 1 }),
+            velocity: None,
+            size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             render: Some(RenderComponent {
                 ascii_character: 'o',
                 rgb: cgmath::Vector3 {
@@ -258,13 +264,13 @@ impl Game {
         self.body_ids.push(id);
     }
 
-    fn head_position(&self) -> (u16, u16) {
+    fn head_position(&self) -> (f32, f32) {
         let head = self.ecs.get_entity_by_id(self.player_id).unwrap();
         let pos = head.components.position.as_ref().unwrap();
         (pos.x, pos.y)
     }
 
-    fn body_positions(&self) -> Vec<(u16, u16)> {
+    fn body_positions(&self) -> Vec<(f32, f32)> {
         self.body_ids
             .iter()
             .filter_map(|id| self.ecs.get_entity_by_id(*id))
@@ -273,7 +279,7 @@ impl Game {
             .collect()
     }
 
-    fn set_entity_position(&mut self, id: EntityId, xy: (u16, u16)) {
+    fn set_entity_position(&mut self, id: EntityId, xy: (f32, f32)) {
         if let Some(ent) = self.ecs.get_entity_by_id_mut(id) {
             if let Some(pos) = &mut ent.components.position {
                 pos.x = xy.0;
@@ -282,7 +288,7 @@ impl Game {
         }
     }
 
-    fn update_body_segments(&mut self, prev_positions: Vec<(u16, u16)>) {
+    fn update_body_segments(&mut self, prev_positions: Vec<(f32, f32)>) {
         let ids = self.body_ids.clone();
         for (i, id) in ids.iter().enumerate() {
             if i < prev_positions.len() {
@@ -299,10 +305,11 @@ impl Game {
 impl GameHandler for Game {
     fn start_game(&mut self) {
         self.score = 0;
+        self.move_timer = 0.0;
         if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
             if let Some(pos) = &mut head.components.position {
-                pos.x = 1;
-                pos.y = 1;
+                pos.x = 1.0;
+                pos.y = 1.0;
             }
         }
         self.player_direction = Direction::Up;
@@ -316,61 +323,89 @@ impl GameHandler for Game {
         true
     }
 
-    fn next(&mut self) {
+    fn next(&mut self, dt: Duration) {
         if self.state != GameState::InGame {
             return;
         }
 
-        let mut prev_positions: Vec<(u16, u16)> = Vec::with_capacity(self.body_ids.len() + 1);
-        prev_positions.push(self.head_position());
-        prev_positions.extend(self.body_positions());
+        // Update move timer
+        self.move_timer += dt.as_secs_f32();
 
-        // let next_dir = Game::compute_next_direction(self.player_direction, key);
-        // self.player_direction = next_dir;
-        self.set_head_velocity_from_direction();
+        // Only move when timer reaches the interval
+        if self.move_timer >= self.move_interval {
+            self.move_timer = 0.0; // Reset timer
 
-        self.ecs.step();
+            // Store previous positions for body segments
+            let mut prev_positions: Vec<(f32, f32)> = Vec::with_capacity(self.body_ids.len() + 1);
+            prev_positions.push(self.head_position());
+            prev_positions.extend(self.body_positions());
 
-        let collisions = self.ecs.collision_pass();
-        let mut ate_food = false;
+            // Move the head one discrete step
+            self.move_head_discrete();
 
-        for [a, b] in collisions.into_iter() {
-            let (_player, other) = if a == self.player_id {
-                (a, b)
-            } else if b == self.player_id {
-                (b, a)
-            } else {
-                continue;
-            };
+            // Check for collisions after discrete movement
+            let head_pos = self.head_position();
+            let mut ate_food = false;
 
-            if self.wall_ids.contains(&other) || self.body_ids.contains(&other) {
-                self.end_game();
-                return;
-            }
-
-            if let Some(fid) = self.food_id {
-                if other == fid {
-                    ate_food = true;
+            // Check wall collisions
+            for wall_id in &self.wall_ids {
+                if let Some(wall) = self.ecs.get_entity_by_id(*wall_id) {
+                    if let Some(wall_pos) = &wall.components.position {
+                        if (head_pos.0 - wall_pos.x).abs() < 1.0
+                            && (head_pos.1 - wall_pos.y).abs() < 1.0
+                        {
+                            self.end_game();
+                            return;
+                        }
+                    }
                 }
             }
+
+            // Check body collisions
+            for body_id in &self.body_ids {
+                if let Some(body) = self.ecs.get_entity_by_id(*body_id) {
+                    if let Some(body_pos) = &body.components.position {
+                        if (head_pos.0 - body_pos.x).abs() < 1.0
+                            && (head_pos.1 - body_pos.y).abs() < 1.0
+                        {
+                            self.end_game();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Check food collision
+            if let Some(food_id) = self.food_id {
+                if let Some(food) = self.ecs.get_entity_by_id(food_id) {
+                    if let Some(food_pos) = &food.components.position {
+                        if (head_pos.0 - food_pos.x).abs() < 1.0
+                            && (head_pos.1 - food_pos.y).abs() < 1.0
+                        {
+                            ate_food = true;
+                        }
+                    }
+                }
+            }
+
+            // Handle food consumption first (before updating body segments)
+            if ate_food {
+                let tail_target = self
+                    .body_ids
+                    .last()
+                    .and_then(|id| self.ecs.get_entity_by_id(*id))
+                    .and_then(|e| e.components.position.as_ref().map(|p| (p.x, p.y)))
+                    .unwrap_or_else(|| prev_positions.first().copied().unwrap_or((10.0, 10.0)));
+                self.grow_body_by_one(tail_target);
+                self.spawn_food();
+            }
+
+            // Update body segments
+            self.update_body_segments(prev_positions);
+
+            let length = 1 + self.body_ids.len() as u16;
+            self.score = self.score.max(length);
         }
-
-        self.update_body_segments(prev_positions);
-
-        if ate_food {
-            let tail_target = self
-                .body_ids
-                .last()
-                .and_then(|id| self.ecs.get_entity_by_id(*id))
-                .and_then(|e| e.components.position.as_ref().map(|p| (p.x, p.y)))
-                .unwrap_or_else(|| self.head_position());
-            self.grow_body_by_one(tail_target);
-
-            self.spawn_food();
-        }
-
-        let length = 1 + self.body_ids.len() as u16;
-        self.score = self.score.max(length);
     }
 
     fn ecs(&self) -> &ECS {
@@ -393,15 +428,15 @@ impl GameHandler for Game {
     }
 }
 
-fn generate_walls_positions(width: u16, height: u16) -> Vec<(u16, u16)> {
-    let mut walls: Vec<(u16, u16)> = vec![];
+fn generate_walls_positions(width: u16, height: u16) -> Vec<(f32, f32)> {
+    let mut walls: Vec<(f32, f32)> = vec![];
     for x_index in 0..width {
-        walls.push((x_index, 1));
-        walls.push((x_index, height));
+        walls.push((x_index as f32, 1.0));
+        walls.push((x_index as f32, height as f32));
     }
     for y_index in 1..(height) {
-        walls.push((0, y_index));
-        walls.push((width - 1, y_index));
+        walls.push((0.0, y_index as f32));
+        walls.push(((width - 1) as f32, y_index as f32));
     }
     walls
 }

@@ -14,8 +14,8 @@ use termion::raw::RawTerminal;
 /// A coordinate in the game world.
 #[derive(Debug, PartialEq, Clone)]
 pub struct ViewCoordinate {
-    pub x: u16,
-    pub y: u16,
+    pub x: i16,
+    pub y: i16,
 }
 
 pub struct ScreenDimensions {
@@ -41,8 +41,11 @@ impl View {
             let position = entity_to_track.components.position;
             let pos = position
                 .as_ref()
-                .unwrap_or(&PositionComponent { x: 0, y: 0 });
-            let coord = ViewCoordinate { x: pos.x, y: pos.y };
+                .unwrap_or(&PositionComponent { x: 0.0, y: 0.0 });
+            let coord = ViewCoordinate {
+                x: pos.x as i16,
+                y: pos.y as i16,
+            };
             strategy.update(&mut self.view_cursor, &*renderer, &coord);
         }
 
@@ -52,7 +55,7 @@ impl View {
         // indexes in the level strings?
         for height in 0..renderer.screen_height() {
             let mut level: String = build_string('.', renderer.screen_width() as usize);
-            let y_position = renderer.screen_height() + self.view_cursor.y - height;
+            let y_position = renderer.screen_height() as i16 + self.view_cursor.y - height as i16;
             let cursor_x_position = self.view_cursor.x;
 
             for entity in &entities {
@@ -67,12 +70,14 @@ impl View {
                 };
 
                 let display_char = render.ascii_character;
-                if position.y == y_position
-                    && position.x >= cursor_x_position
-                    && (position.x + size.x) - cursor_x_position <= level.len() as u16
+                if position.y.floor() as i16 == y_position
+                    && position.x.floor() as i16 >= cursor_x_position
+                    && (position.x + size.x).floor() as i16 - cursor_x_position
+                        <= level.len() as i16
                 {
-                    let x_displacement = position.x.saturating_sub(cursor_x_position);
-                    let render_x_offset = position.x + size.x - cursor_x_position;
+                    let x_displacement = position.x - cursor_x_position as f32;
+                    let render_x_offset: i16 =
+                        (position.x + size.x).floor() as i16 - cursor_x_position;
                     level.replace_range(
                         (x_displacement as usize)..(render_x_offset as usize),
                         &display_char
@@ -141,7 +146,7 @@ pub mod cursor {
                 return;
             }
             cursor.y =
-                (y as i16 + self.offset as i16 - renderer.screen_height() as i16).max(0) as u16;
+                (y as i16 + self.offset as i16 - renderer.screen_height() as i16).max(0) as i16;
         }
     }
 
@@ -169,7 +174,7 @@ pub mod cursor {
                 return;
             }
             cursor.x =
-                (x as i16 + self.offset as i16 - renderer.screen_width() as i16).max(0) as u16;
+                (x as i16 + self.offset as i16 - renderer.screen_width() as i16).max(0) as i16;
         }
     }
 
@@ -200,15 +205,15 @@ pub mod cursor {
             let y_abs_diff = y.abs_diff(cursor.y);
             if !(y_abs_diff > 1 && y_abs_diff < (renderer.screen_height() - 2_u16)) {
                 cursor.y = (y as i16 + self.y_offset as i16 - renderer.screen_height() as i16)
-                    .max(0) as u16;
+                    .max(0) as i16;
             }
 
             // X axis logic: make the camera follow the player more smoothly,
             // not just when reaching the edge, but when the player moves past a margin.
             let x = coords.x;
             let screen_w = renderer.screen_width();
-            let left_margin = self.x_offset as u16;
-            let right_margin = screen_w.saturating_sub(self.x_offset as u16 + 1);
+            let left_margin = self.x_offset as i16;
+            let right_margin = (screen_w as i16).saturating_sub(self.x_offset as i16 + 1) as i16;
 
             // If player is left of the left margin, move view left.
             if x < cursor.x + left_margin {

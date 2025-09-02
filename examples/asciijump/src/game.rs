@@ -1,4 +1,3 @@
-use cgmath::Vector3;
 use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
@@ -8,9 +7,10 @@ use hewn::runtime::Key;
 use rand::RngCore;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::collections::HashSet;
+use std::time::Duration;
 
-pub const WIDTH: u16 = 10;
-pub const HEIGHT: u16 = 500;
+pub const WIDTH: f32 = 10.0;
+pub const HEIGHT: f32 = 500.0;
 pub const SCREEN_WIDTH: u16 = 10;
 pub const SCREEN_HEIGHT: u16 = 20;
 
@@ -29,8 +29,8 @@ pub enum GameState {
 }
 
 pub struct Game {
-    pub width: u16,
-    pub height: u16,
+    pub width: f32,
+    pub height: f32,
     pub state: GameState,
     pub score: u16,
     pub player_id: EntityId,
@@ -41,7 +41,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(width: u16, height: u16, seed: Option<u64>) -> Game {
+    pub fn new(width: f32, height: f32, seed: Option<u64>) -> Game {
         let rng: Box<dyn rand::RngCore> = if let Some(s) = seed {
             Box::new(StdRng::seed_from_u64(s))
         } else {
@@ -59,39 +59,15 @@ impl Game {
         }
     }
 
-    fn move_player(&mut self, key: Option<Key>) {
-        match key {
-            Some(Key::Left) => {
-                if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-                    if let Some(pos) = &mut player.components.position {
-                        if pos.x > 0 {
-                            pos.x -= 1;
-                        }
-                    }
-                }
-            }
-            Some(Key::Right) => {
-                if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-                    if let Some(pos) = &mut player.components.position {
-                        if pos.x < self.width - 1 {
-                            pos.x += 1;
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
     pub fn end_game(&mut self) {
         self.state = GameState::Lost(self.score);
     }
 
     pub fn initialise_player(&mut self) {
         let components = Components {
-            position: Some(PositionComponent { x: 1, y: 1 }),
-            velocity: Some(VelocityComponent { x: 0, y: 5 }),
-            size: Some(SizeComponent { x: 1, y: 1 }),
+            position: Some(PositionComponent { x: 1.0, y: 1.0 }),
+            velocity: Some(VelocityComponent { x: 0.0, y: 5.0 }),
+            size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             render: Some(RenderComponent {
                 ascii_character: '#',
                 rgb: (0.0, 0.0, 0.0).into(),
@@ -102,12 +78,12 @@ impl Game {
         self.player_id = id;
     }
 
-    pub fn add_platforms_from_positions(&mut self, platforms: Vec<(u16, u16)>) {
+    pub fn add_platforms_from_positions(&mut self, platforms: Vec<(f32, f32)>) {
         for (x, y) in platforms.into_iter() {
             let components = Components {
                 position: Some(PositionComponent { x, y }),
-                velocity: Some(VelocityComponent { x: 0, y: 0 }),
-                size: Some(SizeComponent { x: 3, y: 1 }),
+                velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }),
+                size: Some(SizeComponent { x: 3.0, y: 1.0 }),
                 render: Some(RenderComponent {
                     ascii_character: '=',
                     rgb: (0.0, 0.0, 0.5).into(),
@@ -120,17 +96,17 @@ impl Game {
     }
 
     pub fn initialise_platforms(&mut self) {
-        let mut platforms: Vec<(u16, u16)> = vec![];
+        let mut platforms: Vec<(f32, f32)> = vec![];
         let mut last_platform: usize = 0;
-        for index in 0..self.height {
+        for index in 0..self.height as u16 {
             if last_platform > 8 {
-                let x = self.rng.gen_range(0..(self.width - 3));
-                platforms.push((x as u16, index as u16));
+                let x = self.rng.gen_range(0..(self.width as u16 - 3));
+                platforms.push((x as f32, index as f32));
                 last_platform = 0;
             }
             if self.rng.gen_range(0..10) == 0 {
-                let x = self.rng.gen_range(0..(self.width - 3));
-                platforms.push((x as u16, index as u16));
+                let x = self.rng.gen_range(0..(self.width as u16 - 3));
+                platforms.push((x as f32, index as f32));
                 last_platform = 0;
             }
             last_platform += 1;
@@ -144,30 +120,28 @@ impl GameHandler for Game {
         self.score = 0;
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
             if let Some(pos) = &mut player.components.position {
-                pos.x = 1;
-                pos.y = 1;
+                pos.x = 1.0;
+                pos.y = 1.0;
             }
             if let Some(vel) = &mut player.components.velocity {
-                vel.y = 5;
+                vel.y = 50.0;
             }
         }
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self) {
+    fn next(&mut self, dt: Duration) {
         if self.state != GameState::InGame {
             return;
         }
 
-        self.ecs.step();
-
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
             if let Some(vel) = &mut player.components.velocity {
-                vel.y -= 1;
+                vel.y -= 100.0 * dt.as_secs_f32();
             }
         }
 
-        let collisions = self.ecs.collision_pass();
+        let collisions = self.ecs.collision_pass(dt);
         for [a, b] in collisions.into_iter() {
             let (player, other) = if a == self.player_id {
                 (a, b)
@@ -177,19 +151,11 @@ impl GameHandler for Game {
                 continue;
             };
             if self.platform_ids.contains(&other) {
-                let platform_y = self
-                    .ecs
-                    .get_entity_by_id(other)
-                    .and_then(|e| e.components.position.as_ref().map(|p| p.y));
-
                 if let Some(p) = self.ecs.get_entity_by_id_mut(player) {
                     if let Some(vel) = &mut p.components.velocity {
-                        if vel.y < 1 {
-                            vel.y = 5;
+                        if vel.y < 0.0 {
+                            vel.y = 50.0;
                         }
-                    }
-                    if let (Some(pos), Some(py)) = (&mut p.components.position, platform_y) {
-                        pos.y = py;
                     }
                 }
             }
@@ -198,16 +164,16 @@ impl GameHandler for Game {
         let mut should_end = false;
         let mut maybe_new_score: Option<u16> = None;
         if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
-            if let Some(vel) = &player.components.velocity {
-                if vel.y < -6 {
+            if let Some(pos) = &player.components.position {
+                if pos.y < 0.0 {
                     should_end = true;
                 }
             }
             if let Some(pos) = &player.components.position {
-                if pos.y as u16 > self.height {
+                if pos.y > self.height {
                     should_end = true;
                 }
-                maybe_new_score = Some(pos.y);
+                maybe_new_score = Some(pos.y as u16);
             }
         }
         if should_end {
@@ -216,6 +182,7 @@ impl GameHandler for Game {
         if let Some(s) = maybe_new_score {
             self.score = self.score.max(s);
         }
+        self.ecs.step(dt);
     }
 
     fn ecs(&self) -> &ECS {
@@ -238,13 +205,13 @@ impl GameHandler for Game {
                     if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
                         if let Some(velocity) = &mut player.components.velocity {
                             if pressed {
-                                velocity.x = if key == Key::Left { -1 } else { 1 };
+                                velocity.x = if key == Key::Left { -10.0 } else { 10.0 };
                             } else {
                                 // Only stop horizontal movement if the released key matches the current direction
-                                if (key == Key::Left && velocity.x < 0)
-                                    || (key == Key::Right && velocity.x > 0)
+                                if (key == Key::Left && velocity.x < 0.0)
+                                    || (key == Key::Right && velocity.x > 0.0)
                                 {
-                                    velocity.x = 0;
+                                    velocity.x = 0.0;
                                 }
                             }
                         }
@@ -278,41 +245,50 @@ mod tests {
 
     #[test]
     fn ignore_collision_when_moving_up() {
-        let mut game = Game::new(10, 10, Some(42));
+        let mut game = Game::new(10.0, 10.0, Some(42));
         game.initialise_player();
-        game.add_platforms_from_positions(vec![(1, 3)]);
+        game.add_platforms_from_positions(vec![(1.0, 3.0)]);
         game.start_game();
 
-        game.next();
+        let dt = Duration::from_millis(16);
+        game.next(dt);
 
         let player = get_player_entity(&game);
         let pos = player.components.position.as_ref().unwrap();
         let vel = player.components.velocity.as_ref().unwrap();
 
-        assert_eq!(
-            pos.y, 6,
-            "position should not snap to platform while moving up"
+        assert!(
+            pos.y > 1.0 && pos.y < 3.0,
+            "position should increase and not snap to platform; got pos.y = {}",
+            pos.y
         );
-        assert_eq!(vel.y, 4, "velocity should decrease by gravity only");
+        assert!(
+            vel.y > 0.0 && vel.y < 50.0,
+            "velocity should remain positive but reduced by gravity; got vel.y = {}",
+            vel.y
+        );
     }
 
     #[test]
     fn bounce_when_falling_onto_platform() {
-        let mut game = Game::new(10, 20, Some(42));
+        let mut game = Game::new(10.0, 20.0, Some(42));
         game.initialise_player();
-        game.add_platforms_from_positions(vec![(1, 5)]);
+        game.add_platforms_from_positions(vec![(1.0, 5.0)]);
         game.start_game();
 
+        let dt = Duration::from_millis(16);
         let mut bounced = false;
-        for _ in 0..30 {
-            game.next();
+        let mut prev_vy = 50.0;
+        for _ in 0..2000 {
+            game.next(dt);
             let player = get_player_entity(&game);
             let pos = player.components.position.as_ref().unwrap();
             let vel = player.components.velocity.as_ref().unwrap();
-            if pos.y == 5 && vel.y == 5 {
+            if prev_vy < 0.0 && (vel.y - 50.0).abs() < 1e-3 && pos.y >= 5.0 - 0.25 {
                 bounced = true;
                 break;
             }
+            prev_vy = vel.y;
         }
         assert!(bounced, "expected to bounce on the platform when falling");
     }

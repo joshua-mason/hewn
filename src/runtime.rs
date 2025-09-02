@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::ecs::ECS;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -7,7 +9,7 @@ pub trait GameHandler {
     /// Start the game.
     fn start_game(&mut self);
     /// Compute the next game state based on player input.
-    fn next(&mut self);
+    fn next(&mut self, dt: Duration);
     /// Get the Entity Component System
     fn ecs(&self) -> &ECS;
 
