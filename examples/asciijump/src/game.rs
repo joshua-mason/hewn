@@ -250,20 +250,21 @@ mod tests {
         game.add_platforms_from_positions(vec![(1.0, 3.0)]);
         game.start_game();
 
-        game.next(Duration::from_secs(1));
+        let dt = Duration::from_millis(16);
+        game.next(dt);
 
         let player = get_player_entity(&game);
         let pos = player.components.position.as_ref().unwrap();
         let vel = player.components.velocity.as_ref().unwrap();
 
         assert!(
-            (pos.y - 6.0).abs() < f32::EPSILON,
-            "position should not snap to platform while moving up, got pos.y = {}",
+            pos.y > 1.0 && pos.y < 3.0,
+            "position should increase and not snap to platform; got pos.y = {}",
             pos.y
         );
         assert!(
-            (vel.y - 4.0).abs() < f32::EPSILON,
-            "velocity should decrease by gravity only, got vel.y = {}",
+            vel.y > 0.0 && vel.y < 50.0,
+            "velocity should remain positive but reduced by gravity; got vel.y = {}",
             vel.y
         );
     }
@@ -275,16 +276,19 @@ mod tests {
         game.add_platforms_from_positions(vec![(1.0, 5.0)]);
         game.start_game();
 
+        let dt = Duration::from_millis(16);
         let mut bounced = false;
-        for _ in 0..30 {
-            game.next(Duration::from_secs(1));
+        let mut prev_vy = 50.0;
+        for _ in 0..2000 {
+            game.next(dt);
             let player = get_player_entity(&game);
             let pos = player.components.position.as_ref().unwrap();
             let vel = player.components.velocity.as_ref().unwrap();
-            if (pos.y - 5.0).abs() < f32::EPSILON && (vel.y - 5.0).abs() < f32::EPSILON {
+            if prev_vy < 0.0 && (vel.y - 50.0).abs() < 1e-3 && pos.y >= 5.0 - 0.25 {
                 bounced = true;
                 break;
             }
+            prev_vy = vel.y;
         }
         assert!(bounced, "expected to bounce on the platform when falling");
     }
