@@ -3,8 +3,9 @@ use crate::runtime::GameHandler;
 use crate::runtime::Key;
 use crate::wgpu::render::CameraStrategy;
 use crate::wgpu::render::State;
+use instant::Instant;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::Duration;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use winit::application::ApplicationHandler;
@@ -51,7 +52,7 @@ impl WindowRuntime {
         }
         #[cfg(target_arch = "wasm32")]
         {
-            console_log::init_with_level(log::Level::Info).unwrap_throw();
+            let _ = console_log::init_with_level(log::Level::Info);
         }
 
         let event_loop = EventLoop::with_user_event().build()?;
@@ -93,7 +94,7 @@ impl<'a> App<'a> {
             game,
             frame_counter: 0,
             camera_strategy,
-            last_frame: std::time::Instant::now(),
+            last_frame: Instant::now(),
         }
     }
 }
@@ -143,10 +144,11 @@ impl<'a> ApplicationHandler<State> for App<'a> {
         #[cfg(target_arch = "wasm32")]
         {
             if let Some(proxy) = self.proxy.take() {
+                let camera_strategy = self.camera_strategy;
                 wasm_bindgen_futures::spawn_local(async move {
                     assert!(proxy
                         .send_event(
-                            State::new(window, renderable_entities, self.camera_strategy,)
+                            State::new(window, renderable_entities, camera_strategy)
                                 .await
                                 .expect("Unable to create canvas!!!")
                         )
@@ -187,7 +189,7 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 self.frame_counter += 1;
 
                 let now = Instant::now();
-                let dt = now - self.last_frame;
+                let dt: Duration = now - self.last_frame;
                 self.game.next(dt);
                 self.frame_counter = 0;
                 self.last_frame = now;

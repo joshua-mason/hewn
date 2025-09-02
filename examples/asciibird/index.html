@@ -3,146 +3,29 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hewn AsciiBird Game Demo</title>
+    <title>Hewn asciibird</title>
     <style>
-        * {
-            margin: 0;
+        canvas {
+            width: 800px;
+            height: 600px;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #000;
-            color: #fff;
-            font-family: 'Courier New', monospace;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        .header {
-            text-align: center;
-            padding: 15px;
-        }
-
-        .title {
-            font-size: 2rem;
-            margin-bottom: 20px;
-        }
-
-        .game-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .start-button {
-            background: #fff;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            font-size: 1rem;
-            font-family: 'Courier New', monospace;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
-        .start-button:hover {
-            background: #ddd;
-        }
-
-        #game-output {
-            background: #000;
-            color: #fff;
-            border: 1px solid #fff;
-            padding: 15px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            line-height: 1;
-            white-space: pre;
-            max-width: 90vw;
-            max-height: 80vh;
-            overflow: hidden;
-        }
-
-
-        @media (max-width: 768px) {
-            .title {
-                font-size: 1.5rem;
-            }
-
-            #game-output {
-                font-size: 0.7rem;
-                padding: 10px;
-            }
+            margin: 0;
         }
     </style>
 </head>
 
-<body>
-    <div class="header">
-        <div class="title">ASCIIBIRD</div>
-    </div>
-
-    <div class="game-container">
-        <button id="start" class="start-button" onclick="window.main()">START GAME</button>
-        <pre id="game-output">Press START GAME to begin</pre>
-    </div>
-
-    <script type="module" lang="ts">
-        import init, { new_game_api, WasmKey } from './pkg/asciibird.js';
-
-        async function main() {
-            await init();
-            const gameApi = new_game_api();
-            gameApi.start();
-
-            const pre = document.getElementById('game-output');
-            const startButton = document.getElementById('start');
-
-            startButton.style.display = 'none';
-            document.body.classList.add('game-started');
-
-            function renderGame() {
-                const output = gameApi.render();
-                pre.textContent = output.split('|').join('\n');
-            }
-
-            const mapKey = (e) => {
-                switch (e.key) {
-                    case 'ArrowLeft': return WasmKey.Left;
-                    case 'ArrowRight': return WasmKey.Right;
-                    case 'ArrowUp': return WasmKey.Up;
-                    case 'ArrowDown': return WasmKey.Down;
-                    case ' ': return WasmKey.Space;
-                    case 'Escape': return WasmKey.Escape;
-                    default: return undefined;
-                }
-            };
-
-            let key = undefined;
-            addEventListener('keydown', (e) => {
-                const k = mapKey(e);
-                if (k !== undefined) key = k;
-            });
-
-            function gameLoop() {
-                gameApi.tick(key);
-                key = undefined;
-                renderGame();
-            }
-
-            renderGame();
-            setInterval(gameLoop, 200);
-        }
-
-        window.main = main;
+<body id="wasm-example">
+    <script type="module">
+        import init, { run_in_canvas } from "./pkg/asciibird.js";
+        init().then(() => {
+            console.log("WASM Loaded");
+            console.log("Running WASM");
+            run_in_canvas();
+        });
     </script>
+    <canvas id="canvas"></canvas>
 </body>
 
 </html>
