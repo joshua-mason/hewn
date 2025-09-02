@@ -1,3 +1,4 @@
+use cgmath;
 use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
@@ -99,6 +100,11 @@ impl Game {
             size: Some(SizeComponent { x: 1, y: 1 }),
             render: Some(RenderComponent {
                 ascii_character: '0',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
             }),
             camera_follow: Some(CameraFollow {}),
         };
@@ -115,6 +121,11 @@ impl Game {
                 size: Some(SizeComponent { x: 1, y: 1 }),
                 render: Some(RenderComponent {
                     ascii_character: '#',
+                    rgb: cgmath::Vector3 {
+                        x: 0.0,
+                        y: 0.1,
+                        z: 0.0,
+                    },
                 }),
                 camera_follow: None,
             };
@@ -164,6 +175,11 @@ impl Game {
             size: Some(SizeComponent { x: 1, y: 1 }),
             render: Some(RenderComponent {
                 ascii_character: '+',
+                rgb: cgmath::Vector3 {
+                    x: 0.1,
+                    y: 0.0,
+                    z: 0.0,
+                },
             }),
             camera_follow: None,
         };
@@ -230,6 +246,11 @@ impl Game {
             size: Some(SizeComponent { x: 1, y: 1 }),
             render: Some(RenderComponent {
                 ascii_character: 'o',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.1,
+                },
             }),
             camera_follow: None,
         };
@@ -378,7 +399,7 @@ fn generate_walls_positions(width: u16, height: u16) -> Vec<(u16, u16)> {
         walls.push((x_index, 1));
         walls.push((x_index, height));
     }
-    for y_index in 0..height {
+    for y_index in 1..(height) {
         walls.push((0, y_index));
         walls.push((width - 1, y_index));
     }

@@ -23,6 +23,10 @@ fn play_asciibird_in_terminal() {
 
 fn play_asciibird_in_wgpu() {
     let mut game = create_game(None);
+    let player_entity_id = game.player_id;
     let mut runtime = wgpu::runtime::WindowRuntime::new();
-    let _ = runtime.start(&mut game);
+    let _ = runtime.start(
+        &mut game,
+        wgpu::render::CameraStrategy::CameraFollow(player_entity_id),
+    );
 }

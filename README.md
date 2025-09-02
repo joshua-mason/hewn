@@ -16,7 +16,7 @@ Hewn is a minimal Rust game engine for learning and tinkering, with support for 
 - 🎮 **ECS** - Entity Component System architecture
 - ⚡ **Cross-Platform** - Write once, run anywhere
 
-## Quick Start
+## Getting started
 
 > [!NOTE]
 > **Complete tutorial code** is available in `examples/tutorial/`. The following tutorial builds up from the simplest possible game.
@@ -109,7 +109,14 @@ impl HelloGame {
         
         let player_id = ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 5, y: 5 }), // 2.
-            render: Some(RenderComponent { ascii_character: '@' }), // 3.
+            render: Some(RenderComponent { // 3.
+                ascii_character: '@',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            }),
             velocity: None,
             size: Some(SizeComponent { x: 1, y: 1 }), // 4.
             camera_follow: None,
@@ -123,7 +130,7 @@ impl HelloGame {
 
 1. Added `player_id` field to store a reference to our character entity
 2. Player positioned at coordinates (5, 5) in the game world  
-3. `RenderComponent` makes the entity appear as `@` character on screen
+3. `RenderComponent` makes the entity appear as `@` character on screen - we also include an `rgb` with the colour for wgpu rendering.
 4. `SizeComponent` defines the entity's collision box (1×1 unit)
 
 Next, let's update the game loop and debug display:
@@ -174,7 +181,7 @@ pub struct GameController { // 1.
 }
 
 impl GameController {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             is_up_pressed: false,
             is_down_pressed: false,
@@ -183,7 +190,7 @@ impl GameController {
         }
     }
 
-    pub(crate) fn handle_key(&mut self, key: Key, is_pressed: bool) -> bool {
+    pub fn handle_key(&mut self, key: Key, is_pressed: bool) -> bool {
         match key { // 2.
             Key::Up => { self.is_up_pressed = is_pressed; true }
             Key::Down => { self.is_down_pressed = is_pressed; true }
@@ -215,7 +222,14 @@ impl HelloGame {
         
         let player_id = ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 5, y: 5 }), 
-            render: Some(RenderComponent { ascii_character: '@' }),
+            render: Some(RenderComponent { 
+                ascii_character: '@',
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            }),
             velocity: Some(VelocityComponent { x: 0, y: 0 }), // 2.
             size: Some(SizeComponent { x: 2, y: 1 }), // 3.
             camera_follow: None,
@@ -273,28 +287,7 @@ impl GameHandler for HelloGame {
 
 Your `@` character now responds to arrow keys! Try moving around and watch the debug text update with your position. Now let's see the same game running in a desktop window...
 
-### Step 4: Same Game, Desktop Window
-
-Now we've built our game, it's possible to run in our `WindowRuntime`. Without changing our game, we use the `wgpu` runtime:
-
-```rust
-// ..
-use hewn::wgpu::runtime::WindowRuntime; // NEW!
-
-// ..
-
-fn main() {
-    let mut game = HelloGame::new(); // Same game!
-    let mut runtime = WindowRuntime::new(); // 1.
-    let _ = runtime.start(&mut game);
-}
-```
-
-1. Swap `TerminalRuntime` for `WindowRuntime` - that's literally it!
-
-Your `@` character now renders as a colored square in a desktop window.
-
-### Step 5: Add Collision Detection
+### Step 4: Add Collision Detection
 
 Let's add a wall that blocks the player's movement to make it feel like a real game.
 
@@ -311,7 +304,14 @@ impl HelloGame {
         // Add a wall
         ecs.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 8, y: 5 }), // 1.
-            render: Some(RenderComponent { ascii_character: '#' }), // 2.
+            render: Some(RenderComponent { // 2.
+                ascii_character: '#'
+                rgb: cgmath::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            }),
             velocity: None, // 3.
             size: Some(SizeComponent { x: 2, y: 1 }), // 4.
             camera_follow: None,
@@ -323,7 +323,7 @@ impl HelloGame {
 ```
 
 1. Wall positioned at (8, 5) - to the right of the player starting position
-2. Wall renders as `#` character on screen
+2. Wall renders as `#` character on screen, or a black square in wgpu rendering
 3. Wall has no velocity (it doesn't move) - note that this could also be set to `VelocityComponent { x: 0, y: 0 }`.
 4. Wall has 2×1 size, so it appears as `##` (2 units wide)
 
@@ -357,7 +357,7 @@ impl GameHandler for HelloGame {
 ```
 
 1. `collision_pass()` returns pairs of entities that are colliding
-2. **Important**: Iterate over collision pairs `[a, b]` - don't use `.flatten()` which loses pairing info
+2. Iterate over collision pairs `[a, b]`
 3. When collision detected, immediately stop the player by resetting velocity to `(0, 0)`
 4. **Critical**: Call `ecs.step()` AFTER collision detection to apply the movement
 
@@ -367,6 +367,28 @@ impl GameHandler for HelloGame {
 Now you'll see a `##` wall that blocks your `@` character's movement! Try moving right into it.
 
 🎉 Congratulations! You’ve built a simple game with movement and collision using Hewn. Explore, experiment, and have fun making your own games! Check the examples or docs for more advanced features.
+
+
+### Step 5: Same Game, Desktop Window
+
+Now we've built our game, it's possible to run in our `WindowRuntime`. Without changing our game, we use the `wgpu` runtime:
+
+```rust
+// ..
+use hewn::wgpu::runtime::WindowRuntime; // NEW!
+
+// ..
+
+fn main() {
+    let mut game = HelloGame::new(); // Same game!
+    let mut runtime = WindowRuntime::new(); // 1.
+    let _ = runtime.start(&mut game);
+}
+```
+
+1. Swap `TerminalRuntime` for `WindowRuntime` - that's literally it!
+
+Your `@` character now renders as a colored square in a desktop window.
 
 
 ---

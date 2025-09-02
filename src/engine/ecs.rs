@@ -1,3 +1,5 @@
+use cgmath::Vector3;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Entity {
     pub id: EntityId,
@@ -53,7 +55,10 @@ impl Entity {
                     x: size.0,
                     y: size.1,
                 }),
-                render: ascii_character.map(|c| RenderComponent { ascii_character: c }),
+                render: ascii_character.map(|c| RenderComponent {
+                    ascii_character: c,
+                    rgb: Vector3::new(0.0, 0.0, 0.0),
+                }),
                 camera_follow: if track { Some(CameraFollow {}) } else { None },
             },
         }
@@ -77,6 +82,7 @@ pub struct PositionComponent {
     pub x: u16,
     pub y: u16,
 }
+
 impl Component for PositionComponent {
     const TYPE: ComponentType = ComponentType::Position;
 }
@@ -102,6 +108,7 @@ impl Component for SizeComponent {
 #[derive(Debug, Clone, Copy)]
 pub struct RenderComponent {
     pub ascii_character: char,
+    pub rgb: Vector3<f32>,
 }
 impl Component for RenderComponent {
     const TYPE: ComponentType = ComponentType::Render;
@@ -183,7 +190,7 @@ impl ECS {
         self.entities.iter_mut().find(|e| e.id == id)
     }
 
-    pub fn get_entities_by(&self, component_type: ComponentType) -> Vec<&Entity> {
+    pub fn get_entities_with_component(&self, component_type: ComponentType) -> Vec<&Entity> {
         let entities = self
             .entities
             .iter()

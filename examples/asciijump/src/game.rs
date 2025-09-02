@@ -1,3 +1,4 @@
+use cgmath::Vector3;
 use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
@@ -32,10 +33,10 @@ pub struct Game {
     pub height: u16,
     pub state: GameState,
     pub score: u16,
+    pub player_id: EntityId,
 
     rng: Box<dyn RngCore>,
     ecs: ECS,
-    player_id: EntityId,
     platform_ids: HashSet<EntityId>,
 }
 
@@ -93,6 +94,7 @@ impl Game {
             size: Some(SizeComponent { x: 1, y: 1 }),
             render: Some(RenderComponent {
                 ascii_character: '#',
+                rgb: (0.0, 0.0, 0.0).into(),
             }),
             camera_follow: Some(CameraFollow {}),
         };
@@ -108,6 +110,7 @@ impl Game {
                 size: Some(SizeComponent { x: 3, y: 1 }),
                 render: Some(RenderComponent {
                     ascii_character: '=',
+                    rgb: (0.0, 0.0, 0.5).into(),
                 }),
                 camera_follow: None,
             };
@@ -268,7 +271,7 @@ mod tests {
 
     fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
         let ecs = game.ecs();
-        let mut tracked = ecs.get_entities_by(ComponentType::CameraFollow);
+        let mut tracked = ecs.get_entities_with_component(ComponentType::CameraFollow);
         assert!(tracked.len() > 0, "player entity not found");
         tracked.remove(0)
     }

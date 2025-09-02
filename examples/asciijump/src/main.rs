@@ -23,5 +23,9 @@ pub fn play_asciijump_in_terminal() {
 pub fn play_asciijump_in_wgpu() {
     let mut game = create_game(None);
     let mut runtime = wgpu::runtime::WindowRuntime::new();
-    let _ = runtime.start(&mut game);
+    let player_entity_id = game.player_id;
+    let _ = runtime.start(
+        &mut game,
+        wgpu::render::CameraStrategy::CameraFollow(player_entity_id),
+    );
 }

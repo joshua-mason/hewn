@@ -3,7 +3,7 @@ use crate::runtime::GameHandler;
 use crate::runtime::Key;
 use crate::terminal::render::View;
 use crate::terminal::render::{
-    ScreenDimensions, TerminalRenderer, ViewCoordinate, cursor::FollowPlayerXYCursorStrategy,
+    cursor::FollowPlayerXYCursorStrategy, ScreenDimensions, TerminalRenderer, ViewCoordinate,
 };
 use std::io::Stdout;
 use std::thread;
@@ -12,16 +12,19 @@ use termion::raw::RawTerminal;
 pub(crate) const FRAME_RATE_MILLIS: u64 = 100;
 pub(crate) const GAME_STEP_MILLIS: u64 = 100;
 
-impl From<termion::event::Key> for Key {
-    fn from(key: termion::event::Key) -> Self {
+impl TryFrom<termion::event::Key> for Key {
+    type Error = &'static str;
+
+    fn try_from(key: termion::event::Key) -> Result<Key, &'static str> {
         match key {
-            termion::event::Key::Left => Key::Left,
-            termion::event::Key::Right => Key::Right,
-            termion::event::Key::Up => Key::Up,
-            termion::event::Key::Down => Key::Down,
-            termion::event::Key::Char(' ') => Key::Space,
-            termion::event::Key::Esc => Key::Escape,
-            _ => panic!("Unsupported key: {:?}", key),
+            termion::event::Key::Left => Ok(Key::Left),
+            termion::event::Key::Right => Ok(Key::Right),
+            termion::event::Key::Up => Ok(Key::Up),
+            termion::event::Key::Down => Ok(Key::Down),
+            termion::event::Key::Char(' ') => Ok(Key::Space),
+            termion::event::Key::Esc => Ok(Key::Escape),
+            termion::event::Key::Char('q') => Ok(Key::Q),
+            _ => Err("Key not supported"),
         }
     }
 }
@@ -78,16 +81,18 @@ impl TerminalRuntime {
             let input = self.stdin.next();
 
             if let Some(Ok(key)) = input {
-                match key {
-                    termion::event::Key::Char('q') => break,
-                    key if key != termion::event::Key::Char(' ') => {
-                        game.handle_key(key.into(), true);
-                    }
-                    termion::event::Key::Char(' ') => {
-                        game.start_game();
-                    }
-                    _ => {
-                        self.player_control_key = None;
+                if let Ok(key) = Key::try_from(key) {
+                    match key {
+                        Key::Q => break,
+                        key if key != Key::Space => {
+                            game.handle_key(key.into(), true);
+                        }
+                        Key::Space => {
+                            game.start_game();
+                        }
+                        _ => {
+                            self.player_control_key = None;
+                        }
                     }
                 }
             } else {
@@ -108,7 +113,7 @@ impl TerminalRuntime {
                 }
             }
             let ecs = game.ecs();
-            let entities = ecs.get_entities_by(ComponentType::Render);
+            let entities = ecs.get_entities_with_component(ComponentType::Render);
             self.display.next(entities, game.debug_str());
         }
     }
