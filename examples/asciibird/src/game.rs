@@ -6,9 +6,16 @@ use hewn::runtime::GameHandler;
 use hewn::runtime::Key;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::collections::HashSet;
+use std::time::Duration;
 
 pub const WIDTH: u16 = 1000;
 pub const HEIGHT: u16 = 30;
+const JUMP_VELOCITY: f32 = 30.0;
+const HORIZONTAL_VELOCITY: f32 = 7.0;
+const GRAVITY_MODIFIER: f32 = 30.0;
+const STARTING_WALL_X_POS: u16 = 15;
+const WALL_HEIGHT: u16 = 5;
+const END_Y_POS: f32 = -10.0;
 
 pub fn create_game(seed: Option<u64>) -> Game {
     let mut game = Game::new(WIDTH as u16, HEIGHT as u16, seed);
@@ -55,21 +62,14 @@ impl Game {
         }
     }
 
-    fn move_player(&mut self, key: Option<Key>) {
-        if let Some(Key::Up) = key {
-            if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-                if let Some(vel) = &mut player.components.velocity {
-                    vel.y = 5;
-                }
-            }
-        }
-    }
-
     pub fn initialise_player(&mut self) {
         let components = Components {
-            position: Some(PositionComponent { x: 1, y: 1 }),
-            velocity: Some(VelocityComponent { x: 1, y: 5 }),
-            size: Some(SizeComponent { x: 1, y: 1 }),
+            position: Some(PositionComponent { x: 1.0, y: 1.0 }),
+            velocity: Some(VelocityComponent {
+                x: HORIZONTAL_VELOCITY,
+                y: JUMP_VELOCITY,
+            }),
+            size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             render: Some(RenderComponent {
                 ascii_character: '#',
                 rgb: (0.0, 0.0, 0.0).into(),
@@ -80,12 +80,12 @@ impl Game {
         self.player_id = id;
     }
 
-    pub fn add_walls_from_positions(&mut self, walls: Vec<(u16, u16)>) {
+    pub fn add_walls_from_positions(&mut self, walls: Vec<(f32, f32)>) {
         for (x, y) in walls.into_iter() {
             let components = Components {
                 position: Some(PositionComponent { x, y }),
-                velocity: Some(VelocityComponent { x: 0, y: 0 }),
-                size: Some(SizeComponent { x: 1, y: 1 }),
+                velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }),
+                size: Some(SizeComponent { x: 1.0, y: 1.0 }),
                 render: Some(RenderComponent {
                     ascii_character: '\\',
                     rgb: (0.0, 0.0, 0.5).into(),
@@ -102,24 +102,26 @@ impl Game {
     }
 
     pub fn initialise_walls(&mut self) {
-        let mut walls: Vec<(u16, u16)> = vec![];
+        let mut walls: Vec<(f32, f32)> = vec![];
         let mut last_wall: u16 = 0;
 
-        for index in 0..self.width {
+        for index in STARTING_WALL_X_POS..self.width {
             if last_wall > 8 {
-                let y = self.rng.gen_range(0..(self.height.saturating_sub(5)));
-                let wall_height = 5;
-                for yy in y..(y + wall_height) {
-                    walls.push((index as u16, yy as u16));
+                let y = self
+                    .rng
+                    .gen_range(0..(self.height.saturating_sub(WALL_HEIGHT)));
+                for yy in y..(y + WALL_HEIGHT) {
+                    walls.push((index as f32, yy as f32));
                 }
                 last_wall = 0;
             }
 
             if self.rng.gen_range(0..10) == 0 {
-                let y = self.rng.gen_range(0..(self.height.saturating_sub(5)));
-                let wall_height: u16 = 5;
-                for yy in y..(y + wall_height) {
-                    walls.push((index as u16, yy as u16));
+                let y = self
+                    .rng
+                    .gen_range(0..(self.height.saturating_sub(WALL_HEIGHT)));
+                for yy in y..(y + WALL_HEIGHT as u16) {
+                    walls.push((index as f32, yy as f32));
                 }
                 last_wall = 0;
             }
@@ -134,31 +136,29 @@ impl GameHandler for Game {
         self.score = 0;
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
             if let Some(pos) = &mut player.components.position {
-                pos.x = 1;
-                pos.y = 1;
+                pos.x = 1.0;
+                pos.y = 1.0;
             }
             if let Some(vel) = &mut player.components.velocity {
-                vel.x = 1;
-                vel.y = 5;
+                vel.x = HORIZONTAL_VELOCITY;
+                vel.y = JUMP_VELOCITY;
             }
         }
         self.state = GameState::InGame;
     }
 
-    fn next(&mut self) {
+    fn next(&mut self, dt: Duration) {
         if self.state != GameState::InGame {
             return;
         }
 
-        self.ecs.step();
-
         if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
             if let Some(vel) = &mut player.components.velocity {
-                vel.y -= 1;
+                vel.y -= GRAVITY_MODIFIER * dt.as_secs_f32();
             }
         }
 
-        let collisions = self.ecs.collision_pass();
+        let collisions = self.ecs.collision_pass(dt);
         for pair in collisions.into_iter() {
             let (a, b) = (pair[0], pair[1]);
             if (a == self.player_id && self.wall_ids.contains(&b))
@@ -170,8 +170,8 @@ impl GameHandler for Game {
         }
 
         if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
-            if let Some(vel) = &player.components.velocity {
-                if vel.y < -10 {
+            if let Some(pos) = &player.components.position {
+                if pos.y < END_Y_POS {
                     self.end_game();
                 }
             }
@@ -182,6 +182,8 @@ impl GameHandler for Game {
                 self.score = self.score.max(pos.x as u16);
             }
         }
+
+        self.ecs.step(dt);
     }
 
     fn ecs(&self) -> &ECS {
@@ -208,7 +210,7 @@ impl GameHandler for Game {
                 if self.state == GameState::InGame {
                     if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
                         if let Some(velocity) = &mut player.components.velocity {
-                            velocity.y = 5;
+                            velocity.y = JUMP_VELOCITY;
                         }
                     }
                 }
