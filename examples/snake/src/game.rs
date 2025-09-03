@@ -319,6 +319,9 @@ impl GameHandler for Game {
     fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
         if pressed {
             self.player_direction = Game::compute_next_direction(self.player_direction, Some(key));
+            if key == Key::Space {
+                self.start_game();
+            }
         }
         true
     }
