@@ -116,6 +116,15 @@ impl Component for SizeComponent {
     const TYPE: ComponentType = ComponentType::Size;
 }
 
+impl From<(f32, f32)> for SizeComponent {
+    fn from(tuple: (f32, f32)) -> Self {
+        SizeComponent {
+            x: tuple.0,
+            y: tuple.1,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct RenderComponent {
     pub ascii_character: char,

@@ -84,7 +84,9 @@ impl Vertex {
 }
 
 #[rustfmt::skip]
-pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
+pub const 
+OPENGL_TO_WGPU_MATRIX: 
+cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
     cgmath::Vector4::new(1.0, 0.0, 0.0, 0.0),
     cgmath::Vector4::new(0.0, 1.0, 0.0, 0.0),
     cgmath::Vector4::new(0.0, 0.0, 0.5, 0.0),
@@ -127,21 +129,22 @@ impl CameraUniform {
     }
 }
 
-pub(crate) struct InstancePosition {
+pub(crate) struct InstanceModelMatrix {
     pub(crate) position: cgmath::Vector3<f32>,
-    pub(crate) rotation: cgmath::Quaternion<f32>,
+    pub(crate) rotation: cgmath::Matrix4<f32>,
+    pub(crate) scale: cgmath::Matrix4<f32>,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct InstancePositionRaw {
+pub(crate) struct InstanceModelMatrixRaw {
     pub(crate) model: [[f32; 4]; 4],
 }
 
-impl InstancePositionRaw {
+impl InstanceModelMatrixRaw {
     pub(crate) fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<InstancePositionRaw>() as wgpu::BufferAddress,
+            array_stride: mem::size_of::<InstanceModelMatrixRaw>() as wgpu::BufferAddress,
             // We need to switch from using a step mode of Vertex to Instance
             // This means that our shaders will only change to use the next
             // instance when the shader starts processing a new instance
@@ -176,12 +179,13 @@ impl InstancePositionRaw {
     }
 }
 
-impl InstancePosition {
-    pub(crate) fn to_raw(&self) -> InstancePositionRaw {
-        InstancePositionRaw {
+impl InstanceModelMatrix {
+    pub(crate) fn to_raw(&self) -> InstanceModelMatrixRaw {
+        InstanceModelMatrixRaw {
             model: (cgmath::Matrix4::from_translation(self.position)
-                * cgmath::Matrix4::from(self.rotation))
-            .into(),
+                * cgmath::Matrix4::from(self.rotation)
+                * self.scale)
+                .into(),
         }
     }
 }
@@ -231,7 +235,7 @@ pub struct State {
     #[allow(dead_code)]
     diffuse_texture: texture::Texture,
     diffuse_bind_group: wgpu::BindGroup,
-    instance_positions: Vec<InstancePosition>,
+    instance_model_matrices: Vec<InstanceModelMatrix>,
     instance_colors: Vec<InstanceColor>,
     instance_positions_buffer: wgpu::Buffer,
     instance_colors_buffer: wgpu::Buffer,
@@ -419,7 +423,7 @@ impl State {
                 entry_point: Some("vs_main"),
                 buffers: &[
                     Vertex::desc(),
-                    InstancePositionRaw::desc(),
+                    InstanceModelMatrixRaw::desc(),
                     InstanceColorRaw::desc(),
                 ],
                 compilation_options: Default::default(),
@@ -463,7 +467,7 @@ impl State {
             cache: None,
         });
 
-        let (vertices, indices) = gen_shape_buffer(4, 45.0, 0.08);
+        let (vertices, indices) = gen_shape_buffer(4, 45.0, 0.75);
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -477,7 +481,7 @@ impl State {
         });
         let num_indices = indices.len() as u32;
 
-        let (instance_positions, instance_colors): (Vec<InstancePosition>, Vec<InstanceColor>) =
+        let (instance_positions, instance_colors): (Vec<InstanceModelMatrix>, Vec<InstanceColor>) =
             renderable_entities
                 .iter()
                 .map(|e| {
@@ -488,15 +492,20 @@ impl State {
                     );
                     let color = e.components.render.unwrap().rgb;
 
+                    // doing this basically doesn't do anything, as this is all immediately replaces
+                    // on the second render
                     let position_3d = cgmath::Vector3 {
-                        x: position.x as f32 * 0.1,
-                        y: position.y as f32 * 0.1,
+                        x: position.x as f32,
+                        y: position.y as f32,
                         z: 0.0,
                     };
+                    let rotation_mat = cgmath::Matrix4::from(rotation);
+                    let scale_mat = cgmath::Matrix4::from_nonuniform_scale(1.0, 1.0, 1.0);
                     (
-                        InstancePosition {
+                        InstanceModelMatrix {
                             position: position_3d,
-                            rotation,
+                            rotation: rotation_mat * scale_mat,
+                            scale: scale_mat,
                         },
                         InstanceColor { color },
                     )
@@ -506,7 +515,7 @@ impl State {
 
         let instance_positions_raw = instance_positions
             .iter()
-            .map(InstancePosition::to_raw)
+            .map(InstanceModelMatrix::to_raw)
             .collect::<Vec<_>>();
         let instance_colors_raw = instance_colors
             .iter()
@@ -542,7 +551,7 @@ impl State {
             camera_buffer,
             camera_bind_group,
             camera_uniform,
-            instance_positions,
+            instance_model_matrices: instance_positions,
             instance_colors,
             instance_positions_buffer,
             instance_colors_buffer,
@@ -576,37 +585,42 @@ impl State {
     pub(crate) fn update(&mut self, renderable_entities: Vec<Entity>) {
         self.renderable_entities = renderable_entities;
 
-        let (instance_positions, instance_colors): (Vec<InstancePosition>, Vec<InstanceColor>) =
+        let (instance_positions, instance_colors): (Vec<InstanceModelMatrix>, Vec<InstanceColor>) =
             self.renderable_entities
                 .iter()
                 .map(|e| {
                     let position = e.components.position.unwrap();
                     let render = e.components.render.unwrap();
+                    let size = e.components.size.unwrap();
                     let rotation = cgmath::Quaternion::from_axis_angle(
                         cgmath::Vector3::unit_z(),
                         cgmath::Deg(0.0),
                     );
 
                     let position_3d = cgmath::Vector3 {
-                        x: position.x as f32 * 0.1,
-                        y: position.y as f32 * 0.1,
+                        x: (position.x as f32 + size.x / 2.0),
+                        y: (position.y as f32 + size.y / 2.0),
                         z: 0.0,
                     };
+
+                    let rotation_mat = cgmath::Matrix4::from(rotation);
+                    let scale_mat = cgmath::Matrix4::from_nonuniform_scale(size.x, size.y, 1.0);
                     (
-                        InstancePosition {
+                        InstanceModelMatrix {
                             position: position_3d,
-                            rotation,
+                            rotation: rotation_mat,
+                            scale: scale_mat,
                         },
                         InstanceColor { color: render.rgb },
                     )
                 })
                 .unzip();
-        self.instance_positions = instance_positions;
+        self.instance_model_matrices = instance_positions;
         self.instance_colors = instance_colors;
         let instance_position_data = self
-            .instance_positions
+            .instance_model_matrices
             .iter()
-            .map(InstancePosition::to_raw)
+            .map(InstanceModelMatrix::to_raw)
             .collect::<Vec<_>>();
         let instance_positions_buffer =
             self.device
@@ -664,13 +678,13 @@ impl State {
                     .unwrap(); // what do we do in the case the entity doesn't exist?
                 let camera_follow_position = entity.components.position.unwrap();
                 self.camera.eye = cgmath::Point3::new(
-                    camera_follow_position.x as f32 * 0.1,
-                    camera_follow_position.y as f32 * 0.1,
-                    4.0,
+                    camera_follow_position.x as f32,
+                    camera_follow_position.y as f32,
+                    40.0,
                 );
                 self.camera.target = cgmath::Point3::new(
-                    camera_follow_position.x as f32 * 0.1,
-                    camera_follow_position.y as f32 * 0.1,
+                    camera_follow_position.x as f32,
+                    camera_follow_position.y as f32,
                     0.0,
                 );
                 self.camera_uniform.update_view_proj(&self.camera);
@@ -679,9 +693,8 @@ impl State {
                 let game_width = camera_points.1 - camera_points.0;
                 let z_depth = game_width as f32 / 8.1;
                 self.camera.eye =
-                    cgmath::Point3::new(camera_x_position * 0.1, camera_y_position * 0.1, z_depth);
-                self.camera.target =
-                    cgmath::Point3::new(camera_x_position * 0.1, camera_y_position * 0.1, 0.0);
+                    cgmath::Point3::new(camera_x_position, camera_y_position, z_depth);
+                self.camera.target = cgmath::Point3::new(camera_x_position, camera_y_position, 0.0);
                 self.camera_uniform.update_view_proj(&self.camera);
             }
         }
@@ -744,7 +757,7 @@ impl State {
             render_pass.draw_indexed(
                 0..self.num_indices,
                 0,
-                0..self.instance_positions.len() as _,
+                0..self.instance_model_matrices.len() as _,
             );
         }
 
