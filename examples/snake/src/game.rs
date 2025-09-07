@@ -3,7 +3,7 @@ use hewn::ecs::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
 use hewn::ecs::{Components, ECS};
-use hewn::runtime::{GameHandler, Key};
+use hewn::runtime::{GameHandler, Key, RuntimeEvent};
 use rand::{rngs::StdRng, Rng, RngCore, SeedableRng};
 use std::collections::HashSet;
 use std::time::Duration;
@@ -316,11 +316,17 @@ impl GameHandler for Game {
         self.state = GameState::InGame;
     }
 
-    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
-        if pressed {
-            self.player_direction = Game::compute_next_direction(self.player_direction, Some(key));
+    fn handle_event(&mut self, event: RuntimeEvent) -> bool {
+        match event {
+            RuntimeEvent::Key(key_event) => {
+                if key_event.pressed {
+                    self.player_direction =
+                        Game::compute_next_direction(self.player_direction, Some(key_event.key));
+                }
+                true
+            }
+            _ => false,
         }
-        true
     }
 
     fn next(&mut self, dt: Duration) {

@@ -691,7 +691,7 @@ impl State {
             }
             CameraStrategy::AllEntities => {
                 let game_width = camera_points.1 - camera_points.0;
-                let z_depth = game_width as f32 / 8.1;
+                let z_depth = game_width as f32 / 0.8;
                 self.camera.eye =
                     cgmath::Point3::new(camera_x_position, camera_y_position, z_depth);
                 self.camera.target = cgmath::Point3::new(camera_x_position, camera_y_position, 0.0);

@@ -1,6 +1,7 @@
 use crate::ecs::ComponentType;
 use crate::runtime::GameHandler;
 use crate::runtime::Key;
+use crate::runtime::KeyEvent;
 use crate::terminal::render::View;
 use crate::terminal::render::{
     cursor::FollowPlayerXYCursorStrategy, ScreenDimensions, TerminalRenderer, ViewCoordinate,
@@ -85,7 +86,11 @@ impl TerminalRuntime {
                     match key {
                         Key::Q => break,
                         key if key != Key::Space => {
-                            game.handle_key(key.into(), true);
+                            let event = crate::runtime::RuntimeEvent::Key(KeyEvent {
+                                key: key,
+                                pressed: true,
+                            });
+                            game.handle_event(event);
                         }
                         Key::Space => {
                             game.start_game();
@@ -96,10 +101,13 @@ impl TerminalRuntime {
                     }
                 }
             } else {
-                game.handle_key(Key::Up, false);
-                game.handle_key(Key::Down, false);
-                game.handle_key(Key::Left, false);
-                game.handle_key(Key::Right, false);
+                for key in [Key::Up, Key::Down, Key::Right, Key::Left] {
+                    let key_event = KeyEvent {
+                        key,
+                        pressed: false,
+                    };
+                    game.handle_event(crate::runtime::RuntimeEvent::Key(key_event));
+                }
             }
             thread::sleep(time::Duration::from_millis(REFRESH_RATE));
 

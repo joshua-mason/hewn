@@ -3,6 +3,7 @@ use crate::runtime::GameHandler;
 use crate::runtime::Key;
 use crate::runtime::MouseEvent;
 use crate::runtime::MouseLocation;
+use crate::runtime::RuntimeEvent;
 use crate::wgpu::render::CameraStrategy;
 use crate::wgpu::render::State;
 use std::sync::Arc;
@@ -221,14 +222,17 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 position,
             } => {
                 self.game
-                    .handle_mouse(MouseEvent::CursorMoved(MouseLocation {
-                        x: position.x as f32,
-                        y: position.y as f32,
-                    }));
+                    .handle_event(RuntimeEvent::Mouse(MouseEvent::CursorMoved(
+                        MouseLocation {
+                            x: position.x as f32,
+                            y: position.y as f32,
+                        },
+                    )));
             }
             WindowEvent::MouseInput { state, button, .. } => match (button, state.is_pressed()) {
                 (MouseButton::Left, true) => {
-                    self.game.handle_mouse(MouseEvent::LeftClick);
+                    self.game
+                        .handle_event(RuntimeEvent::Mouse(MouseEvent::LeftClick));
                 }
                 (MouseButton::Left, false) => {}
                 _ => {}
@@ -243,9 +247,13 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 ..
             } => {
                 state.handle_key(event_loop, code, key_state.is_pressed());
-                let _ = code
-                    .try_into()
-                    .and_then(|key| Ok(self.game.handle_key(key, key_state.is_pressed())));
+                let _ = code.try_into().and_then(|key| {
+                    let key_event = crate::runtime::KeyEvent {
+                        key,
+                        pressed: key_state.is_pressed(),
+                    };
+                    Ok(self.game.handle_event(RuntimeEvent::Key(key_event)))
+                });
             }
             _ => {}
         }

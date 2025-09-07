@@ -200,27 +200,32 @@ impl GameHandler for Game {
         }
     }
 
-    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
-        if !pressed {
-            return true; // Ignore key releases
-        }
+    fn handle_event(&mut self, event: hewn::runtime::RuntimeEvent) -> bool {
+        match event {
+            hewn::runtime::RuntimeEvent::Key(hewn::runtime::KeyEvent { key, pressed }) => {
+                if !pressed {
+                    return true; // Ignore key releases
+                }
 
-        match key {
-            Key::Up => {
-                if self.state == GameState::InGame {
-                    if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-                        if let Some(velocity) = &mut player.components.velocity {
-                            velocity.y = JUMP_VELOCITY;
+                match key {
+                    Key::Up => {
+                        if self.state == GameState::InGame {
+                            if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+                                if let Some(velocity) = &mut player.components.velocity {
+                                    velocity.y = JUMP_VELOCITY;
+                                }
+                            }
                         }
+                        true
                     }
+                    Key::Space => {
+                        if self.state != GameState::InGame {
+                            self.start_game();
+                        }
+                        true
+                    }
+                    _ => false,
                 }
-                true
-            }
-            Key::Space => {
-                if self.state != GameState::InGame {
-                    self.start_game();
-                }
-                true
             }
             _ => false,
         }

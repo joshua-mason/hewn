@@ -1,6 +1,6 @@
 use cgmath;
 use hewn::ecs::{Components, EntityId, PositionComponent, RenderComponent, SizeComponent};
-use hewn::runtime::{MouseEvent, MouseLocation};
+use hewn::runtime::{MouseEvent, MouseLocation, RuntimeEvent};
 use hewn::wgpu::runtime::WindowRuntime;
 use hewn::{ecs::ECS, runtime::GameHandler};
 use hewn::{ecs::VelocityComponent, runtime::Key};
@@ -166,8 +166,13 @@ impl GameHandler for HelloGame {
         self.ecs.step(dt);
     }
 
-    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
-        self.game_controller.handle_key(key, pressed)
+    fn handle_event(&mut self, event: RuntimeEvent) -> bool {
+        match event {
+            RuntimeEvent::Key(key_event) => self
+                .game_controller
+                .handle_key(key_event.key, key_event.pressed),
+            RuntimeEvent::Mouse(mouse_event) => self.game_controller.handle_mouse(mouse_event),
+        }
     }
 
     fn ecs(&self) -> &ECS {
@@ -178,10 +183,6 @@ impl GameHandler for HelloGame {
         let player = self.ecs.get_entity_by_id(self.player_id)?;
         let pos = player.components.position.as_ref()?;
         Some(format!("Player @ ({}, {})", pos.x, pos.y))
-    }
-
-    fn handle_mouse(&mut self, mouse: MouseEvent) -> bool {
-        self.game_controller.handle_mouse(mouse)
     }
 }
 

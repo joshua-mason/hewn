@@ -198,32 +198,38 @@ impl GameHandler for Game {
             None
         }
     }
-    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
-        match key {
-            Key::Left | Key::Right => {
-                if self.state == GameState::InGame {
-                    if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
-                        if let Some(velocity) = &mut player.components.velocity {
-                            if pressed {
-                                velocity.x = if key == Key::Left { -10.0 } else { 10.0 };
-                            } else {
-                                // Only stop horizontal movement if the released key matches the current direction
-                                if (key == Key::Left && velocity.x < 0.0)
-                                    || (key == Key::Right && velocity.x > 0.0)
-                                {
-                                    velocity.x = 0.0;
+
+    fn handle_event(&mut self, event: hewn::runtime::RuntimeEvent) -> bool {
+        match event {
+            hewn::runtime::RuntimeEvent::Key(hewn::runtime::KeyEvent { key, pressed }) => {
+                match key {
+                    Key::Left | Key::Right => {
+                        if self.state == GameState::InGame {
+                            if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+                                if let Some(velocity) = &mut player.components.velocity {
+                                    if pressed {
+                                        velocity.x = if key == Key::Left { -10.0 } else { 10.0 };
+                                    } else {
+                                        // Only stop horizontal movement if the released key matches the current direction
+                                        if (key == Key::Left && velocity.x < 0.0)
+                                            || (key == Key::Right && velocity.x > 0.0)
+                                        {
+                                            velocity.x = 0.0;
+                                        }
+                                    }
                                 }
                             }
                         }
+                        true
                     }
+                    Key::Space => {
+                        if pressed {
+                            self.start_game();
+                        }
+                        true
+                    }
+                    _ => false,
                 }
-                true
-            }
-            Key::Space => {
-                if pressed {
-                    self.start_game();
-                }
-                true
             }
             _ => false,
         }

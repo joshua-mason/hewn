@@ -136,8 +136,12 @@ impl GameHandler for HelloGame {
         self.ecs.step(dt);
     }
 
-    fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
-        self.game_controller.handle_key(key, pressed)
+    fn handle_event(&mut self, event: hewn::runtime::RuntimeEvent) -> bool {
+        if let hewn::runtime::RuntimeEvent::Key(hewn::runtime::KeyEvent { key, pressed }) = event {
+            self.game_controller.handle_key(key, pressed)
+        } else {
+            false
+        }
     }
 
     fn ecs(&self) -> &ECS {

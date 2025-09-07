@@ -17,10 +17,17 @@ pub trait GameHandler {
     fn debug_str(&self) -> Option<String>;
 
     /// Handle a key event.
-    fn handle_key(&mut self, key: Key, pressed: bool) -> bool;
+    fn handle_event(&mut self, event: RuntimeEvent) -> bool;
+}
 
-    /// Handle a mouse event.
-    fn handle_mouse(&mut self, mouse: MouseEvent) -> bool;
+pub struct KeyEvent {
+    pub key: Key,
+    pub pressed: bool,
+}
+
+pub enum RuntimeEvent {
+    Key(KeyEvent),
+    Mouse(MouseEvent),
 }
 
 /// Key for player control.
