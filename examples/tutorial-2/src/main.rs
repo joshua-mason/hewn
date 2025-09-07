@@ -1,4 +1,4 @@
-use cgmath;
+use cgmath::{self, InnerSpace};
 use hewn::ecs::{Components, EntityId, PositionComponent, RenderComponent, SizeComponent};
 use hewn::runtime::{MouseEvent, MouseLocation, RuntimeEvent};
 use hewn::wgpu::runtime::WindowRuntime;
@@ -106,28 +106,6 @@ impl GameHandler for HelloGame {
     fn start_game(&mut self) {}
 
     fn next(&mut self, dt: Duration) {
-        let velocity = self
-            .ecs
-            .get_entity_by_id_mut(self.player_id)
-            .and_then(|player| player.components.velocity.as_mut());
-        if let Some(velocity) = velocity {
-            if self.game_controller.is_up_pressed {
-                velocity.y = 2.0;
-            } else if self.game_controller.is_down_pressed {
-                velocity.y = -2.0;
-            } else {
-                velocity.y = 0.0;
-            }
-
-            if self.game_controller.is_left_pressed {
-                velocity.x = -2.0;
-            } else if self.game_controller.is_right_pressed {
-                velocity.x = 2.0;
-            } else {
-                velocity.x = 0.0;
-            }
-        }
-
         for mouse_event in self.game_controller.mouse_event_queue.drain(..).into_iter() {
             match mouse_event {
                 MouseEvent::LeftClick => {
@@ -135,10 +113,16 @@ impl GameHandler for HelloGame {
                     let Some(player_entity) = player_entity else {
                         return;
                     };
-                    player_entity.components.position.as_mut().unwrap().x =
-                        self.game_controller.mouse_location.x;
-                    player_entity.components.position.as_mut().unwrap().y =
-                        self.game_controller.mouse_location.y;
+
+                    let mouse_x = self.game_controller.mouse_location.x;
+                    let player_x = player_entity.components.position.as_mut().unwrap().x;
+                    let mouse_y = self.game_controller.mouse_location.y;
+                    let player_y = player_entity.components.position.as_mut().unwrap().y;
+                    let d_pos = cgmath::vec2(mouse_x - player_x, mouse_y - player_y);
+                    let normalised_d_pos = d_pos.normalize();
+                    player_entity.components.velocity.as_mut().unwrap().x = normalised_d_pos.x;
+                    player_entity.components.velocity.as_mut().unwrap().y = normalised_d_pos.y;
+                    println!("{:?}, {:?}", normalised_d_pos, player_entity);
                 }
                 MouseEvent::CursorMoved(location) => {
                     self.game_controller.mouse_location = location;
