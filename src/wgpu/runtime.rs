@@ -218,14 +218,20 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                 }
             }
             WindowEvent::CursorMoved {
-                device_id,
+                device_id: _,
                 position,
             } => {
+                let size = state.window.inner_size();
+                let top_left_xy = state.camera.top_left_xy(size.width, size.height);
+
+                let world_x = top_left_xy.0 + position.x as f32 * top_left_xy.2;
+                let world_y = top_left_xy.1 - position.y as f32 * top_left_xy.3;
+
                 self.game
                     .handle_event(RuntimeEvent::Mouse(MouseEvent::CursorMoved(
                         MouseLocation {
-                            x: position.x as f32,
-                            y: position.y as f32,
+                            x: world_x,
+                            y: world_y,
                         },
                     )));
             }

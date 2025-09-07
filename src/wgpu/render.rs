@@ -109,6 +109,22 @@ impl Camera {
         let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
         proj * view
     }
+
+    pub(crate) fn top_left_xy(
+        &self,
+        viewport_pixel_width: u32,
+        viewport_pixel_height: u32,
+    ) -> (f32, f32, f32, f32) {
+        let half_height = self.eye.z * f32::tan(self.fovy / 2.0);
+        let half_width = half_height * self.aspect;
+
+        let x = self.eye.x - half_width;
+        let y = self.eye.y + half_height;
+        let dx = (2.0 * half_width) / viewport_pixel_width as f32;
+        let dy = (2.0 * half_height) / viewport_pixel_height as f32;
+
+        (x, y, dx, dy)
+    }
 }
 
 #[repr(C)]
@@ -223,7 +239,7 @@ impl InstanceColor {
 }
 
 pub struct State {
-    surface: wgpu::Surface<'static>,
+    pub surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
@@ -244,7 +260,7 @@ pub struct State {
     vertices: Vec<Vertex>,
     indices: Vec<u16>,
 
-    camera: Camera,
+    pub camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,

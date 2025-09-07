@@ -136,9 +136,9 @@ impl GameHandler for HelloGame {
                         return;
                     };
                     player_entity.components.position.as_mut().unwrap().x =
-                        self.game_controller.mouse_location.x / 100.0;
+                        self.game_controller.mouse_location.x;
                     player_entity.components.position.as_mut().unwrap().y =
-                        self.game_controller.mouse_location.y / 100.0;
+                        self.game_controller.mouse_location.y;
                 }
                 MouseEvent::CursorMoved(location) => {
                     self.game_controller.mouse_location = location;

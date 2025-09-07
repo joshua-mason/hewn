@@ -42,6 +42,7 @@ pub enum Key {
     Q,
 }
 
+/// Mouse location in world co-ordinates
 #[derive(Clone, Copy, Debug)]
 pub struct MouseLocation {
     pub x: f32,
