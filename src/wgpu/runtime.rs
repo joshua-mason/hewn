@@ -1,6 +1,8 @@
 use crate::ecs::Entity;
 use crate::runtime::GameHandler;
 use crate::runtime::Key;
+use crate::runtime::MouseEvent;
+use crate::runtime::MouseLocation;
 use crate::wgpu::render::CameraStrategy;
 use crate::wgpu::render::State;
 use std::sync::Arc;
@@ -214,8 +216,20 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                     }
                 }
             }
+            WindowEvent::CursorMoved {
+                device_id,
+                position,
+            } => {
+                self.game
+                    .handle_mouse(MouseEvent::CursorMoved(MouseLocation {
+                        x: position.x as f32,
+                        y: position.y as f32,
+                    }));
+            }
             WindowEvent::MouseInput { state, button, .. } => match (button, state.is_pressed()) {
-                (MouseButton::Left, true) => {}
+                (MouseButton::Left, true) => {
+                    self.game.handle_mouse(MouseEvent::LeftClick);
+                }
                 (MouseButton::Left, false) => {}
                 _ => {}
             },

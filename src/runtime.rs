@@ -16,7 +16,11 @@ pub trait GameHandler {
     /// Get a string for debugging.
     fn debug_str(&self) -> Option<String>;
 
+    /// Handle a key event.
     fn handle_key(&mut self, key: Key, pressed: bool) -> bool;
+
+    /// Handle a mouse event.
+    fn handle_mouse(&mut self, mouse: MouseEvent) -> bool;
 }
 
 /// Key for player control.
@@ -29,4 +33,21 @@ pub enum Key {
     Space,
     Escape,
     Q,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct MouseLocation {
+    pub x: f32,
+    pub y: f32,
+}
+
+/// Key for player control.
+#[derive(Clone, Copy, Debug)]
+pub enum MouseEvent {
+    LeftClick,
+    RightClick,
+    MiddleClick,
+    ScrollUp,
+    ScrollDown,
+    CursorMoved(MouseLocation),
 }
