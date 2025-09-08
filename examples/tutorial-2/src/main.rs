@@ -122,7 +122,17 @@ impl GameHandler for HelloGame {
                     let normalised_d_pos = d_pos.normalize();
                     player_entity.components.velocity.as_mut().unwrap().x = normalised_d_pos.x;
                     player_entity.components.velocity.as_mut().unwrap().y = normalised_d_pos.y;
-                    println!("{:?}, {:?}", normalised_d_pos, player_entity);
+                    let _ = player_entity;
+                    self.ecs.add_entity_from_components(Components {
+                        position: Some((mouse_x, mouse_y).into()),
+                        velocity: None,
+                        render: Some(RenderComponent {
+                            ascii_character: '?',
+                            rgb: (0.1, 0.1, 0.1).into(),
+                        }),
+                        size: Some(SizeComponent { x: 0.1, y: 0.1 }),
+                        camera_follow: None,
+                    });
                 }
                 MouseEvent::CursorMoved(location) => {
                     self.game_controller.mouse_location = location;
@@ -143,7 +153,7 @@ impl GameHandler for HelloGame {
                 };
                 velocity.x = 0.0;
                 velocity.y = 0.0;
-                break; // Stop after first collision
+                break;
             }
         }
 

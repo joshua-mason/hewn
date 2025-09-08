@@ -93,6 +93,11 @@ cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
     cgmath::Vector4::new(0.0, 0.0, 0.5, 1.0),
 );
 
+pub enum Projection {
+    Orthographic,
+    Perspective,
+}
+
 pub(crate) struct Camera {
     pub(crate) eye: cgmath::Point3<f32>,
     pub(crate) target: cgmath::Point3<f32>,
@@ -101,12 +106,30 @@ pub(crate) struct Camera {
     pub(crate) fovy: f32,
     pub(crate) znear: f32,
     pub(crate) zfar: f32,
+
+    pub(crate) projection: Projection,
+    pub(crate) left: f32,
+    pub(crate) right: f32,
+    pub(crate) bottom: f32,
+    pub(crate) top: f32,
 }
 
 impl Camera {
     pub(crate) fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+        let proj = match self.projection {
+            Projection::Orthographic => cgmath::ortho(
+                self.left,
+                self.right,
+                self.bottom,
+                self.top,
+                self.znear,
+                self.zfar,
+            ),
+            Projection::Perspective => {
+                cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar)
+            }
+        };
         proj * view
     }
 
@@ -115,15 +138,29 @@ impl Camera {
         viewport_pixel_width: u32,
         viewport_pixel_height: u32,
     ) -> (f32, f32, f32, f32) {
-        let half_height = self.eye.z * f32::tan(self.fovy / 2.0);
-        let half_width = half_height * self.aspect;
+        match self.projection {
+            Projection::Orthographic => {
+                let half_height = (self.top - self.bottom) / 2.0;
+                let half_width = (self.right - self.left) / 2.0;
 
-        let x = self.eye.x - half_width;
-        let y = self.eye.y + half_height;
-        let dx = (2.0 * half_width) / viewport_pixel_width as f32;
-        let dy = (2.0 * half_height) / viewport_pixel_height as f32;
+                let x = self.left;
+                let y = self.top;
+                let dx = (2.0 * half_width) / viewport_pixel_width as f32;
+                let dy = (2.0 * half_height) / viewport_pixel_height as f32;
+                (x, y, dx, dy)
+            }
+            Projection::Perspective => {
+                let half_height = self.eye.z * f32::tan(self.fovy / 2.0);
+                let half_width = half_height * self.aspect;
 
-        (x, y, dx, dy)
+                let x = self.eye.x - half_width;
+                let y = self.eye.y + half_height;
+                let dx = (2.0 * half_width) / viewport_pixel_width as f32;
+                let dy = (2.0 * half_height) / viewport_pixel_height as f32;
+
+                (x, y, dx, dy)
+            }
+        }
     }
 }
 
@@ -382,8 +419,15 @@ impl State {
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
             fovy: 45.0,
+
             znear: 0.1,
             zfar: 100.0,
+
+            projection: Projection::Orthographic,
+            bottom: 0.0,
+            left: 0.0,
+            right: 10.0,
+            top: 10.0,
         };
 
         let mut camera_uniform = CameraUniform::new();
@@ -662,29 +706,6 @@ impl State {
         self.instance_positions_buffer = instance_positions_buffer;
         self.instance_colors_buffer = instance_colors_buffer;
 
-        let camera_points =
-            self.renderable_entities
-                .iter()
-                .fold((0.0, 0.0, 0.0, 0.0), |mut acc, e| {
-                    if let Some(position) = e.components.position {
-                        if position.x < acc.0 {
-                            acc.0 = position.x;
-                        }
-                        if position.x > acc.1 {
-                            acc.1 = position.x;
-                        }
-                        if position.y < acc.2 {
-                            acc.2 = position.y;
-                        }
-                        if position.y > acc.3 {
-                            acc.3 = position.y;
-                        }
-                    }
-                    acc
-                });
-        let camera_x_position = (camera_points.0 + camera_points.1) / 2.0;
-        let camera_y_position = (1.0 - camera_points.2 + camera_points.3) / 2.0;
-
         match self.camera_strategy {
             CameraStrategy::CameraFollow(entity_id) => {
                 let entity = self
@@ -693,24 +714,79 @@ impl State {
                     .find(|e| e.id == entity_id)
                     .unwrap(); // what do we do in the case the entity doesn't exist?
                 let camera_follow_position = entity.components.position.unwrap();
-                self.camera.eye = cgmath::Point3::new(
-                    camera_follow_position.x as f32,
-                    camera_follow_position.y as f32,
-                    40.0,
-                );
-                self.camera.target = cgmath::Point3::new(
-                    camera_follow_position.x as f32,
-                    camera_follow_position.y as f32,
-                    0.0,
-                );
+                match self.camera.projection {
+                    Projection::Orthographic => {
+                        self.camera.left = camera_follow_position.x - 10.0 * self.camera.aspect;
+                        self.camera.right = camera_follow_position.x + 10.0 * self.camera.aspect;
+                        self.camera.top = camera_follow_position.y + 10.0;
+                        self.camera.bottom = camera_follow_position.y - 10.0;
+                    }
+                    Projection::Perspective => {
+                        self.camera.eye = cgmath::Point3::new(
+                            camera_follow_position.x as f32,
+                            camera_follow_position.y as f32,
+                            80.0,
+                        );
+                        self.camera.target = cgmath::Point3::new(
+                            camera_follow_position.x as f32,
+                            camera_follow_position.y as f32,
+                            0.0,
+                        );
+                    }
+                };
                 self.camera_uniform.update_view_proj(&self.camera);
             }
             CameraStrategy::AllEntities => {
-                let game_width = camera_points.1 - camera_points.0;
-                let z_depth = game_width as f32 / 0.8;
-                self.camera.eye =
-                    cgmath::Point3::new(camera_x_position, camera_y_position, z_depth);
-                self.camera.target = cgmath::Point3::new(camera_x_position, camera_y_position, 0.0);
+                let camera_points = self.renderable_entities.iter().fold(
+                    (0.0, 0.0, 0.0, 0.0, false),
+                    |mut acc, e| {
+                        if let (Some(position), Some(size)) =
+                            (e.components.position, e.components.size)
+                        {
+                            let xl = position.x;
+                            let xr = position.x + size.x;
+                            let pb = position.y;
+                            let pt = position.y + size.y;
+                            if !acc.4 {
+                                return (xl, xr, pb, pt, true);
+                            }
+                            if xl < acc.0 {
+                                acc.0 = xl;
+                            }
+                            if xr > acc.1 {
+                                acc.1 = xr;
+                            }
+                            if pb < acc.2 {
+                                acc.2 = pb;
+                            }
+                            if pt > acc.3 {
+                                acc.3 = pt;
+                            }
+                        }
+                        acc
+                    },
+                );
+                let x_length = camera_points.0 + camera_points.1;
+                let camera_x_position = (x_length) / 2.0;
+                let camera_y_position = (camera_points.2 + camera_points.3) / 2.0;
+
+                match self.camera.projection {
+                    Projection::Orthographic => {
+                        self.camera.left = camera_x_position - x_length / 2.0 * self.camera.aspect;
+                        self.camera.right = camera_x_position + x_length / 2.0 * self.camera.aspect;
+                        self.camera.bottom = camera_points.2;
+                        self.camera.top = camera_points.3;
+                    }
+                    Projection::Perspective => {
+                        let game_width = camera_points.1 - camera_points.0;
+                        let z_depth = game_width as f32 / 0.8;
+                        self.camera.eye =
+                            cgmath::Point3::new(camera_x_position, camera_y_position, z_depth);
+                        self.camera.target =
+                            cgmath::Point3::new(camera_x_position, camera_y_position, 0.0);
+                    }
+                };
+
                 self.camera_uniform.update_view_proj(&self.camera);
             }
         }
