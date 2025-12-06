@@ -205,7 +205,7 @@ pub mod path_finding {
 
     #[derive(Clone, Eq, PartialEq)]
     struct State {
-        f_score: usize, // g_score + h_score (f_score)
+        f_score: u32, // g_score + h_score (f_score)
         position: Node,
     }
 
@@ -233,7 +233,7 @@ pub mod path_finding {
     ) -> Option<Vec<Node>> {
         let mut open_set = BinaryHeap::new();
         let mut came_from: HashMap<Node, Node> = HashMap::new();
-        let mut g_score: HashMap<Node, usize> = HashMap::new();
+        let mut g_score: HashMap<Node, u32> = HashMap::new();
 
         g_score.insert(start, 0);
         open_set.push(State {
@@ -250,17 +250,29 @@ pub mod path_finding {
                 return Some(reconstruct_path(came_from, end));
             }
 
-            for neighbor in get_neighbors(position, bounds) {
+            for (neighbor, move_cost) in get_neighbors(position, bounds) {
                 if blocked_nodes.contains(&neighbor) {
                     continue;
+                }
+
+                // Corner Cutting Check:
+                // If moving diagonally, check if the two adjacent cardinals are blocked.
+                if move_cost == 14 {
+                    let dx = neighbor.0 - position.0;
+                    let dy = neighbor.1 - position.1;
+                    if blocked_nodes.contains(&(position.0 + dx, position.1))
+                        || blocked_nodes.contains(&(position.0, position.1 + dy))
+                    {
+                        continue;
+                    }
                 }
 
                 let current_g_score = *g_score
                     .get(&position)
                     .expect("Node in open_set must be in g_score");
-                let tentative_g_score = current_g_score + 1;
+                let tentative_g_score = current_g_score + move_cost;
 
-                if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&usize::MAX) {
+                if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&u32::MAX) {
                     came_from.insert(neighbor, position);
                     g_score.insert(neighbor, tentative_g_score);
                     open_set.push(State {
@@ -297,22 +309,43 @@ pub mod path_finding {
         )
     }
 
-    fn heuristic(a: Node, b: Node) -> usize {
-        ((a.0 - b.0).abs() + (a.1 - b.1).abs()) as usize
+    fn heuristic(a: Node, b: Node) -> u32 {
+        // Octile Distance
+        // cost = 10 * (dx + dy) + (14 - 2 * 10) * min(dx, dy)
+        //      = 10 * (dx + dy) - 6 * min(dx, dy)
+        let dx = (a.0 - b.0).abs() as u32;
+        let dy = (a.1 - b.1).abs() as u32;
+        if dx > dy {
+            14 * dy + 10 * (dx - dy)
+        } else {
+            14 * dx + 10 * (dy - dx)
+        }
     }
 
-    fn get_neighbors(node: Node, bounds: (isize, isize)) -> Vec<Node> {
+    fn get_neighbors(node: Node, bounds: (isize, isize)) -> Vec<(Node, u32)> {
         let (x, y) = node;
         let (w, h) = bounds;
         let mut neighbors = Vec::new();
 
-        let dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+        // (dx, dy, cost)
+        let dirs = [
+            // Cardinals (Cost 10)
+            (0, 1, 10),
+            (0, -1, 10),
+            (1, 0, 10),
+            (-1, 0, 10),
+            // Diagonals (Cost 14)
+            (1, 1, 14),
+            (1, -1, 14),
+            (-1, 1, 14),
+            (-1, -1, 14),
+        ];
 
-        for (dx, dy) in dirs {
+        for (dx, dy, f_score) in dirs {
             let nx = x + dx;
             let ny = y + dy;
             if nx >= 0 && nx < w && ny >= 0 && ny < h {
-                neighbors.push((nx, ny));
+                neighbors.push(((nx, ny), f_score));
             }
         }
 
@@ -470,7 +503,60 @@ pub mod path_finding {
 
             let path = a_star_path(start, end, &blocked, bounds).expect("Path found");
 
-            assert_eq!(path.len(), 21);
+            // With 8-way movement, the shortest path is a straight diagonal line.
+            // (0,0) -> (1,1) -> ... -> (10,10)
+            // Length = 10 steps + 1 start node = 11 nodes.
+            assert_eq!(path.len(), 11);
+        }
+        #[test]
+        fn test_coordinate_conversion() {
+            let origin = (0.0, 0.0);
+            let cell_size = 0.5;
+
+            // Test 0,0
+            assert_eq!(world_to_grid(0.0, 0.0, origin, cell_size), (0, 0));
+            assert_eq!(world_to_grid(0.49, 0.49, origin, cell_size), (0, 0));
+
+            // Test boundary
+            assert_eq!(world_to_grid(0.5, 0.5, origin, cell_size), (1, 1));
+
+            // Test Grid to World (centers)
+            let (wx, wy) = grid_to_world(0, 0, origin, cell_size);
+            assert_eq!(wx, 0.25);
+            assert_eq!(wy, 0.25);
+
+            let (wx, wy) = grid_to_world(1, 1, origin, cell_size);
+            assert_eq!(wx, 0.75);
+            assert_eq!(wy, 0.75);
+        }
+
+        #[test]
+        fn test_path_to_blocked_target() {
+            let start = (0, 0);
+            let end = (2, 0);
+            let mut blocked = HashSet::new();
+            blocked.insert(end); // The target itself is blocked
+            let bounds = (10, 10);
+
+            // Should fail because we can't enter the blocked node
+            let path = a_star_path(start, end, &blocked, bounds);
+            assert!(path.is_none());
+        }
+
+        #[test]
+        fn test_path_from_blocked_start() {
+            let start = (0, 0);
+            let end = (2, 0);
+            let mut blocked = HashSet::new();
+            blocked.insert(start); // The start itself is blocked
+            let bounds = (10, 10);
+
+            // Should find a path?
+            // Logic: Start is added to open_set manually.
+            // Neighbors are checked.
+            // As long as neighbors aren't blocked, it should proceed.
+            let path = a_star_path(start, end, &blocked, bounds)
+                .expect("Should find path even if start is technically marked blocked");
             assert_eq!(path.last(), Some(&end));
         }
     }
