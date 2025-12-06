@@ -191,190 +191,287 @@ fn main() {
 }
 
 pub mod path_finding {
-    /// All coordinates x going positive from left to right, and y positive going bottom to top
-    use std::{cmp::Ordering, collections::HashMap};
+    //! Path-finding utilities using the A* search algorithm.
+    //!
+    //! This module provides helper functions for grid-based pathfinding, using the
+    //! A* algorithm to find shortest paths while supporting obstacles and grid bounds.
+    //!
+    //! The A* algorithm reference: https://en.wikipedia.org/wiki/A*_search_algorithm
 
-    type Node = (usize, usize);
-    type NodePath = Vec<Node>;
-    type Nodes = Vec<Node>;
-    type NodeTree = HashMap<Node, Nodes>; //HashMap<Node, HashMap<Node>>;
+    use std::cmp::Ordering;
+    use std::collections::{BinaryHeap, HashMap, HashSet};
 
-    pub fn a_star_path(
-        node_tree: NodeTree,
-        start_node: Node,
-        end_node: Node,
-    ) -> Result<NodePath, String> {
-        let mut node_scores: HashMap<Node, f32> = HashMap::new(); // value is score
-        let mut current_node = start_node;
-        let mut node_history: Vec<Node> = vec![];
-        let mut iterations = 0;
-        let mut evaluated_nodes: Vec<Node> = vec![];
-        let max_iter = 20;
-        while iterations < max_iter {
-            iterations += 1;
-            let next_options = node_tree.get(&current_node).ok_or("Node not found")?;
-            println!("current_node: {:?}", current_node);
-            println!("next_options: {:?}", next_options);
-            let mut new_node_scores = next_options
-                .iter()
-                .filter(|n| !evaluated_nodes.contains(n))
-                .map(|n| {
-                    let node_distance = 1; // TODO get distance from the current node we are considering. or is this frmo the starting node?
-                    let euclidean_distance = (f32::powf(end_node.0 as f32 - n.0 as f32, 2.0)
-                        + f32::powf(end_node.1 as f32 - n.1 as f32, 2.0))
-                    .sqrt();
-                    (n.clone(), euclidean_distance + node_distance as f32)
-                })
-                .collect::<HashMap<Node, f32>>();
+    pub type Node = (isize, isize);
 
-            for node_score_entry in new_node_scores.iter_mut() {
-                let existing_entry = node_scores
-                    .entry(*node_score_entry.0)
-                    .or_insert(node_score_entry.1.clone());
-                if existing_entry > node_score_entry.1 {
-                    *existing_entry = *node_score_entry.1
-                }
-            }
-
-            node_history.push(current_node);
-            evaluated_nodes.push(current_node.clone());
-            node_scores.remove(&current_node);
-            current_node = node_scores
-                .iter()
-                .min_by(|x, y| x.1.partial_cmp(y.1).unwrap_or(Ordering::Equal))
-                .ok_or("Error retrieving minimum score")?
-                .0
-                .clone();
-            if (current_node == end_node) {
-                node_history.push(current_node);
-                break;
-            }
-        }
-        Ok(node_history)
+    #[derive(Clone, Eq, PartialEq)]
+    struct State {
+        f_score: usize, // g_score + h_score (f_score)
+        position: Node,
     }
 
-    pub fn build_node_tree(
-        width: usize,
-        height: usize,
-        bottom_left: (usize, usize),
-        total_steps: usize,
-        blocked_nodes: Vec<Node>,
-    ) -> NodeTree {
-        let gap_x = width / total_steps as usize;
-        let gap_y = height / total_steps as usize;
-        // TODO: panic if we hit usize limit?
-        let mut node_tree: NodeTree = HashMap::with_capacity(total_steps * total_steps);
-        for x in 0..total_steps {
-            for y in 0..total_steps {
-                let x_coord = bottom_left.0 + x * gap_x;
-                let y_coord = bottom_left.1 + y * gap_y;
-                let node: Node = (x_coord, y_coord);
-                if blocked_nodes.contains(&node) {
+    // Implement Ord for State to make BinaryHeap a min-heap on f_score.
+    impl Ord for State {
+        fn cmp(&self, other: &Self) -> Ordering {
+            other
+                .f_score
+                .cmp(&self.f_score)
+                .then_with(|| self.position.cmp(&other.position))
+        }
+    }
+
+    impl PartialOrd for State {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    pub fn a_star_path(
+        start: Node,
+        end: Node,
+        blocked_nodes: &HashSet<Node>,
+        bounds: (isize, isize), // (width, height) assuming 0,0 bottom-left
+    ) -> Option<Vec<Node>> {
+        let mut open_set = BinaryHeap::new();
+        let mut came_from: HashMap<Node, Node> = HashMap::new();
+        let mut g_score: HashMap<Node, usize> = HashMap::new();
+
+        g_score.insert(start, 0);
+        open_set.push(State {
+            f_score: heuristic(start, end),
+            position: start,
+        });
+
+        while let Some(State {
+            f_score: _,
+            position,
+        }) = open_set.pop()
+        {
+            if position == end {
+                return Some(reconstruct_path(came_from, end));
+            }
+
+            for neighbor in get_neighbors(position, bounds) {
+                if blocked_nodes.contains(&neighbor) {
                     continue;
                 }
-                let mut adjacent_nodes = vec![];
 
-                if y_coord < height + bottom_left.1 {
-                    let above = (x_coord, y_coord + gap_y);
-                    if !blocked_nodes.contains(&above) {
-                        adjacent_nodes.push(above);
-                    }
+                let current_g_score = *g_score
+                    .get(&position)
+                    .expect("Node in open_set must be in g_score");
+                let tentative_g_score = current_g_score + 1;
+
+                if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&usize::MAX) {
+                    came_from.insert(neighbor, position);
+                    g_score.insert(neighbor, tentative_g_score);
+                    open_set.push(State {
+                        f_score: tentative_g_score + heuristic(neighbor, end),
+                        position: neighbor,
+                    });
                 }
-
-                if y_coord > bottom_left.1 {
-                    let below = (x_coord, y_coord - gap_y);
-                    if !blocked_nodes.contains(&below) {
-                        adjacent_nodes.push(below);
-                    }
-                }
-
-                if x_coord > bottom_left.0 {
-                    let left = (x_coord - gap_x, y_coord);
-                    if !blocked_nodes.contains(&left) {
-                        adjacent_nodes.push(left);
-                    }
-                }
-
-                if x_coord < bottom_left.0 + width {
-                    let right = (x_coord + gap_x, y_coord);
-                    if !blocked_nodes.contains(&right) {
-                        adjacent_nodes.push(right);
-                    }
-                }
-
-                node_tree.insert(node, adjacent_nodes);
             }
         }
-        node_tree
+
+        None
+    }
+
+    pub fn world_to_grid(
+        x: f32,
+        y: f32,
+        grid_origin: (f32, f32),
+        cell_size: f32,
+    ) -> (isize, isize) {
+        let gx = ((x - grid_origin.0) / cell_size).floor() as isize;
+        let gy = ((y - grid_origin.1) / cell_size).floor() as isize;
+        (gx, gy)
+    }
+
+    pub fn grid_to_world(
+        gx: isize,
+        gy: isize,
+        grid_origin: (f32, f32),
+        cell_size: f32,
+    ) -> (f32, f32) {
+        (
+            grid_origin.0 + (gx as f32 * cell_size) + (cell_size / 2.0),
+            grid_origin.1 + (gy as f32 * cell_size) + (cell_size / 2.0),
+        )
+    }
+
+    fn heuristic(a: Node, b: Node) -> usize {
+        ((a.0 - b.0).abs() + (a.1 - b.1).abs()) as usize
+    }
+
+    fn get_neighbors(node: Node, bounds: (isize, isize)) -> Vec<Node> {
+        let (x, y) = node;
+        let (w, h) = bounds;
+        let mut neighbors = Vec::new();
+
+        let dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+
+        for (dx, dy) in dirs {
+            let nx = x + dx;
+            let ny = y + dy;
+            if nx >= 0 && nx < w && ny >= 0 && ny < h {
+                neighbors.push((nx, ny));
+            }
+        }
+
+        neighbors
+    }
+
+    fn reconstruct_path(came_from: HashMap<Node, Node>, current: Node) -> Vec<Node> {
+        let mut total_path = vec![current];
+        let mut curr = current;
+        while let Some(&prev) = came_from.get(&curr) {
+            total_path.push(prev);
+            curr = prev;
+        }
+        total_path.reverse();
+        total_path
     }
 
     #[cfg(test)]
     mod test {
-        use crate::path_finding::{Node, a_star_path, build_node_tree};
+        use super::*;
+        use std::collections::HashSet;
 
         #[test]
-        fn test_build_node_tree() {
-            let node_tree = build_node_tree(10, 10, (0, 0), 10, vec![]);
-            assert_eq!(node_tree.get(&(0, 0)).unwrap(), &vec![(0, 1), (1, 0)]);
-            assert_eq!(
-                node_tree.get(&(5, 5)).unwrap(),
-                &vec![(5, 6), (5, 4), (4, 5), (6, 5)]
-            );
+        fn test_simple_path() {
+            let start = (0, 0);
+            let end = (2, 0);
+            let blocked = HashSet::new();
+            let bounds = (10, 10);
+
+            let path = a_star_path(start, end, &blocked, bounds).expect("No path found");
+            assert_eq!(path, vec![(0, 0), (1, 0), (2, 0)]);
         }
 
         #[test]
-        fn test_find_path_without_blocked_nodes() {
-            let node_tree = build_node_tree(10, 10, (0, 0), 10, vec![]);
-            assert_eq!(node_tree.get(&(0, 0)).unwrap(), &vec![(0, 1), (1, 0)]);
-            let path = a_star_path(node_tree, (0, 0), (1, 1));
-            assert_eq!(path.unwrap().len(), 3);
+        fn test_blocked_path() {
+            let start = (0, 0);
+            let end = (0, 2);
+            // Block (0,1) so it has to go around
+            let mut blocked = HashSet::new();
+            blocked.insert((0, 1));
+            let bounds = (10, 10);
+
+            let path = a_star_path(start, end, &blocked, bounds).expect("No path found");
+            // Path should be (0,0) -> (1,0) -> (1,1) -> (1,2) -> (0,2) OR similar equal cost path
+            // Just check length is 5 (0,0, 1,0, 1,1, 1,2, 0,2) or (0,0, 1,0, 1,1, 0,1-BLOCKED)
+            // actually manhattan distance around one block:
+            // 0,0 -> 1,0 -> 1,1 -> 0,1 (blocked)
+            // 0,0 -> 1,0 -> 1,1 -> 0,1 x
+            // 0,0 -> 1,0 -> 1,1 -> 1,2 -> 0,2 = 5 steps
+            assert_eq!(path.len(), 5);
+            assert_eq!(path.first(), Some(&start));
+            assert_eq!(path.last(), Some(&end));
         }
 
         #[test]
-        fn test_find_path_with_one_blocked_node() {
-            let node_tree = build_node_tree(10, 10, (0, 0), 10, vec![(0, 1)]);
-            assert_eq!(node_tree.get(&(0, 0)).unwrap(), &vec![(0, 1), (1, 0)]);
-            let path = a_star_path(node_tree, (0, 0), (1, 1));
-            assert_eq!(path.as_ref().unwrap().len(), 3);
-            assert_eq!(path.as_ref().unwrap(), &vec![(0, 0), (1, 0), (1, 1)]);
+        fn test_no_path() {
+            let start = (0, 0);
+            let end = (5, 5);
+            let mut blocked = HashSet::new();
+            // Wall off the start
+            blocked.insert((0, 1));
+            blocked.insert((1, 0));
+            let bounds = (10, 10);
+
+            let path = a_star_path(start, end, &blocked, bounds);
+            assert!(path.is_none());
         }
 
         #[test]
-        fn test_find_path_with_row_of_blocked_node() {
-            let blocked_nodes = (0..8)
-                .into_iter()
-                .map(|x| return (x, 1))
-                .collect::<Vec<Node>>();
-            let node_tree = build_node_tree(10, 10, (0, 0), 10, blocked_nodes);
-            assert_eq!(node_tree.get(&(0, 0)).unwrap(), &vec![(1, 0)]);
-            let path = a_star_path(node_tree, (0, 0), (0, 2));
-            assert_eq!(path.as_ref().unwrap().len(), 19);
+        fn test_u_shape_obstacle() {
+            // This test creates a vertical wall obstacle between the start and end points.
+            // Since the direct path (y=2) and the path below (y=0, y=1) are blocked,
+            // the algorithm is forced to find a path that goes 'over' the wall (y=3).
+            //
+            // Layout:
+            // y=3  . . .  (Open path)
+            // y=2  S | E  (Wall at x=1)
+            // y=1  . | .  (Wall at x=1)
+            // y=0  . | .  (Wall at x=1)
+            //      0 1 2
+
+            let start = (0, 2);
+            let end = (2, 2);
+            let bounds = (5, 5);
+
+            let mut blocked = HashSet::new();
+            blocked.insert((1, 0));
+            blocked.insert((1, 1));
+            blocked.insert((1, 2)); // Block direct path at y=2
+
+            let path = a_star_path(start, end, &blocked, bounds).expect("Path found");
+
+            // Verify the path went over the wall (y > 2) at x=1
+            let crossed_over = path.iter().any(|n| n.0 == 1 && n.1 > 2);
+            assert!(crossed_over, "Path should cross over the wall at y > 2");
         }
 
         #[test]
-        fn test_find_path_with_row_of_blocked_node_and_bump() {
-            let mut blocked_nodes = (0..8)
-                .into_iter()
-                .map(|x| return (x, 1))
-                .collect::<Vec<Node>>();
-            blocked_nodes.push((1, 2));
-            let node_tree = build_node_tree(10, 10, (0, 0), 10, blocked_nodes);
-            assert_eq!(node_tree.get(&(0, 0)).unwrap(), &vec![(1, 0)]);
-            let path = a_star_path(node_tree, (0, 0), (0, 2));
-            assert_eq!(path.as_ref().unwrap().len(), 21);
+        fn test_zig_zag_maze() {
+            // This test creates a maze that forces the pathfinder to zig-zag
+            // down and then back up to reach the destination.
+            //
+            // Map Layout (5x5):
+            // y=4  . . . . .
+            // y=3  x x x x .  (Top wall blocking y=3, x=0..3)
+            // y=2  S . x . E  (Start at 0,2. Block at 3,2)
+            // y=1  x x . x .  (Walls at x=0,1 and x=3. Gaps at x=2 and x=4)
+            // y=0  . . . . .  (Bottom passage)
+            //      0 1 2 3 4
+
+            let start = (0, 2);
+            let end = (4, 2);
+            let bounds = (5, 5);
+
+            let mut blocked = HashSet::new();
+
+            // Top wall: blocks (0,3) to (3,3)
+            for x in 0..4 {
+                blocked.insert((x, 3));
+            }
+
+            // Left-bottom wall: blocks (0,1) and (1,1)
+            for x in 0..2 {
+                blocked.insert((x, 1));
+            }
+
+            // Right-bottom wall: blocks (3,1). Note: (4,1) is OPEN.
+            blocked.insert((3, 1));
+
+            // Center block: blocks direct path at (3,2)
+            blocked.insert((3, 2));
+
+            // Expected Path Route:
+            // 1. Start (0,2) -> Right to (2,2)
+            // 2. Down through gap at (2,1)
+            // 3. Down to bottom passage (2,0) -> Right to (4,0)
+            // 4. Up through gap at (4,1) -> Reach End (4,2)
+
+            let path = a_star_path(start, end, &blocked, bounds).expect("Path found");
+
+            assert!(path.contains(&(2, 2)), "Should go right from start");
+            assert!(path.contains(&(2, 1)), "Should go down through first gap");
+            assert!(path.contains(&(2, 0)), "Should reach bottom passage");
+            assert!(path.contains(&(4, 1)), "Should go up through second gap");
+            assert_eq!(path.first(), Some(&start));
+            assert_eq!(path.last(), Some(&end));
         }
 
         #[test]
-        fn test_find_path_with_row_of_blocked_node_and_gap() {
-            let mut blocked_nodes = (0..8)
-                .into_iter()
-                .map(|x| return (x, 1))
-                .collect::<Vec<Node>>();
-            blocked_nodes.remove(2);
-            let node_tree = build_node_tree(10, 10, (0, 0), 10, blocked_nodes);
-            assert_eq!(node_tree.get(&(0, 0)).unwrap(), &vec![(1, 0)]);
-            let path = a_star_path(node_tree, (0, 0), (0, 2));
-            assert_eq!(path.as_ref().unwrap().len(), 7);
+        fn test_large_open_field() {
+            let start = (0, 0);
+            let end = (10, 10);
+            let blocked = HashSet::new();
+            let bounds = (20, 20);
+
+            let path = a_star_path(start, end, &blocked, bounds).expect("Path found");
+
+            assert_eq!(path.len(), 21);
+            assert_eq!(path.last(), Some(&end));
         }
     }
 }
