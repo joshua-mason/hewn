@@ -21,6 +21,7 @@ wgpu = "26.0.1"
 pollster = "0.3"
 bytemuck = { version = "1.16", features = [ "derive" ] }
 cgmath = "0.18"
+pathfinding = { path = "./pathfinding" }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -44,7 +45,7 @@ termion = "4"
 crate-type = ["cdylib", "rlib"]
 
 [workspace]
-members = ["examples/snake", "examples/asciibird", "examples/asciijump", "examples/tutorial", "examples/tutorial-2", "ecs"]
+members = ["examples/snake", "examples/asciibird", "examples/asciijump", "examples/tutorial", "examples/tutorial-2", "ecs", "pathfinding"]
 
 [profile.release]
 strip = true
