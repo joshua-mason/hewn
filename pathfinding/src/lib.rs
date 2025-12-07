@@ -207,10 +207,71 @@ fn reconstruct_path(came_from: HashMap<GridNode, GridNode>, current: GridNode) -
     total_path
 }
 
+/// Expands a set of blocked nodes to account for an agent's size (Minkowski Sum).
+///
+/// If an agent occupies multiple grid cells (e.g., 2x2), it cannot stand in a cell
+/// if any part of its body would overlap a blocked node.
+/// This function returns a new set of blocked nodes that represents the "Configuration Space"
+/// for the top-left corner (or origin anchor) of the agent.
+///
+/// # Arguments
+/// * `obstacles` - The original set of blocked single-cell nodes.
+/// * `agent_size` - The width and height of the agent in grid cells.
+///
+/// # Example
+/// If there is a wall at (10, 10) and the agent is 2x2:
+/// The agent cannot stand at (10, 10)
+/// It also cannot stand at (9, 10) (its right side hits the wall).
+/// It also cannot stand at (10, 9) (its top side hits the wall).
+/// It also cannot stand at (9, 9) (its top-right corner hits the wall).
+pub fn inflate_obstacles(
+    obstacles: &HashSet<GridNode>,
+    agent_size: (usize, usize),
+) -> HashSet<GridNode> {
+    let mut inflated = HashSet::with_capacity(obstacles.len() * agent_size.0 * agent_size.1);
+    let (width, height) = agent_size;
+
+    if width <= 1 && height <= 1 {
+        return obstacles.clone();
+    }
+
+    for &(wall_x, wall_y) in obstacles {
+        for dx in 0..width {
+            for dy in 0..height {
+                inflated.insert((wall_x - dx as isize, wall_y - dy as isize));
+            }
+        }
+    }
+    inflated
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use std::collections::HashSet;
+
+    #[test]
+    fn test_inflate_obstacles_1x1() {
+        let mut obstacles = HashSet::new();
+        obstacles.insert((10, 10));
+        let inflated = inflate_obstacles(&obstacles, (1, 1));
+        assert_eq!(inflated.len(), 1);
+        assert!(inflated.contains(&(10, 10)));
+    }
+
+    #[test]
+    fn test_inflate_obstacles_2x2() {
+        let mut obstacles = HashSet::new();
+        obstacles.insert((10, 10));
+        // Agent is 2x2.
+        // Anchor points blocked should be (10,10), (9,10), (10,9), (9,9).
+        let inflated = inflate_obstacles(&obstacles, (2, 2));
+        assert_eq!(inflated.len(), 4);
+        assert!(inflated.contains(&(10, 10)));
+        assert!(inflated.contains(&(9, 10)));
+        assert!(inflated.contains(&(10, 9)));
+        assert!(inflated.contains(&(9, 9)));
+    }
 
     #[test]
     fn test_coordinate_conversion() {

@@ -62,7 +62,7 @@ struct HelloGame {
     current_path: Option<Vec<(f32, f32)>>, // Added path storage
 }
 
-const CELL_SIZE: f32 = 0.5;
+const CELL_SIZE: f32 = 1.25;
 const GRID_ORIGIN: (f32, f32) = (0.0, 0.0);
 const GRID_BOUNDS: (isize, isize) = (100, 100); // 50.0 width/height at 0.5 cell size
 
@@ -153,9 +153,20 @@ impl HelloGame {
     ) -> Option<Vec<(f32, f32)>> {
         let start_node = hewn::pathfinding::world_to_grid(start.0, start.1, GRID_ORIGIN, CELL_SIZE);
         let end_node = hewn::pathfinding::world_to_grid(end.0, end.1, GRID_ORIGIN, CELL_SIZE);
-        let blocked_nodes = self.get_blocked_nodes();
 
-        hewn::pathfinding::a_star_path(start_node, end_node, &blocked_nodes, GRID_BOUNDS).map(
+        // Determine agent size in grid cells.
+        // Player is 1.0x1.0. Cell size is 0.5. So agent is 2x2 cells.
+        // Ideally, we'd fetch this from the player entity components.
+        let agent_size_cells = (
+            (1.0 / CELL_SIZE).ceil() as usize,
+            (1.0 / CELL_SIZE).ceil() as usize,
+        );
+
+        let raw_blocked_nodes = self.get_blocked_nodes();
+        let inflated_obstacles =
+            hewn::pathfinding::inflate_obstacles(&raw_blocked_nodes, agent_size_cells);
+
+        hewn::pathfinding::a_star_path(start_node, end_node, &inflated_obstacles, GRID_BOUNDS).map(
             |path| {
                 path.iter()
                     .map(|node| {
