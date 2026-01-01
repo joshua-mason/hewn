@@ -15,4 +15,4 @@ pub mod runtime;
 pub mod terminal;
 pub mod wgpu;
 
-pub use engine::ecs;
+pub use engine::scene;

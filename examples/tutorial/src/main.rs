@@ -1,8 +1,8 @@
 use cgmath;
-use hewn::ecs::{Components, EntityId, PositionComponent, RenderComponent, SizeComponent};
+use hewn::scene::{Components, EntityId, PositionComponent, RenderComponent, SizeComponent};
 use hewn::wgpu::runtime::WindowRuntime;
-use hewn::{ecs::ECS, runtime::GameHandler};
-use hewn::{ecs::VelocityComponent, runtime::Key};
+use hewn::{runtime::GameHandler, scene::Scene};
+use hewn::{runtime::Key, scene::VelocityComponent};
 use std::time::Duration;
 
 pub struct GameController {
@@ -45,16 +45,16 @@ impl GameController {
     }
 }
 struct HelloGame {
-    ecs: ECS,
+    scene: Scene,
     player_id: EntityId,
     game_controller: GameController,
 }
 
 impl HelloGame {
     fn new() -> Self {
-        let mut ecs = ECS::new();
+        let mut scene = Scene::new();
 
-        let player_id = ecs.add_entity_from_components(Components {
+        let player_id = scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 5.0, y: 5.0 }),
             render: Some(RenderComponent {
                 ascii_character: '@',
@@ -68,7 +68,7 @@ impl HelloGame {
             size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             camera_follow: None,
         });
-        ecs.add_entity_from_components(Components {
+        scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 8.0, y: 5.0 }),
             render: Some(RenderComponent {
                 ascii_character: '#',
@@ -84,7 +84,7 @@ impl HelloGame {
         });
 
         Self {
-            ecs,
+            scene,
             player_id,
             game_controller: GameController::new(),
         }
@@ -96,7 +96,7 @@ impl GameHandler for HelloGame {
 
     fn next(&mut self, dt: Duration) {
         let velocity = self
-            .ecs
+            .scene
             .get_entity_by_id_mut(self.player_id)
             .and_then(|player| player.components.velocity.as_mut());
         if let Some(velocity) = velocity {
@@ -117,10 +117,10 @@ impl GameHandler for HelloGame {
             }
         }
 
-        let collisions = self.ecs.collision_pass(dt);
+        let collisions = self.scene.collision_pass(dt);
         for [a, b] in collisions.into_iter() {
             if a == self.player_id || b == self.player_id {
-                let player_entity = self.ecs.get_entity_by_id_mut(self.player_id);
+                let player_entity = self.scene.get_entity_by_id_mut(self.player_id);
                 let Some(player_entity) = player_entity else {
                     return;
                 };
@@ -133,19 +133,19 @@ impl GameHandler for HelloGame {
             }
         }
 
-        self.ecs.step(dt);
+        self.scene.step(dt);
     }
 
     fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
         self.game_controller.handle_key(key, pressed)
     }
 
-    fn ecs(&self) -> &ECS {
-        &self.ecs
+    fn scene(&self) -> &Scene {
+        &self.scene
     }
 
     fn debug_str(&self) -> Option<String> {
-        let player = self.ecs.get_entity_by_id(self.player_id)?;
+        let player = self.scene.get_entity_by_id(self.player_id)?;
         let pos = player.components.position.as_ref()?;
         Some(format!("Player @ ({}, {})", pos.x, pos.y))
     }

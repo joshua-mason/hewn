@@ -132,12 +132,12 @@ impl Component for CameraFollow {
 }
 
 #[derive(Default)]
-pub struct ECS {
+pub struct Scene {
     next_entity_id: EntityId,
     entities: Vec<Entity>,
 }
 
-impl ECS {
+impl Scene {
     pub fn step(&mut self, dt: Duration) {
         // Consider splitting systems e.g. if we are handling gravity in the future
         let velocities = self.get_entities_by_mut(ComponentType::Velocity);
@@ -164,9 +164,9 @@ impl ECS {
     }
 }
 
-impl ECS {
-    pub fn new() -> ECS {
-        ECS {
+impl Scene {
+    pub fn new() -> Scene {
+        Scene {
             entities: vec![],
             next_entity_id: EntityId(0),
         }
@@ -273,7 +273,7 @@ impl ECS {
 }
 
 pub mod collisions {
-    use crate::ecs::{Entity, EntityId, VelocityComponent};
+    use crate::scene::{Entity, EntityId, VelocityComponent};
     use std::{ops::Range, time::Duration};
 
     #[derive(Debug, PartialEq)]
@@ -359,7 +359,7 @@ pub mod collisions {
     mod test {
         use std::time::Duration;
 
-        use crate::ecs::{
+        use crate::scene::{
             collisions::{collision_pass, CollisionBox},
             Entity, EntityId,
         };
@@ -526,53 +526,53 @@ mod test {
     }
 
     #[test]
-    fn test_initialise_empty_ecs() {
-        let ecs = ECS::new();
-        assert_eq!(ecs.entities.len(), 0)
+    fn test_initialise_empty_scene() {
+        let scene = Scene::new();
+        assert_eq!(scene.entities.len(), 0)
     }
 
     #[test]
     fn test_add_entity_with_nos() {
-        let mut ecs = ECS::new();
-        assert_eq!(ecs.entities.len(), 0);
-        ecs.add_entity_from_components(emptys());
-        assert_eq!(ecs.entities.len(), 1);
+        let mut scene = Scene::new();
+        assert_eq!(scene.entities.len(), 0);
+        scene.add_entity_from_components(emptys());
+        assert_eq!(scene.entities.len(), 1);
     }
 
     #[test]
     fn test_get_entity_by_id() {
-        let mut ecs = ECS::new();
-        assert_eq!(ecs.entities.len(), 0);
-        ecs.add_entity_from_components(Components::new());
-        assert_eq!(ecs.entities.len(), 1);
+        let mut scene = Scene::new();
+        assert_eq!(scene.entities.len(), 0);
+        scene.add_entity_from_components(Components::new());
+        assert_eq!(scene.entities.len(), 1);
 
-        let entity_from_ecs = ecs.get_entity_by_id(EntityId(0));
-        assert_eq!(entity_from_ecs.unwrap().id, EntityId(0))
+        let entity_from_scene = scene.get_entity_by_id(EntityId(0));
+        assert_eq!(entity_from_scene.unwrap().id, EntityId(0))
     }
 
     #[test]
     fn test_get_entities_by_ids() {
-        let mut ecs = ECS::new();
-        assert_eq!(ecs.entities.len(), 0);
-        let entity_one_id = ecs.add_entity_from_components(Components {
+        let mut scene = Scene::new();
+        assert_eq!(scene.entities.len(), 0);
+        let entity_one_id = scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 0.0, y: 0.0 }),
             velocity: None,
             render: None,
             size: None,
             camera_follow: None,
         });
-        let entity_two_id = ecs.add_entity_from_components(Components {
+        let entity_two_id = scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 1.0, y: 1.0 }),
             velocity: None,
             render: None,
             size: None,
             camera_follow: None,
         });
-        assert_eq!(ecs.entities.len(), 2);
+        assert_eq!(scene.entities.len(), 2);
 
-        let entity_one_from_ecs = ecs.get_entity_by_id(entity_one_id);
-        assert_eq!(entity_one_from_ecs.unwrap().id, EntityId(0));
-        let entity_position = &entity_one_from_ecs
+        let entity_one_from_scene = scene.get_entity_by_id(entity_one_id);
+        assert_eq!(entity_one_from_scene.unwrap().id, EntityId(0));
+        let entity_position = &entity_one_from_scene
             .unwrap()
             .components
             .position
@@ -581,9 +581,9 @@ mod test {
         assert_eq!(entity_position.x, 0.0);
         assert_eq!(entity_position.y, 0.0);
 
-        let entity_two_from_ecs = ecs.get_entity_by_id(entity_two_id);
-        assert_eq!(entity_two_from_ecs.unwrap().id, EntityId(1));
-        let entity_position = &entity_two_from_ecs
+        let entity_two_from_scene = scene.get_entity_by_id(entity_two_id);
+        assert_eq!(entity_two_from_scene.unwrap().id, EntityId(1));
+        let entity_position = &entity_two_from_scene
             .unwrap()
             .components
             .position
@@ -594,28 +594,28 @@ mod test {
     }
 
     #[test]
-    fn test_ecs_step() {
-        let mut ecs = ECS::new();
-        assert_eq!(ecs.entities.len(), 0);
-        let entity_one_id = ecs.add_entity_from_components(Components {
+    fn test_scene_step() {
+        let mut scene = Scene::new();
+        assert_eq!(scene.entities.len(), 0);
+        let entity_one_id = scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 0.0, y: 0.0 }),
             velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }),
             render: None,
             size: None,
             camera_follow: None,
         });
-        let entity_two_id = ecs.add_entity_from_components(Components {
+        let entity_two_id = scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 1.0, y: 1.0 }),
             velocity: Some(VelocityComponent { x: 1.0, y: 1.0 }),
             render: None,
             size: None,
             camera_follow: None,
         });
-        assert_eq!(ecs.entities.len(), 2);
+        assert_eq!(scene.entities.len(), 2);
 
-        let entity_from_ecs = ecs.get_entity_by_id(entity_one_id);
-        assert_eq!(entity_from_ecs.unwrap().id, entity_one_id);
-        let entity_velocity = &entity_from_ecs
+        let entity_from_scene = scene.get_entity_by_id(entity_one_id);
+        assert_eq!(entity_from_scene.unwrap().id, entity_one_id);
+        let entity_velocity = &entity_from_scene
             .unwrap()
             .components
             .velocity
@@ -624,9 +624,9 @@ mod test {
         assert_eq!(entity_velocity.x, 0.0);
         assert_eq!(entity_velocity.y, 0.0);
 
-        let entity_from_ecs = ecs.get_entity_by_id(entity_two_id);
-        assert_eq!(entity_from_ecs.unwrap().id, entity_two_id);
-        let entity_velocity = &entity_from_ecs
+        let entity_from_scene = scene.get_entity_by_id(entity_two_id);
+        assert_eq!(entity_from_scene.unwrap().id, entity_two_id);
+        let entity_velocity = &entity_from_scene
             .unwrap()
             .components
             .velocity
@@ -635,11 +635,11 @@ mod test {
         assert_eq!(entity_velocity.x, 1.0);
         assert_eq!(entity_velocity.y, 1.0);
 
-        ecs.step(Duration::from_secs(1));
+        scene.step(Duration::from_secs(1));
 
-        let entity_from_ecs = ecs.get_entity_by_id(entity_one_id);
-        assert_eq!(entity_from_ecs.unwrap().id, entity_one_id);
-        let entity_position = &entity_from_ecs
+        let entity_from_scene = scene.get_entity_by_id(entity_one_id);
+        assert_eq!(entity_from_scene.unwrap().id, entity_one_id);
+        let entity_position = &entity_from_scene
             .unwrap()
             .components
             .position
@@ -648,9 +648,9 @@ mod test {
         assert_eq!(entity_position.x, 0.0);
         assert_eq!(entity_position.y, 0.0);
 
-        let entity_from_ecs = ecs.get_entity_by_id(entity_two_id);
-        assert_eq!(entity_from_ecs.unwrap().id, entity_two_id);
-        let entity_position = &entity_from_ecs
+        let entity_from_scene = scene.get_entity_by_id(entity_two_id);
+        assert_eq!(entity_from_scene.unwrap().id, entity_two_id);
+        let entity_position = &entity_from_scene
             .unwrap()
             .components
             .position
