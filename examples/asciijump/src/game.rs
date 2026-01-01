@@ -1,9 +1,9 @@
-use hewn::ecs::{
-    CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
-};
-use hewn::ecs::{Components, ECS};
 use hewn::runtime::GameHandler;
 use hewn::runtime::Key;
+use hewn::scene::{
+    CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
+};
+use hewn::scene::{Components, Scene};
 use rand::RngCore;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::collections::HashSet;
@@ -36,7 +36,7 @@ pub struct Game {
     pub player_id: EntityId,
 
     rng: Box<dyn RngCore>,
-    ecs: ECS,
+    scene: Scene,
     platform_ids: HashSet<EntityId>,
 }
 
@@ -52,7 +52,7 @@ impl Game {
             height,
             state: GameState::Menu,
             score: 0,
-            ecs: ECS::new(),
+            scene: Scene::new(),
             player_id: EntityId(0),
             platform_ids: HashSet::new(),
             rng,
@@ -74,7 +74,7 @@ impl Game {
             }),
             camera_follow: Some(CameraFollow {}),
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.scene.add_entity_from_components(components);
         self.player_id = id;
     }
 
@@ -90,7 +90,7 @@ impl Game {
                 }),
                 camera_follow: None,
             };
-            let id = self.ecs.add_entity_from_components(components);
+            let id = self.scene.add_entity_from_components(components);
             self.platform_ids.insert(id);
         }
     }
@@ -118,7 +118,7 @@ impl Game {
 impl GameHandler for Game {
     fn start_game(&mut self) {
         self.score = 0;
-        if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+        if let Some(player) = self.scene.get_entity_by_id_mut(self.player_id) {
             if let Some(pos) = &mut player.components.position {
                 pos.x = 1.0;
                 pos.y = 1.0;
@@ -135,13 +135,13 @@ impl GameHandler for Game {
             return;
         }
 
-        if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+        if let Some(player) = self.scene.get_entity_by_id_mut(self.player_id) {
             if let Some(vel) = &mut player.components.velocity {
                 vel.y -= 100.0 * dt.as_secs_f32();
             }
         }
 
-        let collisions = self.ecs.collision_pass(dt);
+        let collisions = self.scene.collision_pass(dt);
         for [a, b] in collisions.into_iter() {
             let (player, other) = if a == self.player_id {
                 (a, b)
@@ -151,7 +151,7 @@ impl GameHandler for Game {
                 continue;
             };
             if self.platform_ids.contains(&other) {
-                if let Some(p) = self.ecs.get_entity_by_id_mut(player) {
+                if let Some(p) = self.scene.get_entity_by_id_mut(player) {
                     if let Some(vel) = &mut p.components.velocity {
                         if vel.y < 0.0 {
                             vel.y = 50.0;
@@ -163,7 +163,7 @@ impl GameHandler for Game {
 
         let mut should_end = false;
         let mut maybe_new_score: Option<u16> = None;
-        if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
+        if let Some(player) = self.scene.get_entity_by_id(self.player_id) {
             if let Some(pos) = &player.components.position {
                 if pos.y < 0.0 {
                     should_end = true;
@@ -182,15 +182,15 @@ impl GameHandler for Game {
         if let Some(s) = maybe_new_score {
             self.score = self.score.max(s);
         }
-        self.ecs.step(dt);
+        self.scene.step(dt);
     }
 
-    fn ecs(&self) -> &ECS {
-        &self.ecs
+    fn scene(&self) -> &Scene {
+        &self.scene
     }
 
     fn debug_str(&self) -> Option<String> {
-        if let Some(player) = self.ecs.get_entity_by_id(self.player_id) {
+        if let Some(player) = self.scene.get_entity_by_id(self.player_id) {
             let pos = player.components.position.as_ref()?;
             let vel = player.components.velocity.as_ref()?;
             Some(format!("v = {:4}, x = {:3}, y = {:3}", vel.y, pos.x, pos.y))
@@ -202,7 +202,7 @@ impl GameHandler for Game {
         match key {
             Key::Left | Key::Right => {
                 if self.state == GameState::InGame {
-                    if let Some(player) = self.ecs.get_entity_by_id_mut(self.player_id) {
+                    if let Some(player) = self.scene.get_entity_by_id_mut(self.player_id) {
                         if let Some(velocity) = &mut player.components.velocity {
                             if pressed {
                                 velocity.x = if key == Key::Left { -10.0 } else { 10.0 };
@@ -233,12 +233,12 @@ impl GameHandler for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hewn::ecs::ComponentType;
     use hewn::runtime::GameHandler;
+    use hewn::scene::ComponentType;
 
-    fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::ecs::Entity {
-        let ecs = game.ecs();
-        let mut tracked = ecs.get_entities_with_component(ComponentType::CameraFollow);
+    fn get_player_entity<'a>(game: &'a Game) -> &'a hewn::scene::Entity {
+        let scene = game.scene();
+        let mut tracked = scene.get_entities_with_component(ComponentType::CameraFollow);
         assert!(tracked.len() > 0, "player entity not found");
         tracked.remove(0)
     }

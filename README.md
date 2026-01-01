@@ -13,7 +13,6 @@ Hewn is a minimal Rust game engine for learning and tinkering, with support for 
 - 🖥️ **Terminal** - ASCII games in your terminal with debug output
 - 🖼️ **Desktop** - Hardware-accelerated graphics with WGPU  
 - 🌐 **Web** - Deploy to HTML5 canvas
-- 🎮 **ECS** - Entity Component System architecture
 - ⚡ **Cross-Platform** - Write once, run anywhere
 
 ## Getting started
@@ -30,17 +29,17 @@ First, let's create the basic game structure:
 ```rust
 use hewn::{
     runtime::GameHandler, // 1.
-    ecs::ECS, // 2.
+    scene::Scene, // 2.
 };
 use std::time::Duration; // NEW: dt for frame time
 
 struct HelloGame {
-    ecs: ECS, // 3.
+    scene: Scene, // 3.
 }
 
 impl HelloGame {
     fn new() -> Self {
-        Self { ecs: ECS::new() }
+        Self { scene: Scene::new() }
     }
 }
 
@@ -48,7 +47,7 @@ impl GameHandler for HelloGame { // 4.
     fn start_game(&mut self) {}
     fn next(&mut self, _dt: Duration) {}
     fn handle_key(&mut self, _key: hewn::runtime::Key, _pressed: bool) -> bool { true }
-    fn ecs(&self) -> &ECS { &self.ecs }
+    fn scene(&self) -> &Scene { &self.scene }
     
     fn debug_str(&self) -> Option<String> {
         Some("Hello Hewn! Press Q to exit.".to_string()) // 5.
@@ -57,8 +56,8 @@ impl GameHandler for HelloGame { // 4.
 ```
 
 1. Import `GameHandler` trait - the core interface all Hewn games implement
-2. Import `ECS` - the Entity Component System that manages game objects
-3. `HelloGame` struct holds our game state (just an ECS for now)
+2. Import `Scene` - the core struct that manages game entities
+3. `HelloGame` struct holds our game state (just a Scene for now)
 4. Implement `GameHandler` trait with required methods
 5. `debug_str()` returns text that appears at the bottom of the terminal
 
@@ -80,36 +79,36 @@ fn main() {
 2. Create a terminal runtime with 20×20 character display. We will get to the window runtime later.
 3. Start the game loop - this runs until the user presses 'Q'
 
-This creates a minimal game that shows "Hello Hewn! Press Q to exit." at the bottom of your terminal. All Hewn games implement the `GameHandler` trait and need an ECS (Entity Component System) to manage game objects.
+This creates a minimal game that shows "Hello Hewn! Press Q to exit." at the bottom of your terminal. All Hewn games implement the `GameHandler` trait and need a Scene to manage game objects.
 
 > [!TIP]
 > Run this with `cargo run` and you'll see a field of `.` characters representing empty space, with your debug text at the bottom. We're about to add a character that moves around this world!
 
 > [!NOTE]
-> Delta time: `next(dt: Duration)` provides the time since the last frame. Treat velocities as "world units per second" — the ECS scales movement and collision by `dt` so motion is frame-rate independent.
+> Delta time: `next(dt: Duration)` provides the time since the last frame. Treat velocities as "world units per second" — the Scene scales movement and collision by `dt` so motion is frame-rate independent.
 
 ### Step 2: Add a Visible Character
 
-Now let's add a character that appears on screen. This is where the ECS comes in - we'll create an entity with position and rendering components.
+Now let's add a character that appears on screen. This is where the Scene comes in - we'll create an entity with position and rendering components.
 
 First, let's create the player entity:
 
 ```rust
 // ..
 use hewn::{
-    ecs::{ECS, EntityId, Components, PositionComponent, RenderComponent, SizeComponent}, // NEW!
+    scene::{Scene, EntityId, Components, PositionComponent, RenderComponent, SizeComponent}, // NEW!
 };
 
 struct HelloGame {
-    ecs: ECS,
+    scene: Scene,
     player_id: EntityId, // 1.
 }
 
 impl HelloGame {
     fn new() -> Self {
-        let mut ecs = ECS::new();
+        let mut scene = Scene::new();
         
-        let player_id = ecs.add_entity_from_components(Components {
+        let player_id = scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 5.0, y: 5.0 }), // 2.
             render: Some(RenderComponent { // 3.
                 ascii_character: '@',
@@ -124,7 +123,7 @@ impl HelloGame {
             camera_follow: None,
         });
         
-        Self { ecs, player_id }
+        Self { scene, player_id }
     }
 }
 // ..
@@ -142,12 +141,12 @@ Next, let's update the game loop and debug display:
 impl GameHandler for HelloGame {
     // ..
     fn next(&mut self, dt: Duration) {
-        self.ecs.step(dt); // 1.
+        self.scene.step(dt); // 1.
     }
     // ..
     
     fn debug_str(&self) -> Option<String> {
-        let player = self.ecs.get_entity_by_id(self.player_id)?; // 2.
+        let player = self.scene.get_entity_by_id(self.player_id)?; // 2.
         let pos = player.components.position.as_ref()?;
         Some(format!("Player @ ({}, {})", pos.x, pos.y)) // 3.
     }
@@ -155,7 +154,7 @@ impl GameHandler for HelloGame {
 // ..
 ```
 
-1. `ecs.step()` updates all entities each frame (position, rendering, etc.)
+1. `scene.step()` updates all entities each frame (position, rendering, etc.)
 2. Look up the player entity by its ID to access its components
 3. Debug text now shows the player's live position coordinates
 
@@ -174,7 +173,7 @@ First, let's create a controller to track key states:
 // ..
 use hewn::{
     runtime::Key, // NEW!
-    ecs::VelocityComponent, // NEW!
+    scene::VelocityComponent, // NEW!
 };
 use std::time::Duration; // NEW!
 
@@ -217,16 +216,16 @@ Next, let's integrate the controller into our game and add velocity:
 ```rust
 // ..
 struct HelloGame {
-    ecs: ECS,
+    scene: Scene,
     player_id: EntityId,
     game_controller: GameController, // 1.
 }
 
 impl HelloGame {
     fn new() -> Self {
-        let mut ecs = ECS::new();
+        let mut scene = Scene::new();
         
-        let player_id = ecs.add_entity_from_components(Components {
+        let player_id = scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 5.0, y: 5.0 }), 
             render: Some(RenderComponent { 
                 ascii_character: '@',
@@ -242,7 +241,7 @@ impl HelloGame {
         });
         
         Self { 
-            ecs, 
+            scene, 
             player_id,
             game_controller: GameController::new(), // 4.
         }
@@ -253,7 +252,7 @@ impl GameHandler for HelloGame {
     // ..
     fn next(&mut self, dt: Duration) {
         // Update player velocity based on controller state
-        let velocity = self.ecs.get_entity_by_id_mut(self.player_id)
+        let velocity = self.scene.get_entity_by_id_mut(self.player_id)
             .and_then(|player| player.components.velocity.as_mut());
         if let Some(velocity) = velocity {
             if self.game_controller.is_up_pressed { // 5.
@@ -273,7 +272,7 @@ impl GameHandler for HelloGame {
             }
         }
         
-        self.ecs.step(dt); // 6.
+        self.scene.step(dt); // 6.
     }
     
     fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
@@ -284,11 +283,11 @@ impl GameHandler for HelloGame {
 ```
 
 1. Added `game_controller` field to track input state
-2. Player now has a `VelocityComponent` - the ECS automatically moves entities with velocity
+2. Player now has a `VelocityComponent` - the Scene automatically moves entities with velocity
 3. Player size is `2x1` so it appears wider in the terminal  
 4. Initialize the controller in the constructor
 5. `next()` method reads controller state and updates player velocity accordingly
-6. `ecs.step()` applies the velocity to move the player
+6. `scene.step()` applies the velocity to move the player
 7. `handle_key()` delegates to the controller for clean separation of concerns
 
 Your `@` character now responds to arrow keys! Try moving around and watch the debug text update with your position. Now let's see the same game running in a desktop window...
@@ -303,12 +302,12 @@ First, let's add a wall entity:
 // ..
 impl HelloGame {
     fn new() -> Self {
-        let mut ecs = ECS::new();
+        let mut scene = Scene::new();
         
         // .. 
 
         // Add a wall
-        ecs.add_entity_from_components(Components {
+        scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 8.0, y: 5.0 }), // 1.
             render: Some(RenderComponent { // 2.
                 ascii_character: '#',
@@ -344,10 +343,10 @@ impl GameHandler for HelloGame {
         // .. Velocity update logic from Step 3 ..  
 
         // Check for collisions BEFORE moving entities
-        let collisions = self.ecs.collision_pass(dt); // 1.
+        let collisions = self.scene.collision_pass(dt); // 1.
         for [a, b] in collisions.into_iter() { // 2.
             if a == self.player_id || b == self.player_id {
-                let player_entity = self.ecs.get_entity_by_id_mut(self.player_id);
+                let player_entity = self.scene.get_entity_by_id_mut(self.player_id);
                 let Some(player_entity) = player_entity else { return; };
                 let Some(velocity) = &mut player_entity.components.velocity else { return; };
                 velocity.x = 0.0; // 3.
@@ -356,7 +355,7 @@ impl GameHandler for HelloGame {
             }
         }
         
-        self.ecs.step(dt); // 4. Move entities AFTER collision check
+        self.scene.step(dt); // 4. Move entities AFTER collision check
     }
     // ..
 }
@@ -365,7 +364,7 @@ impl GameHandler for HelloGame {
 1. `collision_pass()` returns pairs of entities that are colliding
 2. Iterate over collision pairs `[a, b]`
 3. When collision detected, immediately stop the player by resetting velocity to `(0, 0)`
-4. **Critical**: Call `ecs.step()` AFTER collision detection to apply the movement
+4. **Critical**: Call `scene.step()` AFTER collision detection to apply the movement
 
 > [!IMPORTANT]
 > The order of operations in `next()` matters! Update velocity → Check collisions → Apply movement. This prevents the player from "tunneling" through walls.
@@ -414,10 +413,10 @@ Hewn games implement the `GameHandler` trait:
 - **`start_game()`** - Initialize your game state
 - **`next(dt: Duration)`** - Update game logic each frame with delta time  
 - **`handle_key()`** - Process keyboard input
-- **`ecs()`** - Access the Entity Component System
+- **`scene()`** - Access the game scene
 - **`debug_str()`** - Show debug info (terminal only)
 
-The ECS manages entities with components:
+The Scene manages entities with components:
 - **`PositionComponent`** - Where entities are located
 - **`VelocityComponent`** - How entities move  
 - **`RenderComponent`** - How entities look

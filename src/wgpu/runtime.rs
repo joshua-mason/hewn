@@ -1,6 +1,6 @@
-use crate::ecs::Entity;
 use crate::runtime::GameHandler;
 use crate::runtime::Key;
+use crate::scene::Entity;
 use crate::wgpu::render::CameraStrategy;
 use crate::wgpu::render::State;
 use std::sync::Arc;
@@ -119,8 +119,8 @@ impl<'a> ApplicationHandler<State> for App<'a> {
 
         let renderable_entities = self
             .game
-            .ecs()
-            .get_entities_with_component(crate::ecs::ComponentType::Render)
+            .scene()
+            .get_entities_with_component(crate::scene::ComponentType::Render)
             .iter()
             .map(|e| **e)
             // probably terrible performance cloning here we when we should pass a reference as we only
@@ -194,8 +194,8 @@ impl<'a> ApplicationHandler<State> for App<'a> {
 
                 let renderable_entities = self
                     .game
-                    .ecs()
-                    .get_entities_with_component(crate::ecs::ComponentType::Render)
+                    .scene()
+                    .get_entities_with_component(crate::scene::ComponentType::Render)
                     .iter()
                     .map(|e| **e)
                     // probably terrible performance cloning here we when we should pass a reference as we only

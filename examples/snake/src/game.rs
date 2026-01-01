@@ -1,9 +1,9 @@
 use cgmath;
-use hewn::ecs::{
+use hewn::runtime::{GameHandler, Key};
+use hewn::scene::{
     CameraFollow, EntityId, PositionComponent, RenderComponent, SizeComponent, VelocityComponent,
 };
-use hewn::ecs::{Components, ECS};
-use hewn::runtime::{GameHandler, Key};
+use hewn::scene::{Components, Scene};
 use rand::{rngs::StdRng, Rng, RngCore, SeedableRng};
 use std::collections::HashSet;
 use std::time::Duration;
@@ -39,7 +39,7 @@ pub struct Game {
     pub score: u16,
 
     state: GameState,
-    ecs: ECS,
+    scene: Scene,
     player_id: EntityId,
     player_direction: Direction,
     body_ids: Vec<EntityId>,
@@ -88,7 +88,7 @@ impl Game {
             height,
             state: GameState::Menu,
             score: 0,
-            ecs: ECS::new(),
+            scene: Scene::new(),
             player_id: EntityId(0),
             player_direction: Direction::Up,
             body_ids: vec![],
@@ -115,7 +115,7 @@ impl Game {
             }),
             camera_follow: Some(CameraFollow {}),
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.scene.add_entity_from_components(components);
         self.player_id = id;
         self.player_direction = Direction::Up;
     }
@@ -136,7 +136,7 @@ impl Game {
                 }),
                 camera_follow: None,
             };
-            let id = self.ecs.add_entity_from_components(components);
+            let id = self.scene.add_entity_from_components(components);
             self.wall_ids.insert(id);
         }
     }
@@ -147,7 +147,7 @@ impl Game {
     }
 
     fn move_head_discrete(&mut self) {
-        if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
+        if let Some(head) = self.scene.get_entity_by_id_mut(self.player_id) {
             if let Some(pos) = &mut head.components.position {
                 match self.player_direction {
                     Direction::Left => {
@@ -186,7 +186,7 @@ impl Game {
             }),
             camera_follow: None,
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.scene.add_entity_from_components(components);
         self.food_id = Some(id);
         Ok(())
     }
@@ -195,7 +195,7 @@ impl Game {
         let target = self.find_empty_tile();
 
         if let (Some((x, y)), Some(fid)) = (target, self.food_id) {
-            if let Some(food) = self.ecs.get_entity_by_id_mut(fid) {
+            if let Some(food) = self.scene.get_entity_by_id_mut(fid) {
                 if let Some(pos) = &mut food.components.position {
                     pos.x = x;
                     pos.y = y;
@@ -219,7 +219,7 @@ impl Game {
             occupied.insert((x.round() as i32, y.round() as i32));
         }
         for w in self.wall_ids.iter() {
-            if let Some(ent) = self.ecs.get_entity_by_id(*w) {
+            if let Some(ent) = self.scene.get_entity_by_id(*w) {
                 if let Some(pos) = &ent.components.position {
                     occupied.insert((pos.x.round() as i32, pos.y.round() as i32));
                 }
@@ -260,12 +260,12 @@ impl Game {
             }),
             camera_follow: None,
         };
-        let id = self.ecs.add_entity_from_components(components);
+        let id = self.scene.add_entity_from_components(components);
         self.body_ids.push(id);
     }
 
     fn head_position(&self) -> (f32, f32) {
-        let head = self.ecs.get_entity_by_id(self.player_id).unwrap();
+        let head = self.scene.get_entity_by_id(self.player_id).unwrap();
         let pos = head.components.position.as_ref().unwrap();
         (pos.x, pos.y)
     }
@@ -273,14 +273,14 @@ impl Game {
     fn body_positions(&self) -> Vec<(f32, f32)> {
         self.body_ids
             .iter()
-            .filter_map(|id| self.ecs.get_entity_by_id(*id))
+            .filter_map(|id| self.scene.get_entity_by_id(*id))
             .filter_map(|e| e.components.position.as_ref())
             .map(|p| (p.x, p.y))
             .collect()
     }
 
     fn set_entity_position(&mut self, id: EntityId, xy: (f32, f32)) {
-        if let Some(ent) = self.ecs.get_entity_by_id_mut(id) {
+        if let Some(ent) = self.scene.get_entity_by_id_mut(id) {
             if let Some(pos) = &mut ent.components.position {
                 pos.x = xy.0;
                 pos.y = xy.1;
@@ -306,7 +306,7 @@ impl GameHandler for Game {
     fn start_game(&mut self) {
         self.score = 0;
         self.move_timer = 0.0;
-        if let Some(head) = self.ecs.get_entity_by_id_mut(self.player_id) {
+        if let Some(head) = self.scene.get_entity_by_id_mut(self.player_id) {
             if let Some(pos) = &mut head.components.position {
                 pos.x = 1.0;
                 pos.y = 1.0;
@@ -349,7 +349,7 @@ impl GameHandler for Game {
 
             // Check wall collisions
             for wall_id in &self.wall_ids {
-                if let Some(wall) = self.ecs.get_entity_by_id(*wall_id) {
+                if let Some(wall) = self.scene.get_entity_by_id(*wall_id) {
                     if let Some(wall_pos) = &wall.components.position {
                         if (head_pos.0 - wall_pos.x).abs() < 1.0
                             && (head_pos.1 - wall_pos.y).abs() < 1.0
@@ -363,7 +363,7 @@ impl GameHandler for Game {
 
             // Check body collisions
             for body_id in &self.body_ids {
-                if let Some(body) = self.ecs.get_entity_by_id(*body_id) {
+                if let Some(body) = self.scene.get_entity_by_id(*body_id) {
                     if let Some(body_pos) = &body.components.position {
                         if (head_pos.0 - body_pos.x).abs() < 1.0
                             && (head_pos.1 - body_pos.y).abs() < 1.0
@@ -377,7 +377,7 @@ impl GameHandler for Game {
 
             // Check food collision
             if let Some(food_id) = self.food_id {
-                if let Some(food) = self.ecs.get_entity_by_id(food_id) {
+                if let Some(food) = self.scene.get_entity_by_id(food_id) {
                     if let Some(food_pos) = &food.components.position {
                         if (head_pos.0 - food_pos.x).abs() < 1.0
                             && (head_pos.1 - food_pos.y).abs() < 1.0
@@ -393,7 +393,7 @@ impl GameHandler for Game {
                 let tail_target = self
                     .body_ids
                     .last()
-                    .and_then(|id| self.ecs.get_entity_by_id(*id))
+                    .and_then(|id| self.scene.get_entity_by_id(*id))
                     .and_then(|e| e.components.position.as_ref().map(|p| (p.x, p.y)))
                     .unwrap_or_else(|| prev_positions.first().copied().unwrap_or((10.0, 10.0)));
                 self.grow_body_by_one(tail_target);
@@ -408,12 +408,12 @@ impl GameHandler for Game {
         }
     }
 
-    fn ecs(&self) -> &ECS {
-        &self.ecs
+    fn scene(&self) -> &Scene {
+        &self.scene
     }
 
     fn debug_str(&self) -> Option<String> {
-        if let Some(head) = self.ecs.get_entity_by_id(self.player_id) {
+        if let Some(head) = self.scene.get_entity_by_id(self.player_id) {
             let pos = head.components.position.as_ref()?;
             Some(format!(
                 "len = {:3}, x = {:3}, y = {:3}, dir = {:?}",

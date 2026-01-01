@@ -1,7 +1,7 @@
 //! View, cursor and renderer.
 
 use crate::{
-    ecs::{Entity, PositionComponent},
+    scene::{Entity, PositionComponent},
     terminal::render::cursor::CursorStrategy,
 };
 use std::{

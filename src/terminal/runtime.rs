@@ -1,6 +1,6 @@
-use crate::ecs::ComponentType;
 use crate::runtime::GameHandler;
 use crate::runtime::Key;
+use crate::scene::ComponentType;
 use crate::terminal::render::View;
 use crate::terminal::render::{
     cursor::FollowPlayerXYCursorStrategy, ScreenDimensions, TerminalRenderer, ViewCoordinate,
@@ -110,8 +110,8 @@ impl TerminalRuntime {
             let now = time::Instant::now();
             if now - self.last_frame_time > Duration::from_millis(REFRESH_RATE) {
                 game.next(now - self.last_frame_time);
-                let ecs = game.ecs();
-                let entities = ecs.get_entities_with_component(ComponentType::Render);
+                let scene = game.scene();
+                let entities = scene.get_entities_with_component(ComponentType::Render);
                 self.display.next(entities, game.debug_str());
                 self.last_frame_time = now;
             }

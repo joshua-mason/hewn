@@ -1,5 +1,5 @@
-use crate::ecs::Entity;
-use crate::ecs::EntityId;
+use crate::scene::Entity;
+use crate::scene::EntityId;
 use crate::wgpu::texture;
 use cgmath::prelude::*;
 use cgmath::SquareMatrix;
