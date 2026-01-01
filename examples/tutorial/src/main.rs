@@ -61,11 +61,11 @@ impl HelloGame {
                 rgb: cgmath::Vector3 {
                     x: 0.0,
                     y: 0.0,
-                    z: 0.0,
+                    z: 1.0,
                 },
             }),
             velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }),
-            size: Some(SizeComponent { x: 1.0, y: 1.0 }),
+            size: Some(SizeComponent { x: 2.0, y: 1.0 }),
             camera_follow: None,
         });
         scene.add_entity_from_components(Components {
@@ -74,7 +74,7 @@ impl HelloGame {
                 ascii_character: '#',
                 rgb: cgmath::Vector3 {
                     x: 0.0,
-                    y: 0.5,
+                    y: 0.0,
                     z: 0.0,
                 },
             }),

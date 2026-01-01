@@ -115,7 +115,7 @@ impl HelloGame {
                 rgb: cgmath::Vector3 {
                     x: 0.0,
                     y: 0.0,
-                    z: 0.0,
+                    z: 1.0,
                 },
             }),
             velocity: None,
@@ -232,7 +232,7 @@ impl HelloGame {
                 rgb: cgmath::Vector3 {
                     x: 0.0,
                     y: 0.0,
-                    z: 0.0,
+                    z: 1.0,
                 },
             }),
             velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }), // 2.
@@ -381,17 +381,24 @@ Now we've built our game, it's possible to run in our `WindowRuntime`. Without c
 ```rust
 // ..
 use hewn::wgpu::runtime::WindowRuntime; // NEW!
+use hewn::wgpu::render::CameraStrategy; // NEW!
 
 // ..
 
 fn main() {
     let mut game = HelloGame::new(); // Same game!
-    let mut runtime = WindowRuntime::new(); // 1.
-    let _ = runtime.start(&mut game);
+    let player_id = game.player_id; // 1.
+    let mut runtime = WindowRuntime::new(); // 2.
+    let _ = runtime.start(
+        &mut game, 
+        CameraStrategy::CameraFollow(player_id), // 3.
+    );
 }
 ```
 
-1. Swap `TerminalRuntime` for `WindowRuntime` - that's literally it!
+1. Extract `player_id` before borrowing `game`
+2. Swap `TerminalRuntime` for `WindowRuntime`
+3. Pass a `CameraStrategy` - here we follow the player entity
 
 Your `@` character now renders as a colored square in a desktop window.
 
