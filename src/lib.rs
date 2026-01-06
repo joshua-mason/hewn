@@ -9,10 +9,7 @@
 //!
 //! For more information, see the [README](https://github.com/joshua-mason/hewn).
 
-mod engine;
-
 pub mod runtime;
+pub mod scene;
 pub mod terminal;
 pub mod wgpu;
-
-pub use engine::scene;
