@@ -151,8 +151,7 @@ impl InstancePositionRaw {
                 // for each vec4. We'll have to reassemble the mat4 in the shader.
                 wgpu::VertexAttribute {
                     offset: 0,
-                    // While our vertex shader only uses locations 0, and 1 now, in later tutorials, we'll
-                    // be using 2, 3, and 4, for Vertex. We'll start at slot 5, not conflict with them later
+                    // Start instance attributes at location 5 to avoid clashing with per-vertex attributes.
                     shader_location: 5,
                     format: wgpu::VertexFormat::Float32x4,
                 },
@@ -237,9 +236,6 @@ pub struct State {
     instance_colors_buffer: wgpu::Buffer,
     camera_strategy: CameraStrategy,
 
-    vertices: Vec<Vertex>,
-    indices: Vec<u16>,
-
     camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
@@ -294,9 +290,6 @@ impl State {
             .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
-        // Shader code in this tutorial assumes an Srgb surface texture. Using a different
-        // one will result all the colors comming out darker. If you want to support non
-        // Srgb surfaces, you'll need to account for that when drawing to the frame.
         let surface_format = surface_caps
             .formats
             .iter()
@@ -536,8 +529,6 @@ impl State {
             num_indices,
             diffuse_texture,
             diffuse_bind_group,
-            vertices,
-            indices,
             camera,
             camera_buffer,
             camera_bind_group,
