@@ -8,6 +8,11 @@ use rand::{rngs::StdRng, Rng, RngCore, SeedableRng};
 use std::collections::HashSet;
 use std::time::Duration;
 
+const FOOD_INDEX: u16 = 42;
+const SNAKE_HEAD_INDEX: u16 = 2;
+const SNAKE_BODY_INDEX: u16 = 1;
+const WALL_INDEX: u16 = 49;
+
 pub fn create_game(width: u16, height: u16, seed: Option<u64>) -> Game {
     let mut game = Game::new(width, height, seed);
     game.initialise_walls();
@@ -106,6 +111,8 @@ impl Game {
             velocity: None,
             size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             render: Some(RenderComponent {
+                // sprite_tile: None,
+                sprite_tile: Some(SNAKE_HEAD_INDEX),
                 ascii_character: '0',
                 rgb: cgmath::Vector3 {
                     x: 0.0,
@@ -127,6 +134,8 @@ impl Game {
                 velocity: None,
                 size: Some(SizeComponent { x: 1.0, y: 1.0 }),
                 render: Some(RenderComponent {
+                    // sprite_tile: None, // Some(216),
+                    sprite_tile: Some(WALL_INDEX),
                     ascii_character: '#',
                     rgb: cgmath::Vector3 {
                         x: 0.0,
@@ -177,6 +186,8 @@ impl Game {
             velocity: None,
             size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             render: Some(RenderComponent {
+                // sprite_tile: None,
+                sprite_tile: Some(FOOD_INDEX),
                 ascii_character: '+',
                 rgb: cgmath::Vector3 {
                     x: 0.1,
@@ -251,6 +262,8 @@ impl Game {
             velocity: None,
             size: Some(SizeComponent { x: 1.0, y: 1.0 }),
             render: Some(RenderComponent {
+                sprite_tile: Some(SNAKE_BODY_INDEX),
+                // sprite_tile: None,
                 ascii_character: 'o',
                 rgb: cgmath::Vector3 {
                     x: 0.0,
@@ -337,6 +350,17 @@ impl GameHandler for Game {
 
             // Store previous positions for body segments
             let mut prev_positions: Vec<(f32, f32)> = Vec::with_capacity(self.body_ids.len() + 1);
+
+            if (self.body_ids.len() < 20) {
+                let tail_target = self
+                    .body_ids
+                    .last()
+                    .and_then(|id| self.scene.get_entity_by_id(*id))
+                    .and_then(|e| e.components.position.as_ref().map(|p| (p.x, p.y)))
+                    .unwrap_or_else(|| prev_positions.first().copied().unwrap_or((10.0, 10.0)));
+
+                self.grow_body_by_one(tail_target);
+            }
             prev_positions.push(self.head_position());
             prev_positions.extend(self.body_positions());
 

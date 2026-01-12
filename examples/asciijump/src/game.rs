@@ -68,7 +68,7 @@ impl Game {
             position: Some(PositionComponent { x: 1.0, y: 1.0 }),
             velocity: Some(VelocityComponent { x: 0.0, y: 5.0 }),
             size: Some(SizeComponent { x: 1.0, y: 1.0 }),
-            render: Some(RenderComponent {
+            render: Some(RenderComponent { sprite_tile: None,
                 ascii_character: '#',
                 rgb: (0.0, 0.0, 0.0).into(),
             }),
@@ -84,7 +84,7 @@ impl Game {
                 position: Some(PositionComponent { x, y }),
                 velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }),
                 size: Some(SizeComponent { x: 3.0, y: 1.0 }),
-                render: Some(RenderComponent {
+                render: Some(RenderComponent { sprite_tile: None,
                     ascii_character: '=',
                     rgb: (0.0, 0.0, 0.5).into(),
                 }),

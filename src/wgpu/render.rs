@@ -3,7 +3,7 @@ use crate::scene::EntityId;
 use crate::wgpu::texture;
 use cgmath::prelude::*;
 use cgmath::SquareMatrix;
-use std::f32::consts::PI;
+use image;
 use std::mem;
 use std::{iter, sync::Arc};
 #[cfg(target_arch = "wasm32")]
@@ -18,67 +18,129 @@ pub enum CameraStrategy {
     CameraFollow(EntityId),
 }
 
+/// Configuration for a tilemap (sprite sheet) used for rendering.
+///
+/// A tilemap is a single image containing multiple sprites arranged in a grid.
+/// Each sprite can be referenced by its tile index (0-indexed, row-major order).
+///
+/// # Example
+/// ```ignore
+/// // A 20x20 tilemap with 400 tiles total
+/// let tilemap = Tilemap::new(include_bytes!("my_tilemap.png"), 20, 20);
+/// // Tile 0 is top-left, tile 19 is top-right, tile 20 is second row left, etc.
+/// ```
+/// Note: Clone and Copy are derived because bytes is `&'static` (compile-time embedded)
+#[derive(Clone, Copy)]
+pub struct Tilemap {
+    /// The raw PNG/JPEG bytes of the tilemap image
+    pub bytes: &'static [u8],
+    /// Number of tiles horizontally
+    pub tiles_x: u32,
+    /// Number of tiles vertically
+    pub tiles_y: u32,
+}
+
+impl Tilemap {
+    /// Creates a new tilemap configuration.
+    pub fn new(bytes: &'static [u8], tiles_x: u32, tiles_y: u32) -> Self {
+        Self {
+            bytes,
+            tiles_x,
+            tiles_y,
+        }
+    }
+
+    /// Returns the total number of tiles in this tilemap.
+    pub fn total_tiles(&self) -> u32 {
+        self.tiles_x * self.tiles_y
+    }
+}
+
+/// A vertex with position and texture coordinates.
+///
+/// - `position`: The 3D position of this vertex in model space (z is always 0 for 2D sprites)
+/// - `tex_coords`: UV coordinates for texture mapping (0,0 is top-left, 1,1 is bottom-right)
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     position: [f32; 3],
+    tex_coords: [f32; 2],
 }
 
-fn gen_shape_buffer(points: u16, rotation_deg: f32, size: f32) -> (Vec<Vertex>, Vec<u16>) {
-    if points < 3 {
-        return (
-            vec![
-                Vertex {
-                    position: [-0.0868241, 0.49240386, 0.0],
-                },
-                Vertex {
-                    position: [-0.49513406, 0.06958647, 0.0],
-                },
-                Vertex {
-                    position: [-0.21918549, -0.44939706, 0.0],
-                },
-                Vertex {
-                    position: [0.35966998, -0.3473291, 0.0],
-                },
-                Vertex {
-                    position: [0.44147372, 0.2347359, 0.0],
-                },
-            ],
-            vec![0, 1, 4, 1, 2, 4, 2, 3, 4],
-        );
-    }
+/// Generates a textured quad (rectangle) for sprite rendering.
+///
+/// Returns 4 vertices forming a square centered at origin, with proper UV coordinates
+/// so that a texture maps correctly onto it.
+///
+/// UV coordinate layout:
+/// ```text
+///   (0,0)-----(1,0)
+///     |         |
+///     |  IMAGE  |
+///     |         |
+///   (0,1)-----(1,1)
+/// ```
+fn gen_textured_quad(size: f32) -> (Vec<Vertex>, Vec<u16>) {
+    let half = size / 2.0;
 
-    let mut vertices = Vec::with_capacity(points as usize);
-    let rotation_rad = rotation_deg.to_radians();
-    for i in 0..points {
-        let theta = 2.0 * PI * (i as f32) / (points as f32) + rotation_rad;
-        let x = size * theta.cos();
-        let y = size * theta.sin();
-        vertices.push(Vertex {
-            position: [x, y, 0.0],
-        });
-    }
+    // Four corners of a quad, with UV coordinates mapping the full texture
+    let vertices = vec![
+        // Bottom-left vertex
+        Vertex {
+            position: [-half, -half, 0.0],
+            tex_coords: [0.0, 1.0], // Bottom-left of texture
+        },
+        // Bottom-right vertex
+        Vertex {
+            position: [half, -half, 0.0],
+            tex_coords: [1.0, 1.0], // Bottom-right of texture
+        },
+        // Top-right vertex
+        Vertex {
+            position: [half, half, 0.0],
+            tex_coords: [1.0, 0.0], // Top-right of texture
+        },
+        // Top-left vertex
+        Vertex {
+            position: [-half, half, 0.0],
+            tex_coords: [0.0, 0.0], // Top-left of texture
+        },
+    ];
 
-    let mut indices = Vec::with_capacity((points as usize - 2) * 3);
-    for i in 1..(points - 1) {
-        indices.push(0u16);
-        indices.push(i);
-        indices.push(i + 1);
-    }
+    // Two triangles forming the quad:
+    // Triangle 1: bottom-left, bottom-right, top-right (0, 1, 2)
+    // Triangle 2: bottom-left, top-right, top-left (0, 2, 3)
+    let indices = vec![0, 1, 2, 0, 2, 3];
 
     (vertices, indices)
 }
 
 impl Vertex {
+    /// Describes the memory layout of our Vertex struct for the GPU.
+    ///
+    /// This tells wgpu how to read vertex data from our buffer:
+    /// - Location 0: position (3 floats = 12 bytes)
+    /// - Location 1: tex_coords (2 floats = 8 bytes)
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
+            // Total size of one Vertex struct (position + tex_coords = 20 bytes)
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[wgpu::VertexAttribute {
-                offset: 0,
-                shader_location: 0,
-                format: wgpu::VertexFormat::Float32x3,
-            }],
+            attributes: &[
+                // Position attribute at shader location 0
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                // Texture coordinates at shader location 1
+                // Offset is after the position (3 floats = 12 bytes)
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+            ],
         }
     }
 }
@@ -218,6 +280,45 @@ impl InstanceColor {
     }
 }
 
+/// Per-instance tile index for tilemap rendering.
+///
+/// - `tile_index`: The tile index in the tilemap (0-indexed, row-major order)
+///                 Use u32::MAX to indicate "no texture, use solid color"
+pub(crate) struct InstanceTile {
+    pub(crate) tile_index: u32,
+}
+
+/// Value indicating no texture should be used (render solid color instead)
+pub const NO_TEXTURE_TILE: u32 = u32::MAX;
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct InstanceTileRaw {
+    pub(crate) tile_index: u32,
+}
+
+impl InstanceTileRaw {
+    pub(crate) fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<InstanceTileRaw>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 10, // After color at location 9
+                format: wgpu::VertexFormat::Uint32,
+            }],
+        }
+    }
+}
+
+impl InstanceTile {
+    pub(crate) fn to_raw(&self) -> InstanceTileRaw {
+        InstanceTileRaw {
+            tile_index: self.tile_index,
+        }
+    }
+}
+
 pub struct State {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -233,9 +334,15 @@ pub struct State {
     diffuse_bind_group: wgpu::BindGroup,
     instance_positions: Vec<InstancePosition>,
     instance_colors: Vec<InstanceColor>,
+    instance_tiles: Vec<InstanceTile>,
     instance_positions_buffer: wgpu::Buffer,
     instance_colors_buffer: wgpu::Buffer,
+    instance_tiles_buffer: wgpu::Buffer,
     camera_strategy: CameraStrategy,
+
+    /// Tilemap dimensions (tiles_x, tiles_y) - needed for UV calculation in shader
+    tilemap_tiles_x: u32,
+    tilemap_tiles_y: u32,
 
     vertices: Vec<Vertex>,
     indices: Vec<u16>,
@@ -253,6 +360,7 @@ impl State {
         window: Arc<Window>,
         renderable_entities: Vec<Entity>,
         camera_strategy: CameraStrategy,
+        tilemap: Option<Tilemap>,
     ) -> anyhow::Result<State> {
         let size = window.inner_size();
 
@@ -314,9 +422,21 @@ impl State {
             desired_maximum_frame_latency: 2,
         };
 
-        let diffuse_bytes = include_bytes!("happy-tree.png");
-        let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
+        // Load tilemap texture if provided, otherwise use a default 1x1 white texture
+        let (diffuse_texture, tilemap_tiles_x, tilemap_tiles_y) = if let Some(ref tm) = tilemap {
+            let texture =
+                texture::Texture::from_bytes(&device, &queue, tm.bytes, "tilemap").unwrap();
+            (texture, tm.tiles_x, tm.tiles_y)
+        } else {
+            // Default: 1x1 white texture for solid color rendering
+            let white_pixel: [u8; 4] = [255, 255, 255, 255];
+            let img = image::RgbaImage::from_raw(1, 1, white_pixel.to_vec()).unwrap();
+            let dyn_img = image::DynamicImage::ImageRgba8(img);
+            let texture =
+                texture::Texture::from_image(&device, &queue, &dyn_img, Some("default_white"))
+                    .unwrap();
+            (texture, 1, 1)
+        };
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -421,6 +541,7 @@ impl State {
                     Vertex::desc(),
                     InstancePositionRaw::desc(),
                     InstanceColorRaw::desc(),
+                    InstanceTileRaw::desc(),
                 ],
                 compilation_options: Default::default(),
             },
@@ -463,7 +584,9 @@ impl State {
             cache: None,
         });
 
-        let (vertices, indices) = gen_shape_buffer(4, 45.0, 0.08);
+        // Generate a textured quad for sprite rendering
+        // Size 0.16 gives a reasonable sprite size in world units
+        let (vertices, indices) = gen_textured_quad(0.12);
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -477,32 +600,51 @@ impl State {
         });
         let num_indices = indices.len() as u32;
 
-        let (instance_positions, instance_colors): (Vec<InstancePosition>, Vec<InstanceColor>) =
-            renderable_entities
-                .iter()
-                .map(|e| {
-                    let position = e.components.position.unwrap();
-                    let rotation = cgmath::Quaternion::from_axis_angle(
-                        cgmath::Vector3::unit_z(),
-                        cgmath::Deg(0.0),
-                    );
-                    let color = e.components.render.unwrap().rgb;
+        // Create per-instance data from entities
+        let (instance_positions, instance_colors, instance_tiles): (
+            Vec<InstancePosition>,
+            Vec<InstanceColor>,
+            Vec<InstanceTile>,
+        ) = renderable_entities
+            .iter()
+            .map(|e| {
+                let position = e.components.position.unwrap();
+                let render = e.components.render.unwrap();
+                let rotation = cgmath::Quaternion::from_axis_angle(
+                    cgmath::Vector3::unit_z(),
+                    cgmath::Deg(0.0),
+                );
 
-                    let position_3d = cgmath::Vector3 {
-                        x: position.x as f32 * 0.1,
-                        y: position.y as f32 * 0.1,
-                        z: 0.0,
-                    };
-                    (
-                        InstancePosition {
-                            position: position_3d,
-                            rotation,
-                        },
-                        InstanceColor { color },
-                    )
-                })
-                .unzip();
-        // .collect::<Vec<_>>();
+                let position_3d = cgmath::Vector3 {
+                    x: position.x as f32 * 0.1,
+                    y: position.y as f32 * 0.1,
+                    z: 0.0,
+                };
+
+                // Get tile index, or NO_TEXTURE_TILE if no sprite is set
+                let tile_index = render
+                    .sprite_tile
+                    .map(|t| t as u32)
+                    .unwrap_or(NO_TEXTURE_TILE);
+
+                (
+                    InstancePosition {
+                        position: position_3d,
+                        rotation,
+                    },
+                    InstanceColor { color: render.rgb },
+                    InstanceTile { tile_index },
+                )
+            })
+            .fold(
+                (Vec::new(), Vec::new(), Vec::new()),
+                |(mut positions, mut colors, mut tiles), (p, c, t)| {
+                    positions.push(p);
+                    colors.push(c);
+                    tiles.push(t);
+                    (positions, colors, tiles)
+                },
+            );
 
         let instance_positions_raw = instance_positions
             .iter()
@@ -511,6 +653,10 @@ impl State {
         let instance_colors_raw = instance_colors
             .iter()
             .map(InstanceColor::to_raw)
+            .collect::<Vec<_>>();
+        let instance_tiles_raw = instance_tiles
+            .iter()
+            .map(InstanceTile::to_raw)
             .collect::<Vec<_>>();
         let instance_positions_buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -521,6 +667,11 @@ impl State {
         let instance_colors_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance Color Buffer"),
             contents: bytemuck::cast_slice(&instance_colors_raw),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let instance_tiles_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Instance Tile Buffer"),
+            contents: bytemuck::cast_slice(&instance_tiles_raw),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
@@ -544,11 +695,15 @@ impl State {
             camera_uniform,
             instance_positions,
             instance_colors,
+            instance_tiles,
             instance_positions_buffer,
             instance_colors_buffer,
+            instance_tiles_buffer,
             window,
             renderable_entities,
             camera_strategy,
+            tilemap_tiles_x,
+            tilemap_tiles_y,
         })
     }
 
@@ -576,33 +731,54 @@ impl State {
     pub(crate) fn update(&mut self, renderable_entities: Vec<Entity>) {
         self.renderable_entities = renderable_entities;
 
-        let (instance_positions, instance_colors): (Vec<InstancePosition>, Vec<InstanceColor>) =
-            self.renderable_entities
-                .iter()
-                .map(|e| {
-                    let position = e.components.position.unwrap();
-                    let render = e.components.render.unwrap();
-                    let rotation = cgmath::Quaternion::from_axis_angle(
-                        cgmath::Vector3::unit_z(),
-                        cgmath::Deg(0.0),
-                    );
+        let (instance_positions, instance_colors, instance_tiles): (
+            Vec<InstancePosition>,
+            Vec<InstanceColor>,
+            Vec<InstanceTile>,
+        ) = self
+            .renderable_entities
+            .iter()
+            .map(|e| {
+                let position = e.components.position.unwrap();
+                let render = e.components.render.unwrap();
+                let rotation = cgmath::Quaternion::from_axis_angle(
+                    cgmath::Vector3::unit_z(),
+                    cgmath::Deg(0.0),
+                );
 
-                    let position_3d = cgmath::Vector3 {
-                        x: position.x as f32 * 0.1,
-                        y: position.y as f32 * 0.1,
-                        z: 0.0,
-                    };
-                    (
-                        InstancePosition {
-                            position: position_3d,
-                            rotation,
-                        },
-                        InstanceColor { color: render.rgb },
-                    )
-                })
-                .unzip();
+                let position_3d = cgmath::Vector3 {
+                    x: position.x as f32 * 0.1,
+                    y: position.y as f32 * 0.1,
+                    z: 0.0,
+                };
+
+                // Get tile index, or NO_TEXTURE_TILE if no sprite is set
+                let tile_index = render
+                    .sprite_tile
+                    .map(|t| t as u32)
+                    .unwrap_or(NO_TEXTURE_TILE);
+
+                (
+                    InstancePosition {
+                        position: position_3d,
+                        rotation,
+                    },
+                    InstanceColor { color: render.rgb },
+                    InstanceTile { tile_index },
+                )
+            })
+            .fold(
+                (Vec::new(), Vec::new(), Vec::new()),
+                |(mut positions, mut colors, mut tiles), (p, c, t)| {
+                    positions.push(p);
+                    colors.push(c);
+                    tiles.push(t);
+                    (positions, colors, tiles)
+                },
+            );
         self.instance_positions = instance_positions;
         self.instance_colors = instance_colors;
+        self.instance_tiles = instance_tiles;
         let instance_position_data = self
             .instance_positions
             .iter()
@@ -628,9 +804,23 @@ impl State {
                     contents: bytemuck::cast_slice(&instance_colors_data),
                     usage: wgpu::BufferUsages::VERTEX,
                 });
+
+        let instance_tiles_data = self
+            .instance_tiles
+            .iter()
+            .map(InstanceTile::to_raw)
+            .collect::<Vec<_>>();
+        let instance_tiles_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Instance Tile Buffer"),
+                    contents: bytemuck::cast_slice(&instance_tiles_data),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
         // Log the instance positions to stdout so we can see things are moving when keys are hit.
         self.instance_positions_buffer = instance_positions_buffer;
         self.instance_colors_buffer = instance_colors_buffer;
+        self.instance_tiles_buffer = instance_tiles_buffer;
 
         let camera_points =
             self.renderable_entities
@@ -740,6 +930,7 @@ impl State {
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, self.instance_positions_buffer.slice(..));
             render_pass.set_vertex_buffer(2, self.instance_colors_buffer.slice(..));
+            render_pass.set_vertex_buffer(3, self.instance_tiles_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(
                 0..self.num_indices,

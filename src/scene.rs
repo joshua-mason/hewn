@@ -60,6 +60,7 @@ impl Entity {
                 render: ascii_character.map(|c| RenderComponent {
                     ascii_character: c,
                     rgb: Vector3::new(0.0, 0.0, 0.0),
+                    sprite_tile: None,
                 }),
                 camera_follow: if track { Some(CameraFollow {}) } else { None },
             },
@@ -116,10 +117,17 @@ impl Component for SizeComponent {
     const TYPE: ComponentType = ComponentType::Size;
 }
 
+/// Component that controls how an entity is rendered.
+///
+/// - `ascii_character`: The character to display in terminal mode
+/// - `rgb`: The color (used for solid color rendering or tinting)
+/// - `sprite_tile`: Optional tile index in the tilemap (0-indexed, row-major order)
+///                  If None, renders as solid color. If Some(n), uses tile n from tilemap.
 #[derive(Debug, Clone, Copy)]
 pub struct RenderComponent {
     pub ascii_character: char,
     pub rgb: Vector3<f32>,
+    pub sprite_tile: Option<u16>,
 }
 impl Component for RenderComponent {
     const TYPE: ComponentType = ComponentType::Render;

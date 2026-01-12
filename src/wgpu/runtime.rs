@@ -3,6 +3,7 @@ use crate::runtime::Key;
 use crate::scene::Entity;
 use crate::wgpu::render::CameraStrategy;
 use crate::wgpu::render::State;
+use crate::wgpu::render::Tilemap;
 use std::sync::Arc;
 use std::time::Instant;
 #[cfg(target_arch = "wasm32")]
@@ -40,10 +41,12 @@ impl WindowRuntime {
         WindowRuntime::default()
     }
 
+    /// Starts the game with the window runtime.
     pub fn start(
         &mut self,
         game: &mut dyn GameHandler,
         camera_strategy: CameraStrategy,
+        config: Option<Tilemap>,
     ) -> anyhow::Result<()> {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -60,6 +63,7 @@ impl WindowRuntime {
             &event_loop,
             game,
             camera_strategy,
+            config,
         );
         event_loop.run_app(&mut app)?;
 
@@ -74,6 +78,7 @@ pub struct App<'a> {
     pub(crate) game: &'a mut dyn GameHandler,
     pub(crate) frame_counter: u32,
     pub(crate) camera_strategy: CameraStrategy,
+    pub(crate) config: Option<Tilemap>,
 
     last_frame: Instant,
 }
@@ -83,6 +88,7 @@ impl<'a> App<'a> {
         #[cfg(target_arch = "wasm32")] event_loop: &EventLoop<State>,
         game: &'a mut dyn GameHandler,
         camera_strategy: CameraStrategy,
+        config: Option<Tilemap>,
     ) -> Self {
         #[cfg(target_arch = "wasm32")]
         let proxy = Some(event_loop.create_proxy());
@@ -93,6 +99,7 @@ impl<'a> App<'a> {
             game,
             frame_counter: 0,
             camera_strategy,
+            config,
             last_frame: std::time::Instant::now(),
         }
     }
@@ -135,6 +142,7 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                     window,
                     renderable_entities,
                     self.camera_strategy,
+                    self.config,
                 ))
                 .unwrap(),
             );
@@ -142,11 +150,13 @@ impl<'a> ApplicationHandler<State> for App<'a> {
 
         #[cfg(target_arch = "wasm32")]
         {
+            let config = self.config;
+            let camera_strategy = self.camera_strategy;
             if let Some(proxy) = self.proxy.take() {
                 wasm_bindgen_futures::spawn_local(async move {
                     assert!(proxy
                         .send_event(
-                            State::new(window, renderable_entities, self.camera_strategy,)
+                            State::new(window, renderable_entities, camera_strategy, config)
                                 .await
                                 .expect("Unable to create canvas!!!")
                         )

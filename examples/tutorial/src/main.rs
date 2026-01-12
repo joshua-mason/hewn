@@ -1,9 +1,14 @@
 use cgmath;
 use hewn::scene::{Components, EntityId, PositionComponent, RenderComponent, SizeComponent};
+use hewn::wgpu::render::{CameraStrategy, Tilemap};
 use hewn::wgpu::runtime::WindowRuntime;
 use hewn::{runtime::GameHandler, scene::Scene};
 use hewn::{runtime::Key, scene::VelocityComponent};
 use std::time::Duration;
+
+// Embed the tilemap at compile time
+const TILEMAP_BYTES: &[u8] =
+    include_bytes!("../../snake/src/assets/monochrome_tilemap_transparent_packed.png");
 
 pub struct GameController {
     is_up_pressed: bool,
@@ -44,6 +49,7 @@ impl GameController {
         }
     }
 }
+
 struct HelloGame {
     scene: Scene,
     player_id: EntityId,
@@ -54,6 +60,7 @@ impl HelloGame {
     fn new() -> Self {
         let mut scene = Scene::new();
 
+        // Player entity - blue square, no sprite (solid color)
         let player_id = scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 5.0, y: 5.0 }),
             render: Some(RenderComponent {
@@ -63,11 +70,14 @@ impl HelloGame {
                     y: 0.0,
                     z: 1.0,
                 },
+                sprite_tile: None, // No texture - render as solid blue
             }),
             velocity: Some(VelocityComponent { x: 0.0, y: 0.0 }),
             size: Some(SizeComponent { x: 2.0, y: 1.0 }),
             camera_follow: None,
         });
+        
+        // Wall entity - uses tile 69 from tilemap (a tree/plant sprite)
         scene.add_entity_from_components(Components {
             position: Some(PositionComponent { x: 8.0, y: 5.0 }),
             render: Some(RenderComponent {
@@ -77,6 +87,7 @@ impl HelloGame {
                     y: 0.0,
                     z: 0.0,
                 },
+                sprite_tile: Some(69), // Tile 69 in the 20x20 tilemap
             }),
             velocity: None,
             size: Some(SizeComponent { x: 2.0, y: 1.0 }),
@@ -155,8 +166,13 @@ fn main() {
     let mut game = HelloGame::new();
     let mut runtime = WindowRuntime::new();
     let entity_id = game.player_id;
+    
+    // Create tilemap configuration (20x20 tiles)
+    let tilemap = Tilemap::new(TILEMAP_BYTES, 20, 20);
+    
     let _ = runtime.start(
         &mut game,
-        hewn::wgpu::render::CameraStrategy::CameraFollow(entity_id),
+        CameraStrategy::CameraFollow(entity_id),
+        Some(tilemap),
     );
 }

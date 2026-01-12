@@ -3,7 +3,8 @@ use crate::runtime::Key;
 use crate::scene::ComponentType;
 use crate::terminal::render::View;
 use crate::terminal::render::{
-    cursor::FollowPlayerXYCursorStrategy, ScreenDimensions, TerminalRenderer, ViewCoordinate,
+    cursor::{FollowPlayerXYCursorStrategy, StaticCursorStrategy},
+    ScreenDimensions, TerminalRenderer, ViewCoordinate,
 };
 use std::io::Stdout;
 use std::thread;
@@ -65,6 +66,33 @@ impl TerminalRuntime {
                 },
             )),
             cursor_strategy: Box::new(FollowPlayerXYCursorStrategy::new()),
+        };
+
+        TerminalRuntime {
+            stdin,
+            last_frame_time: Instant::now(),
+            display: view,
+            player_control_key: None,
+        }
+    }
+
+    /// Terminal runtime with a static camera (does not follow any entity).
+    ///
+    /// Useful when your terminal viewport is the same size as the game world and you want to
+    /// always see the whole map.
+    pub fn new_static(width: u16, height: u16) -> TerminalRuntime {
+        let (stdout, stdin) = initialize_terminal_io();
+
+        let view = View {
+            view_cursor: ViewCoordinate { x: 0, y: 0 },
+            renderer: Box::new(TerminalRenderer::new(
+                stdout,
+                ScreenDimensions {
+                    x: width,
+                    y: height,
+                },
+            )),
+            cursor_strategy: Box::new(StaticCursorStrategy::new()),
         };
 
         TerminalRuntime {

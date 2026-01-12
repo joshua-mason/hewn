@@ -1,6 +1,5 @@
-use std::time::Duration;
-
 use crate::scene::Scene;
+use std::time::Duration;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 

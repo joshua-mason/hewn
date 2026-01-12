@@ -27,5 +27,6 @@ pub fn play_asciijump_in_wgpu() {
     let _ = runtime.start(
         &mut game,
         wgpu::render::CameraStrategy::CameraFollow(player_entity_id),
+        None,
     );
 }
