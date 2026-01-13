@@ -3,7 +3,8 @@ use crate::runtime::Key;
 use crate::scene::ComponentType;
 use crate::terminal::render::View;
 use crate::terminal::render::{
-    cursor::FollowPlayerXYCursorStrategy, ScreenDimensions, TerminalRenderer, ViewCoordinate,
+    cursor::CursorStrategy, cursor::FollowPlayerXYCursorStrategy, ScreenDimensions, TerminalRenderer,
+    ViewCoordinate,
 };
 use std::io::Stdout;
 use std::thread;
@@ -53,6 +54,14 @@ pub struct TerminalRuntime {
 
 impl TerminalRuntime {
     pub fn new(width: u16, height: u16) -> TerminalRuntime {
+        Self::new_with_cursor_strategy(width, height, Box::new(FollowPlayerXYCursorStrategy::new()))
+    }
+
+    pub fn new_with_cursor_strategy(
+        width: u16,
+        height: u16,
+        cursor_strategy: Box<dyn CursorStrategy>,
+    ) -> TerminalRuntime {
         let (stdout, stdin) = initialize_terminal_io();
 
         let view = View {
@@ -64,7 +73,7 @@ impl TerminalRuntime {
                     y: height,
                 },
             )),
-            cursor_strategy: Box::new(FollowPlayerXYCursorStrategy::new()),
+            cursor_strategy,
         };
 
         TerminalRuntime {

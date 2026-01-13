@@ -1,6 +1,7 @@
 use cgmath;
+#[cfg(not(target_arch = "wasm32"))]
+use hewn::terminal::runtime::TerminalRuntime;
 use hewn::scene::{Components, EntityId, PositionComponent, RenderComponent, SizeComponent};
-use hewn::wgpu::runtime::WindowRuntime;
 use hewn::{runtime::GameHandler, scene::Scene};
 use hewn::{runtime::Key, scene::VelocityComponent};
 use std::time::Duration;
@@ -152,11 +153,25 @@ impl GameHandler for HelloGame {
 }
 
 fn main() {
-    let mut game = HelloGame::new();
-    let mut runtime = WindowRuntime::new();
-    let entity_id = game.player_id;
-    let _ = runtime.start(
-        &mut game,
-        hewn::wgpu::render::CameraStrategy::CameraFollow(entity_id),
-    );
+    // Match the README + other examples:
+    // - Default to terminal for `cargo run -p tutorial`
+    // - Use `--wgpu` for a desktop window renderer
+    let use_wgpu = std::env::args().any(|a| a == "--wgpu");
+
+    if use_wgpu {
+        let mut game = HelloGame::new();
+        let player_id = game.player_id;
+        let mut runtime = hewn::wgpu::runtime::WindowRuntime::new();
+        let _ = runtime.start(
+            &mut game,
+            hewn::wgpu::render::CameraStrategy::CameraFollow(player_id),
+        );
+    } else {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut game = HelloGame::new();
+            let mut runtime = TerminalRuntime::new(20, 20);
+            runtime.start(&mut game);
+        }
+    }
 }

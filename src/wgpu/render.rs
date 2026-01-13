@@ -130,6 +130,7 @@ impl CameraUniform {
 pub(crate) struct InstancePosition {
     pub(crate) position: cgmath::Vector3<f32>,
     pub(crate) rotation: cgmath::Quaternion<f32>,
+    pub(crate) scale: cgmath::Vector3<f32>,
 }
 
 #[repr(C)]
@@ -142,16 +143,10 @@ impl InstancePositionRaw {
     pub(crate) fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<InstancePositionRaw>() as wgpu::BufferAddress,
-            // We need to switch from using a step mode of Vertex to Instance
-            // This means that our shaders will only change to use the next
-            // instance when the shader starts processing a new instance
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &[
-                // A mat4 takes up 4 vertex slots as it is technically 4 vec4s. We need to define a slot
-                // for each vec4. We'll have to reassemble the mat4 in the shader.
                 wgpu::VertexAttribute {
                     offset: 0,
-                    // Start instance attributes at location 5 to avoid clashing with per-vertex attributes.
                     shader_location: 5,
                     format: wgpu::VertexFormat::Float32x4,
                 },
@@ -177,10 +172,11 @@ impl InstancePositionRaw {
 
 impl InstancePosition {
     pub(crate) fn to_raw(&self) -> InstancePositionRaw {
+        let model_mat = cgmath::Matrix4::from_translation(self.position)
+            * cgmath::Matrix4::from(self.rotation)
+            * cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, self.scale.z);
         InstancePositionRaw {
-            model: (cgmath::Matrix4::from_translation(self.position)
-                * cgmath::Matrix4::from(self.rotation))
-            .into(),
+            model: model_mat.into(),
         }
     }
 }
@@ -252,7 +248,7 @@ impl State {
     ) -> anyhow::Result<State> {
         let size = window.inner_size();
 
-        // The instance is a handle to our GPU
+        // Instance is a handle to the GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             #[cfg(not(target_arch = "wasm32"))]
@@ -276,8 +272,7 @@ impl State {
             .request_device(&wgpu::DeviceDescriptor {
                 label: None,
                 required_features: wgpu::Features::empty(),
-                // WebGL doesn't support all of wgpu's features, so if
-                // we're building for the web we'll have to disable some.
+                // WebGL doesn't support all of wgpu's features; wasm builds use a reduced limits profile.
                 required_limits: if cfg!(target_arch = "wasm32") {
                     wgpu::Limits::downlevel_webgl2_defaults()
                 } else {
@@ -475,6 +470,10 @@ impl State {
                 .iter()
                 .map(|e| {
                     let position = e.components.position.unwrap();
+                    let size = e
+                        .components
+                        .size
+                        .unwrap_or(crate::scene::SizeComponent { x: 1.0, y: 1.0 });
                     let rotation = cgmath::Quaternion::from_axis_angle(
                         cgmath::Vector3::unit_z(),
                         cgmath::Deg(0.0),
@@ -490,6 +489,7 @@ impl State {
                         InstancePosition {
                             position: position_3d,
                             rotation,
+                            scale: cgmath::Vector3::new(size.x, size.y, 1.0),
                         },
                         InstanceColor { color },
                     )
@@ -573,6 +573,10 @@ impl State {
                 .map(|e| {
                     let position = e.components.position.unwrap();
                     let render = e.components.render.unwrap();
+                    let size = e
+                        .components
+                        .size
+                        .unwrap_or(crate::scene::SizeComponent { x: 1.0, y: 1.0 });
                     let rotation = cgmath::Quaternion::from_axis_angle(
                         cgmath::Vector3::unit_z(),
                         cgmath::Deg(0.0),
@@ -587,6 +591,7 @@ impl State {
                         InstancePosition {
                             position: position_3d,
                             rotation,
+                            scale: cgmath::Vector3::new(size.x, size.y, 1.0),
                         },
                         InstanceColor { color: render.rgb },
                     )
@@ -619,7 +624,6 @@ impl State {
                     contents: bytemuck::cast_slice(&instance_colors_data),
                     usage: wgpu::BufferUsages::VERTEX,
                 });
-        // Log the instance positions to stdout so we can see things are moving when keys are hit.
         self.instance_positions_buffer = instance_positions_buffer;
         self.instance_colors_buffer = instance_colors_buffer;
 
@@ -652,7 +656,7 @@ impl State {
                     .renderable_entities
                     .iter()
                     .find(|e| e.id == entity_id)
-                    .unwrap(); // what do we do in the case the entity doesn't exist?
+                    .expect("CameraFollow entity_id must refer to a renderable entity");
                 let camera_follow_position = entity.components.position.unwrap();
                 self.camera.eye = cgmath::Point3::new(
                     camera_follow_position.x as f32 * 0.1,
@@ -687,7 +691,7 @@ impl State {
     pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.window.request_redraw();
 
-        // We can't render unless the surface is configured
+        // Skip rendering until the surface has been configured (after first resize).
         if !self.is_surface_configured {
             return Ok(());
         }

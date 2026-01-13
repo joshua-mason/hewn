@@ -123,8 +123,6 @@ impl<'a> ApplicationHandler<State> for App<'a> {
             .get_entities_with_component(crate::scene::ComponentType::Render)
             .iter()
             .map(|e| **e)
-            // probably terrible performance cloning here we when we should pass a reference as we only
-            // need to read - but this is a temporary fix for now.
             .collect::<Vec<Entity>>();
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
@@ -198,8 +196,6 @@ impl<'a> ApplicationHandler<State> for App<'a> {
                     .get_entities_with_component(crate::scene::ComponentType::Render)
                     .iter()
                     .map(|e| **e)
-                    // probably terrible performance cloning here we when we should pass a reference as we only
-                    // need to read - but this is a quick fix for now.
                     .collect::<Vec<Entity>>();
                 state.update(renderable_entities);
                 match state.render() {

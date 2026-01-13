@@ -51,8 +51,8 @@ impl View {
 
         let mut level_strings: Vec<String> = vec![];
 
-        // TODO would it be much faster to just run through the entities and then render them at the relevant
-        // indexes in the level strings?
+        // Performance note: this is currently a full-screen pass per frame. If it becomes a bottleneck,
+        // consider iterating entities and writing directly into a backing buffer.
         for height in 0..renderer.screen_height() {
             let mut level: String = build_string('.', renderer.screen_width() as usize);
             let y_position = renderer.screen_height() as i16 + self.view_cursor.y - height as i16;
@@ -200,7 +200,6 @@ pub mod cursor {
             renderer: &dyn Renderer,
             coords: &ViewCoordinate,
         ) {
-            // Y axis logic (same as before)
             let y = coords.y;
             let y_abs_diff = y.abs_diff(cursor.y);
             if !(y_abs_diff > 1 && y_abs_diff < (renderer.screen_height() - 2_u16)) {
@@ -208,29 +207,26 @@ pub mod cursor {
                     .max(0) as i16;
             }
 
-            // X axis logic: make the camera follow the player more smoothly,
-            // not just when reaching the edge, but when the player moves past a margin.
             let x = coords.x;
-            let screen_w = renderer.screen_width();
-            let left_margin = self.x_offset as i16;
-            let right_margin = (screen_w as i16).saturating_sub(self.x_offset as i16 + 1) as i16;
+            let screen_w_i16 = renderer.screen_width() as i16;
+            if screen_w_i16 <= 1 {
+                cursor.x = 0;
+                return;
+            }
 
-            // If player is left of the left margin, move view left.
+            let effective_offset = (self.x_offset as i16).min(screen_w_i16 - 1);
+            let left_margin = effective_offset;
+            let right_margin = (screen_w_i16 - effective_offset - 1).max(0);
+
             if x < cursor.x + left_margin {
-                let new_cursor_x = x.saturating_sub(left_margin);
-                cursor.x = new_cursor_x;
+                cursor.x = (x - left_margin).max(0);
+            } else if x > cursor.x + right_margin {
+                cursor.x = (x - right_margin).max(0);
             }
-            // If player is right of the right margin, move view right.
-            else if x > cursor.x + right_margin {
-                let new_cursor_x = x.saturating_sub(right_margin);
-                cursor.x = new_cursor_x;
-            }
-            // Otherwise, keep cursor.x unchanged (player is within margins).
         }
     }
 }
 
-// TODO trait only used once, no need for trait
 /// Trait which all renderers must implement.
 pub trait Renderer {
     fn screen_height(&self) -> u16;
@@ -277,9 +273,8 @@ impl Renderer for TerminalRenderer {
         )
         .unwrap();
         self.stdout().lock().flush().unwrap();
-        // TODO unused return value as we flush to the stdout in terminal renderer
-        // different use case of terminal vs web, but align to the same trait - worth
-        // looking at
+        // `render()` returns the rendered view to support non-terminal backends; the terminal backend
+        // also writes directly to stdout.
         view
     }
 

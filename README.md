@@ -2,8 +2,22 @@
 
 Hewn is a minimal Rust game engine for learning and tinkering, with support for terminal, desktop, and web platforms.
 
-- Crate: [crates.io/hewn](https://crates.io/crates/hewn)
 - Examples: `examples/asciijump`, `examples/asciibird`, `examples/snake`
+
+## Quick start
+
+```bash
+# Use arrow keys for the below examples
+# Terminal
+cargo run -p asciijump # Space to start
+cargo run -p asciibird
+cargo run -p snake
+
+# WGPU window
+cargo run -p asciijump -- --wgpu # Space to start
+cargo run -p asciibird -- --wgpu
+cargo run -p snake -- --wgpu
+```
 
 ## Features
 
@@ -13,7 +27,6 @@ Hewn is a minimal Rust game engine for learning and tinkering, with support for 
 - 🖥️ **Terminal** - ASCII games in your terminal with debug output
 - 🖼️ **Desktop** - Hardware-accelerated graphics with WGPU  
 - 🌐 **Web** - Deploy to HTML5 canvas
-- ⚡ **Cross-Platform** - Write once, run anywhere
 
 ## Getting started
 
@@ -290,7 +303,7 @@ impl GameHandler for HelloGame {
 6. `scene.step()` applies the velocity to move the player
 7. `handle_key()` delegates to the controller for clean separation of concerns
 
-Your `@` character now responds to arrow keys! Try moving around and watch the debug text update with your position. Now let's see the same game running in a desktop window...
+Your `@` character now responds to arrow keys. Try moving around and watch the debug text update with your position. Now let's see the same game running in a desktop window...
 
 ### Step 4: Add Collision Detection
 
@@ -371,7 +384,7 @@ impl GameHandler for HelloGame {
 
 Now you'll see a `##` wall that blocks your `@` character's movement! Try moving right into it.
 
-🎉 Congratulations! You’ve built a simple game with movement and collision using Hewn. Explore, experiment, and have fun making your own games! Check the examples or docs for more advanced features.
+Now you’ve built a simple game with movement and collision using Hewn. Explore, experiment, and have fun making your own games! Check the examples or docs for more advanced features.
 
 
 ### Step 5: Same Game, Desktop Window
@@ -432,19 +445,6 @@ The Scene manages entities with components:
 
 ## Examples
 
-### Run the Built-in Examples
-
-```bash
-# Terminal snake game
-cargo run -p snake
-
-# Terminal platformer  
-cargo run -p asciijump
-
-# Terminal flying game
-cargo run -p asciibird
-```
-
 ### Web Deployment
 
 ```bash
@@ -461,5 +461,3 @@ python3 -m http.server
 ```
 
 ---
-
-**Happy game making!** 🎮

@@ -8,9 +8,15 @@ use crate::game::create_game;
 pub mod game;
 
 fn main() {
-    play_asciijump_in_wgpu();
-    #[cfg(not(target_arch = "wasm32"))]
-    play_asciijump_in_terminal();
+    // Default to terminal to keep `cargo run -p asciijump` predictable.
+    // Use `--wgpu` to run the wgpu renderer instead.
+    let use_wgpu = std::env::args().any(|a| a == "--wgpu");
+    if use_wgpu {
+        play_asciijump_in_wgpu();
+    } else {
+        #[cfg(not(target_arch = "wasm32"))]
+        play_asciijump_in_terminal();
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

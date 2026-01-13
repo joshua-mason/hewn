@@ -9,9 +9,15 @@ pub const SCREEN_WIDTH: u16 = 50;
 pub const SCREEN_HEIGHT: u16 = 30;
 
 fn main() {
-    play_asciibird_in_wgpu();
-    #[cfg(not(target_arch = "wasm32"))]
-    play_asciibird_in_terminal();
+    // Default to terminal to keep `cargo run -p asciibird` predictable.
+    // Use `--wgpu` to run the wgpu renderer instead.
+    let use_wgpu = std::env::args().any(|a| a == "--wgpu");
+    if use_wgpu {
+        play_asciibird_in_wgpu();
+    } else {
+        #[cfg(not(target_arch = "wasm32"))]
+        play_asciibird_in_terminal();
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

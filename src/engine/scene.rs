@@ -139,7 +139,7 @@ pub struct Scene {
 
 impl Scene {
     pub fn step(&mut self, dt: Duration) {
-        // Consider splitting systems e.g. if we are handling gravity in the future
+        // Future improvement: split into discrete systems if additional forces (e.g. gravity) are introduced.
         let velocities = self.get_entities_by_mut(ComponentType::Velocity);
         for c in velocities {
             let Some(position) = &mut c.components.position else {
@@ -332,7 +332,8 @@ pub mod collisions {
     }
 
     pub fn collision_pass(objects: &[Entity], dt: Duration) -> Vec<[EntityId; 2]> {
-        // TODO: Collision is O(n^2) - worth looking at better approaches in future
+        // Future improvement: this is O(n^2); if entity counts grow, consider a broad-phase
+        // acceleration structure (e.g. uniform grid / sweep-and-prune).
         let mut collisions: Vec<[EntityId; 2]> = vec![];
         for i in 0..objects.len() {
             let (left, rest) = objects.split_at(i + 1);
